@@ -98,7 +98,7 @@ class FMCW_radar_py(gr.top_block, Qt.QWidget):
             7.49,
             "range",
             "magnitude",
-            "",
+            "Range Plot",
             1 # Number of inputs
         )
         self.qtgui_vector_sink_f_0.set_update_time(0.10)
@@ -132,7 +132,7 @@ class FMCW_radar_py(gr.top_block, Qt.QWidget):
         self.qtgui_time_sink_x_0 = qtgui.time_sink_c(
             chirp_length, #size
             samp_rate/decimation_factor, #samp_rate
-            "", #name
+            "IF Signal (decimated)", #name
             1 #number of inputs
         )
         self.qtgui_time_sink_x_0.set_update_time(0.10)

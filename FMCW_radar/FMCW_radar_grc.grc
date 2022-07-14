@@ -439,7 +439,7 @@ blocks:
     marker7: '-1'
     marker8: '-1'
     marker9: '-1'
-    name: '""'
+    name: '"IF Signal (decimated)"'
     nconnections: '1'
     size: chirp_length
     srate: samp_rate/decimation_factor
@@ -525,7 +525,7 @@ blocks:
     label9: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    name: '""'
+    name: '"Range Plot"'
     nconnections: '1'
     ref_level: '0'
     showports: 'False'
@@ -553,7 +553,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1736, 468.0]
+    coordinate: [1736, 460.0]
     rotation: 0
     state: true
 - name: uhd_usrp_sink_0
