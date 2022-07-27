@@ -105,6 +105,18 @@ blocks:
     bus_structure: null
     coordinate: [184, 12]
     rotation: 0
+    state: disabled
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 20.0e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [184, 76.0]
+    rotation: 0
     state: enabled
 - name: target_distance
   id: variable_qtgui_range
@@ -179,7 +191,7 @@ blocks:
     bus_structure: null
     coordinate: [1528, 604.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_delay_0
   id: blocks_delay
   parameters:
@@ -224,7 +236,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /home/david/Documents/RadarSecurityResearch/FMCW_radar/sample_chirps/chirp_samplePeriod.bin
+    file: /home/david/Documents/MATLAB_generated/chirp_samplePeriod.bin
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -290,7 +302,7 @@ blocks:
     bus_structure: null
     coordinate: [1296, 596.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_nlog10_ff_0
   id: blocks_nlog10_ff
   parameters:
@@ -308,7 +320,7 @@ blocks:
     bus_structure: null
     coordinate: [1768, 588.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_stream_to_vector_0
   id: blocks_stream_to_vector
   parameters:
@@ -326,7 +338,7 @@ blocks:
     bus_structure: null
     coordinate: [832, 608.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_throttle_0
   id: blocks_throttle
   parameters:
@@ -345,7 +357,7 @@ blocks:
     bus_structure: null
     coordinate: [1136, 332.0]
     rotation: 0
-    state: enabled
+    state: bypassed
 - name: fft_vxx_0
   id: fft_vxx
   parameters:
@@ -366,7 +378,7 @@ blocks:
     bus_structure: null
     coordinate: [1016, 572.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: fir_filter_xxx_0
   id: fir_filter_xxx
   parameters:
@@ -482,7 +494,7 @@ blocks:
     bus_structure: null
     coordinate: [1624, 396.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_vector_sink_f_0
   id: qtgui_vector_sink_f
   parameters:
@@ -555,7 +567,7 @@ blocks:
     bus_structure: null
     coordinate: [1976, 556.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: uhd_usrp_sink_0
   id: uhd_usrp_sink
   parameters:
@@ -669,7 +681,7 @@ blocks:
     comment: ''
     dev_addr: '""'
     dev_args: '""'
-    gain0: '0'
+    gain0: '50'
     gain1: '0'
     gain10: '0'
     gain11: '0'
@@ -978,7 +990,7 @@ blocks:
     dc_offs_enb9: '""'
     dev_addr: '""'
     dev_args: '""'
-    gain0: '0'
+    gain0: '50'
     gain1: '0'
     gain10: '0'
     gain11: '0'
