@@ -1,0 +1,14 @@
+{
+    "firstName":"David",
+    "lastName":"Hunt",
+    "StudentID":"12345",
+    "Department":"ECE",
+    "Research Interests": {
+        "Primary":"Radar Security",
+        "Secondary":"Machine Learning"
+    },
+    "key values":{
+        "pi":3.14159,
+        "speed_of_lignt":300000000
+    }
+}
