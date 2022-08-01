@@ -2,23 +2,23 @@
 
 using json = nlohmann::json;
 
-json JSONHandler::parse_JSON(std::string & file_name){
+json JSONHandler::parse_JSON(std::string & file_name, bool print_JSON){
     std::ifstream f(file_name);
     json data;
 
     if(f.is_open()){
         data = json::parse(f);
-        std::string first_name = data["firstName"].get<std::string>();
-        std::string last_name = data["lastName"].get<std::string>();
-        double pi = data["key values"]["pi"].get<double>();
-        std::cout << "First Name: " << first_name << "\n";
-        std::cout << "Last Name: " << last_name << "\n";
-        std::cout << "key values/pi: " << pi << "\n";
+        if (print_JSON){
+            std::cout << "JSONHANDLER::parse_JSON: JSON read successfully with contents: \n";
+            std::cout << std::setw(4) << data << std::endl;
+        }
+        else{
+            std::cout << "JSONHANDLER::parse_JSON: JSON read successfully\n";
+        }
     }
     else{
         std::cerr << "JSONHandler::parse_JSON: Unable to open file\n";
     }
-
     return data;
 }
 

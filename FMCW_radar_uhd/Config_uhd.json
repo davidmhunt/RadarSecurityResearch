@@ -1,14 +1,46 @@
 {
-    "firstName":"David",
-    "lastName":"Hunt",
-    "StudentID":"12345",
-    "Department":"ECE",
-    "Research Interests": {
-        "Primary":"Radar Security",
-        "Secondary":"Machine Learning"
-    },
-    "key values":{
-        "pi":3.14159,
-        "speed_of_lignt":300000000
+    "USRPSettings":{
+        "Multi-USRP":{
+            "args":"serial: 3231EFC",
+            "ref":"internal",
+            "sampling_rate":28.8e6,
+            "center_freq":1e9,
+            "lo-offset":0.0,
+            "IF_filter_bw":30e6,
+            "wirefmt":"s16",
+            "cpufmt":"fc32"
+        },
+        "TX":{
+            "file":"",
+            "spb":0,
+            "spp":0,
+            "gain":50,
+            "ant":"TX/RX",
+            "subdev":"A:A A:B",
+            "delay":0.0,
+            "channel":1,
+            "repeat":false
+        },
+        "RX":{
+            "file":"",
+            "numsamps":0,
+            "duration":0,
+            "spb":0,
+            "spp":0,
+            "gain":50,
+            "ant":"RX2",
+            "subdev":"A:A A:B",
+            "channel":0
+        },
+        "AdditionalSettings":{
+            "setup_time":1.0,
+            "progress":false,
+            "stats":false,
+            "sizemap":false,
+            "null":false,
+            "continue":false,
+            "skip-lo":false,
+            "int-n":false
+        }
     }
 }
