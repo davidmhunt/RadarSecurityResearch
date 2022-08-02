@@ -8,6 +8,7 @@
             "lo-offset":0.0,
             "IF_filter_bw":30e6,
             "wirefmt":"s16",
+            "type":"float",
             "cpufmt":"fc32"
         },
         "TX":{
