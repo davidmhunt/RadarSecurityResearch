@@ -38,9 +38,10 @@
                 uhd::usrp::multi_usrp::sptr usrp;
                 
                 //stream arguments
-                uhd::stream_args_t stream_args;
+                uhd::stream_args_t tx_stream_args;
                 uhd::tx_streamer::sptr tx_stream;
                 uhd::tx_metadata_t tx_md;
+                uhd::stream_args_t rx_stream_args;
                 uhd::rx_streamer::sptr rx_stream;
                 uhd::rx_metadata_t rx_md;
                 
@@ -61,6 +62,7 @@
                 void set_antennas(void);
                 void check_lo_locked(void);
                 void init_multi_usrp(void);
+                void init_stream_args(void);
                 void reset_usrp_clock(void);
         };
     }

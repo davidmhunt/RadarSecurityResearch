@@ -328,6 +328,31 @@ void USRPHandler::init_multi_usrp(void){
 
     //check to confirm that the LO is locked
     check_lo_locked();
+
+    //initialize the stream arguments
+    init_stream_args();
+}
+
+void USRPHandler::init_stream_args(void){
+
+    std::string cpu_format = config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>();
+    std::string wirefmt = config["USRPSettings"]["Multi-USRP"]["wirefmt"].get<std::string>();
+
+    //configure tx stream args
+    size_t tx_channel = config["USRPSettings"]["TX"]["channel"].get<size_t>();
+    std::vector<size_t> tx_channels(1,tx_channel);
+    tx_stream_args = uhd::stream_args_t(cpu_format,wirefmt);
+    tx_stream_args.channels = tx_channels;
+    tx_stream = usrp -> get_tx_stream(tx_stream_args);
+
+    //configure rx stream args
+    size_t rx_channel = config["USRPSettings"]["RX"]["channel"].get<size_t>();
+    std::vector<size_t> rx_channels(1,rx_channel);
+    rx_stream_args = uhd::stream_args_t(cpu_format,wirefmt);
+    rx_stream_args.channels = rx_channels;
+    rx_stream = usrp -> get_rx_stream(rx_stream_args);
+
+    std::cout << "USRPHandler::init_stream_args: initialized stream arguments" << std::endl << std::endl;
 }
 
 void USRPHandler::reset_usrp_clock(void){
