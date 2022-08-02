@@ -146,6 +146,7 @@ classdef Radar_revA < handle
             fprintf("\t FMCW sampling rate \t\t %0.2f MHz\n",obj.FMCW_sampling_rate_Hz * 1e-6)
             fprintf("\t Downsampling factor \t\t %d\n",obj.downsample_factor)
             fprintf("\t Sweep time \t\t\t %0.2f us\n",obj.sweep_time * 1e6)
+            fprintf("\t Samples per chirp \t\t %0.2f \n",obj.ChirpCycleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz)
         end
 
         %% [2] Functions to compute calculated radar parameters
