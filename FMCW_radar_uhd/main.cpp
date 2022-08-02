@@ -44,7 +44,6 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
                                 usrp_handler.rx_samples_per_buffer,
                                 usrp_handler.tx_samples_per_buffer,
                                 true);
-    
-    buffer_handler.save_rx_buffer_to_file();
+    usrp_handler.load_BufferHandler( & buffer_handler);
     return EXIT_SUCCESS;
 }

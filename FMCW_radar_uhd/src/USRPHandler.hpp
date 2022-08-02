@@ -27,13 +27,20 @@
     #include "uhd/types/device_addr.hpp"
     #include "uhd/device.hpp"
 
+    //user generated header files
+    #include "BufferHandler.hpp"
+
     using json = nlohmann::json;
 
     namespace USRPHandler_namespace {
         class USRPHandler {
             
+            private:
+                
+            
             public:
                 //class variables
+                BufferHandler_namespace::BufferHandler * buffer_handler;
                 //usrp device
                 uhd::usrp::multi_usrp::sptr usrp;
                 
@@ -46,6 +53,7 @@
                 uhd::rx_streamer::sptr rx_stream;
                 uhd::rx_metadata_t rx_md;
                 size_t rx_samples_per_buffer;
+
                 
                 //json config file
                 json config;
@@ -65,7 +73,11 @@
                 void check_lo_locked(void);
                 void init_multi_usrp(void);
                 void init_stream_args(void);
+
                 void reset_usrp_clock(void);
+                void load_BufferHandler(
+                    BufferHandler_namespace::BufferHandler * new_buffer_handler);
+                
         };
     }
 #endif

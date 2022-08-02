@@ -9,7 +9,8 @@
             "IF_filter_bw":28.8e6,
             "wirefmt":"sc16",
             "type":"float",
-            "cpufmt":"fc32"
+            "cpufmt":"fc32",
+            "delay":0.033
         },
         "TX":{
             "file":"",
@@ -18,14 +19,11 @@
             "gain":50,
             "ant":"TX/RX",
             "subdev":"A:A A:B",
-            "delay":0.0,
             "channel":1,
             "repeat":false
         },
         "RX":{
             "file":"",
-            "numsamps":0,
-            "duration":0,
             "spb":0,
             "spp":0,
             "gain":50,

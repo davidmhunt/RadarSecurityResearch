@@ -355,8 +355,7 @@ void USRPHandler::init_stream_args(void){
     rx_stream = usrp -> get_rx_stream(rx_stream_args);
     rx_samples_per_buffer = rx_stream -> get_max_num_samps();
     std::cout << "USRPHandler::init_stream_args: tx_spb: " << tx_samples_per_buffer << 
-    " rx_spb: " << rx_samples_per_buffer <<std::endl;
-
+        " rx_spb: " << rx_samples_per_buffer <<std::endl;
     std::cout << "USRPHandler::init_stream_args: initialized stream arguments" << std::endl << std::endl;
 }
 
@@ -364,4 +363,12 @@ void USRPHandler::reset_usrp_clock(void){
     std::cout << "USRPHandler::reset_usrp_clock: setting device timestamp to 0" << 
                 std::endl << std::endl;
     usrp -> set_time_now(uhd::time_spec_t(0.0));
+    return;
+}
+
+void USRPHandler::load_BufferHandler(BufferHandler_namespace::BufferHandler * new_buffer_handler){
+    buffer_handler = new_buffer_handler;
+    buffer_handler->rx_buffer[0][0] = std::complex<float>(1,0);
+    buffer_handler->save_rx_buffer_to_file();
+    return;
 }
