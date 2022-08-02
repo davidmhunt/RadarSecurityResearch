@@ -24,6 +24,7 @@
 //source libraries
 #include "src/JSONHandler.hpp"
 #include "src/USRPHandler.hpp"
+#include "src/BufferHandler.hpp"
 
 //set namespaces
 using json = nlohmann::json;

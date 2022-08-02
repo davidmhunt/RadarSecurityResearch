@@ -33,9 +33,12 @@ find_package(nlohmann_json 3.10.5 REQUIRED)
 #declare libraries
 add_library(JSONHandler JSONHandler.cpp)
 add_library(USRPHandler USRPHandler.cpp)
+add_library(BufferHandler BufferHandler.cpp)
 
 #link libraries as needed
 target_link_libraries(JSONHandler PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(USRPHandler PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(USRPHandler PRIVATE ${UHD_LIBRARIES} 
                                 PRIVATE ${BoostLIBRARIES})
+target_link_libraries(USRPHandler PRIVATE BufferHandler)
+target_link_libraries(BufferHandler PRIVATE nlohmann_json::nlohmann_json)
