@@ -29,6 +29,7 @@
 //set namespaces
 using json = nlohmann::json;
 using USRPHandler_namespace::USRPHandler;
+using BufferHandler_namespace::BufferHandler;
 
 int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
@@ -38,6 +39,12 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     std::cout << "\nMAIN: Parsing JSON\n";
     json config = JSONHandler::parse_JSON(config_file,false);
 
-    USRPHandler usrp_handler =  USRPHandler(config);
+    USRPHandler usrp_handler(config);
+    BufferHandler buffer_handler(config,
+                                usrp_handler.rx_samples_per_buffer,
+                                usrp_handler.tx_samples_per_buffer,
+                                true);
+    
+    buffer_handler.save_rx_buffer_to_file();
     return EXIT_SUCCESS;
 }

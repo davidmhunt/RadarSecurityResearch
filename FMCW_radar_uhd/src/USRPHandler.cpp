@@ -121,9 +121,9 @@ void USRPHandler::set_sample_rate(void){
         }
         std::cout << "USRPHandler::set_sample_rate: Setting TX Rate: " << 
                     tx_rate/1e6 << " Msps..." << std::endl;
-        usrp->set_rx_rate(tx_rate, tx_channel);
+        usrp->set_tx_rate(tx_rate, tx_channel);
         std::cout << "USRPHandler::set_sample_rate: Actual TX Rate: " << 
-                    usrp->get_rx_rate(tx_channel) / 1e6 << " Msps..." << std::endl <<std::endl;
+                    usrp->get_tx_rate(tx_channel) / 1e6 << " Msps..." << std::endl <<std::endl;
     }
     else {
         std::cerr << "USRPHandler::set_sample_rate: No Tx sample rate in JSON";
@@ -344,6 +344,8 @@ void USRPHandler::init_stream_args(void){
     tx_stream_args = uhd::stream_args_t(cpu_format,wirefmt);
     tx_stream_args.channels = tx_channels;
     tx_stream = usrp -> get_tx_stream(tx_stream_args);
+    tx_samples_per_buffer = tx_stream -> get_max_num_samps();
+    std::cout << "USRPHandler::init_stream_args: tx_spb: " << tx_samples_per_buffer <<std::endl;
 
     //configure rx stream args
     size_t rx_channel = config["USRPSettings"]["RX"]["channel"].get<size_t>();
@@ -351,6 +353,9 @@ void USRPHandler::init_stream_args(void){
     rx_stream_args = uhd::stream_args_t(cpu_format,wirefmt);
     rx_stream_args.channels = rx_channels;
     rx_stream = usrp -> get_rx_stream(rx_stream_args);
+    rx_samples_per_buffer = rx_stream -> get_max_num_samps();
+    std::cout << "USRPHandler::init_stream_args: tx_spb: " << tx_samples_per_buffer << 
+    " rx_spb: " << rx_samples_per_buffer <<std::endl;
 
     std::cout << "USRPHandler::init_stream_args: initialized stream arguments" << std::endl << std::endl;
 }

@@ -41,9 +41,11 @@
                 uhd::stream_args_t tx_stream_args;
                 uhd::tx_streamer::sptr tx_stream;
                 uhd::tx_metadata_t tx_md;
+                size_t tx_samples_per_buffer;
                 uhd::stream_args_t rx_stream_args;
                 uhd::rx_streamer::sptr rx_stream;
                 uhd::rx_metadata_t rx_md;
+                size_t rx_samples_per_buffer;
                 
                 //json config file
                 json config;

@@ -6,8 +6,8 @@
             "sampling_rate":28.8e6,
             "center_freq":1e9,
             "lo-offset":0.0,
-            "IF_filter_bw":30e6,
-            "wirefmt":"s16",
+            "IF_filter_bw":28.8e6,
+            "wirefmt":"sc16",
             "type":"float",
             "cpufmt":"fc32"
         },
@@ -43,5 +43,10 @@
             "skip-lo":false,
             "int-n":false
         }
+    },
+    "FMCWSettings":{
+        "tx_file_name":"/home/david/Documents/MATLAB_generated/chirp_full.bin",
+        "rx_file_name":"/home/david/Documents/MATLAB_generated/rx_data.bin",
+        "num_chirps": 2
     }
 }
