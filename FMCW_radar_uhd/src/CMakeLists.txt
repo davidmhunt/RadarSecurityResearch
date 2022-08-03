@@ -29,6 +29,8 @@ link_directories(${Boost_LIBRARY_DIRS})
 
 #add subdirectories/dependencies
 find_package(nlohmann_json 3.10.5 REQUIRED)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 #declare libraries
 add_library(JSONHandler JSONHandler.cpp)
@@ -41,4 +43,5 @@ target_link_libraries(USRPHandler PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(USRPHandler PRIVATE ${UHD_LIBRARIES} 
                                 PRIVATE ${BoostLIBRARIES})
 target_link_libraries(USRPHandler PRIVATE BufferHandler)
+target_link_libraries(USRPHandler PRIVATE Threads::Threads)
 target_link_libraries(BufferHandler PRIVATE nlohmann_json::nlohmann_json)

@@ -43,7 +43,17 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     BufferHandler buffer_handler(config,
                                 usrp_handler.rx_samples_per_buffer,
                                 usrp_handler.tx_samples_per_buffer,
-                                true);
+                                false);
     usrp_handler.load_BufferHandler( & buffer_handler);
+
+    //stream the frame
+    usrp_handler.stream_frame();
+
+    //std::cout << "Rx Buffer Preview" <<std::endl;
+    //buffer_handler.print_2d_buffer_preview(buffer_handler.rx_buffer);
+
+    //buffer_handler.rx_buffer = buffer_handler.tx_buffer;
+    //buffer_handler.save_rx_buffer_to_file();
+
     return EXIT_SUCCESS;
 }

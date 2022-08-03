@@ -98,7 +98,7 @@ void USRPHandler::set_sample_rate(void){
     if (config["USRPSettings"]["Multi-USRP"]["sampling_rate"].is_null() == false &&
     config["USRPSettings"]["RX"]["channel"].is_null() == false){
         float rx_rate = config["USRPSettings"]["Multi-USRP"]["sampling_rate"].get<float>();
-        size_t rx_channel = config["USRPSettings"]["RX"]["channel"].get<size_t>();
+        rx_channel = config["USRPSettings"]["RX"]["channel"].get<size_t>();
         if (rx_rate <= 0.0) {
             std::cerr << "USRPHandler::set_sample_rate: Please specify a valid RX sample rate" << std::endl;
         }
@@ -115,7 +115,7 @@ void USRPHandler::set_sample_rate(void){
     if (config["USRPSettings"]["Multi-USRP"]["sampling_rate"].is_null() == false &&
     config["USRPSettings"]["TX"]["channel"].is_null() == false){
         float tx_rate = config["USRPSettings"]["Multi-USRP"]["sampling_rate"].get<float>();
-        size_t tx_channel = config["USRPSettings"]["TX"]["channel"].get<size_t>();
+        tx_channel = config["USRPSettings"]["TX"]["channel"].get<size_t>();
         if (tx_rate <= 0.0) {
             std::cerr << "USRPHandler::set_sample_rate: Please specify a valid TX sample rate" << std::endl;
         }
@@ -173,7 +173,6 @@ void USRPHandler::set_rf_gain(void){
     if (config["USRPSettings"]["RX"]["gain"].is_null() == false)
     {
         double rx_gain = config["USRPSettings"]["RX"]["gain"].get<double>();
-        size_t rx_channel = config["USRPSettings"]["RX"]["channel"].get<size_t>();
         std::cout << "USRPHandler::set_rf_gain: Setting Rx Gain: " << rx_gain << 
                     " dB" <<std::endl;
         usrp -> set_rx_gain(rx_gain,rx_channel);
@@ -185,7 +184,6 @@ void USRPHandler::set_rf_gain(void){
     if (config["USRPSettings"]["TX"]["gain"].is_null() == false)
     {
         double tx_gain = config["USRPSettings"]["TX"]["gain"].get<double>();
-        size_t tx_channel = config["USRPSettings"]["TX"]["channel"].get<size_t>();
         std::cout << "USRPHandler::set_rf_gain: Setting Tx Gain: " << tx_gain << 
                     " dB" <<std::endl;
         usrp -> set_tx_gain(tx_gain,tx_channel);
@@ -219,7 +217,6 @@ void USRPHandler::set_antennas(void){
     //set Rx Antenna
     if(config["USRPSettings"]["RX"]["ant"].is_null() == false){
         std::string rx_ant = config["USRPSettings"]["RX"]["ant"].get<std::string>();
-        size_t rx_channel = config["USRPSettings"]["RX"]["channel"].get<size_t>();
         std::cout << "USRPHandler::set_antennas: Setting Rx Antenna: " <<
                     rx_ant << std::endl;
         usrp->set_rx_antenna(rx_ant,rx_channel);
@@ -230,7 +227,6 @@ void USRPHandler::set_antennas(void){
     //set Tx Antenna
     if(config["USRPSettings"]["TX"]["ant"].is_null() == false){
         std::string tx_ant = config["USRPSettings"]["TX"]["ant"].get<std::string>();
-        size_t tx_channel = config["USRPSettings"]["TX"]["channel"].get<size_t>();
         std::cout << "USRPHandler::set_antennas: Setting Tx Antenna: " <<
                     tx_ant << std::endl;
         usrp->set_tx_antenna(tx_ant,tx_channel);
@@ -260,7 +256,7 @@ void USRPHandler::check_lo_locked(void){
             sensor_names = usrp->get_rx_sensor_names(0);
             if (std::find(sensor_names.begin(), sensor_names.end(), "lo_locked")
                 != sensor_names.end()) {
-                uhd::sensor_value_t lo_locked = usrp->get_tx_sensor("lo_locked", 0);
+                uhd::sensor_value_t lo_locked = usrp->get_rx_sensor("lo_locked", 0);
                 std::cout << "USRPHandler::check_lo_locked: Checking RX: " << lo_locked.to_pp_string()
                         << std::endl;
                 UHD_ASSERT_THROW(lo_locked.to_bool());
@@ -329,26 +325,78 @@ void USRPHandler::init_multi_usrp(void){
     //check to confirm that the LO is locked
     check_lo_locked();
 
+    //compute the frame start times
+    init_frame_start_times();
+
     //initialize the stream arguments
     init_stream_args();
+}
+
+void USRPHandler::init_frame_start_times(void){
+    
+    //set stream start time
+    if(config["USRPSettings"]["Multi-USRP"]["stream_start_time"].is_null() == false){
+        stream_start_time = config["USRPSettings"]["Multi-USRP"]["stream_start_time"].get<double>();
+    }
+    else{
+        std::cerr << "USRPHandler::init_frame_start_times: couldn't find stream start time in JSON" <<std::endl;
+    }
+
+    //set num_frames
+    if(config["FMCWSettings"]["num_frames"].is_null() == false){
+        num_frames = config["FMCWSettings"]["num_frames"].get<size_t>();
+    }
+    else{
+        std::cerr << "USRPHandler::init_frame_start_times: couldn't find num_frames in JSON" <<std::endl;
+    }
+
+    //set frame_periodicity
+    if(config["FMCWSettings"]["frame_periodicity_ms"].is_null() == false){
+        frame_periodicity = config["FMCWSettings"]["frame_periodicity_ms"].get<double>() * 1e-3;
+    }
+    else{
+        std::cerr << "USRPHandler::init_frame_start_times: couldn't find frame_periodicity_ms in JSON" <<std::endl;
+    }
+
+    //initialize the frame start times vector
+    frame_start_times = std::vector<uhd::time_spec_t>(num_frames);
+    std::cout << "USRPHandler::init_frame_start_times: computed start times: " << std::endl;
+    for (size_t i = 0; i < num_frames; i++)
+    {
+        frame_start_times[i] = uhd::time_spec_t(stream_start_time + 
+                        (frame_periodicity * static_cast<double>(i)));
+        std::cout << frame_start_times[i].get_real_secs() << ", ";
+    }
+    std::cout << std::endl;
+    
+    //set the rx stream start offset
+        /*NOTE: this was added because on some USRP devices, there appears to
+        be a difference between when the receiver starts and the transmitter starts
+        even when both devices are given the same start time
+        */
+    if(config["USRPSettings"]["RX"]["offset_us"].is_null() == false){
+        rx_stream_start_offset = uhd::time_spec_t(
+            config["USRPSettings"]["RX"]["offset_us"].get<double>() * 1e-6);
+    }
+    else{
+        std::cerr << "USRPHandler::init_frame_start_times: couldn't find rx stream start time offset in JSON" <<std::endl;
+    }
 }
 
 void USRPHandler::init_stream_args(void){
 
     std::string cpu_format = config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>();
     std::string wirefmt = config["USRPSettings"]["Multi-USRP"]["wirefmt"].get<std::string>();
-
+    
     //configure tx stream args
-    size_t tx_channel = config["USRPSettings"]["TX"]["channel"].get<size_t>();
     std::vector<size_t> tx_channels(1,tx_channel);
     tx_stream_args = uhd::stream_args_t(cpu_format,wirefmt);
     tx_stream_args.channels = tx_channels;
     tx_stream = usrp -> get_tx_stream(tx_stream_args);
     tx_samples_per_buffer = tx_stream -> get_max_num_samps();
     std::cout << "USRPHandler::init_stream_args: tx_spb: " << tx_samples_per_buffer <<std::endl;
-
+    
     //configure rx stream args
-    size_t rx_channel = config["USRPSettings"]["RX"]["channel"].get<size_t>();
     std::vector<size_t> rx_channels(1,rx_channel);
     rx_stream_args = uhd::stream_args_t(cpu_format,wirefmt);
     rx_stream_args.channels = rx_channels;
@@ -368,7 +416,186 @@ void USRPHandler::reset_usrp_clock(void){
 
 void USRPHandler::load_BufferHandler(BufferHandler_namespace::BufferHandler * new_buffer_handler){
     buffer_handler = new_buffer_handler;
-    buffer_handler->rx_buffer[0][0] = std::complex<float>(1,0);
-    buffer_handler->save_rx_buffer_to_file();
     return;
+}
+
+void USRPHandler::stream_rx_frame(void){
+
+    //determine the number of samples to be streamed in the frame
+    size_t num_samps_per_buff = buffer_handler -> rx_samples_per_buff;
+    size_t num_rows = buffer_handler -> rx_num_rows;
+    size_t total_samps = num_samps_per_buff * num_rows;
+    size_t num_samps_received;
+
+    //reset the overflow message
+    overflow_message = true;
+    rx_first_buffer = true;
+
+    //initialize the stream command
+    uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+    rx_stream_cmd.num_samps = total_samps;
+    rx_stream_cmd.stream_now = false;
+    rx_stream_cmd.time_spec = frame_start_times[0] + rx_stream_start_offset;
+
+    //send the stream command
+    rx_stream -> issue_stream_cmd(rx_stream_cmd);
+
+    for (size_t i = 0; i < num_rows; i++)
+    {
+        //receive the data
+        num_samps_received = rx_stream -> recv(
+                        &(buffer_handler->rx_buffer[i].front()),
+                        num_samps_per_buff,rx_md,0.5,true);
+        
+        //check the metadata to confirm good receive
+        if (num_samps_received != num_samps_per_buff){
+            std::cerr << "USRPHandler::stream_rx_frame: Tried receiving " << num_samps_per_buff <<
+                        " samples, but only received " << num_samps_received << std::endl;
+        }
+        check_rx_metadata(rx_md);
+    }
+    buffer_handler -> save_rx_buffer_to_file();
+}
+
+void USRPHandler::check_rx_metadata(uhd::rx_metadata_t & rx_md){
+    if(rx_first_buffer){
+        std::cout << "USRPHandler::check_rx_metadata: start of burst metadata: " << std::endl <<
+                    rx_md.to_pp_string(false) << std::endl <<std::endl;
+        rx_first_buffer = false;
+    }
+    if(rx_md.end_of_burst && rx_md.has_time_spec) {
+
+        std::cout << "USRPHandler::check_rx_metadata: end of burst occurred at " <<
+                    rx_md.time_spec.get_real_secs() << " s" <<std::endl;
+    }
+    if (rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
+        std::cout << "USRPHandler::stream_rx_frame: Timeout while streaming" << std::endl;
+    }
+    if (rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW) {
+        if (overflow_message) {
+            overflow_message = false;
+            std::cerr <<
+                        "Got an overflow indication. Please consider the following:\n" <<
+                        "  Your write medium must sustain a rate of " << 
+                        (usrp->get_rx_rate(rx_channel) * sizeof(std::complex<float>) / 1e6) <<"MB/s.\n" <<
+                        "  Dropped samples will not be written to the file.\n" <<
+                        "  Please modify this example for your purposes.\n" <<
+                        "  This message will not appear again.\n"; 
+        }
+    }
+    if (rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE) {
+        std::stringstream error;
+        error << "USRPHandler::stream_rx_frame: Receiver error: " << rx_md.strerror();
+        std::cerr << error.str() << std::endl;
+    }
+    return;
+}
+
+void USRPHandler::stream_tx_frame(void){
+
+    //determine the number of samples to be streamed in the frame
+    size_t num_samps_per_buff = buffer_handler -> tx_samples_per_buff;
+    size_t num_rows = buffer_handler -> tx_num_rows;
+    size_t total_samps = num_samps_per_buff * num_rows;
+    size_t num_samps_sent;
+
+    //initialize the metadata
+    tx_md.has_time_spec = true;
+    tx_md.time_spec = frame_start_times[0];
+    tx_md.start_of_burst = false;
+    tx_md.end_of_burst = false;
+
+    for (size_t i = 0; i < num_rows; i++)
+    {
+        num_samps_sent = tx_stream -> send(
+                    &(buffer_handler -> tx_buffer[i].front()),
+                    num_samps_per_buff,
+                    tx_md,0.5);
+        
+        tx_md.start_of_burst = false;
+        tx_md.has_time_spec = false;
+
+        //confirm that sent correct amount of samples
+        if (num_samps_sent != num_samps_per_buff){
+            std::cerr << "USRPHandler::stream_tx_frame: Tried sending " << num_samps_per_buff <<
+                        " samples, but only received " << num_samps_sent << std::endl;
+        }
+    }
+
+    // send a mini EOB packet
+    tx_md.end_of_burst = true;
+    tx_stream->send("", 0, tx_md);
+
+    std::cout << "USRPHandler::stream_tx_frame: frame streamed starting at : " <<
+                tx_md.time_spec.get_real_secs() << " s" << std::endl;
+    tx_stream_complete = true;
+}
+
+void USRPHandler::check_tx_async_messages(void){
+    bool exit_flag = false;
+    while (true) {
+        if (tx_stream_complete) {
+            exit_flag = true;
+        }
+
+        if (not tx_stream->recv_async_msg(tx_async_md)) {
+            if (exit_flag == true){
+                std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to exit flag" <<std::endl;
+                return;
+            }
+            continue;
+        }
+
+        // handle the error codes
+        switch (tx_async_md.event_code) {
+            case uhd::async_metadata_t::EVENT_CODE_BURST_ACK:
+                //std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to end of burst" <<std::endl;
+                if (tx_async_md.has_time_spec){
+                    std::cout << "USRPHandler::check_tx_async_messages: end of burst occurred at " <<
+                            tx_async_md.time_spec.get_real_secs() << " s" << std::endl;
+                }
+                return;
+
+            case uhd::async_metadata_t::EVENT_CODE_UNDERFLOW:
+            case uhd::async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET:
+                std::cerr << "USRPHandler::check_tx_async_messages: Underflow Detected" << std::endl;
+                break;
+
+            case uhd::async_metadata_t::EVENT_CODE_SEQ_ERROR:
+            case uhd::async_metadata_t::EVENT_CODE_SEQ_ERROR_IN_BURST:
+                std::cerr << "USRPHandler::check_tx_async_messages: Packet Loss Detected" << std::endl;
+                break;
+
+            default:
+                std::cerr <<  "USRPHandler::check_tx_async_messages: Event code: " << tx_async_md.event_code
+                          << std::endl;
+                std::cerr << "Unexpected event on async recv, continuing..." << std::endl;
+                break;
+        }
+    }
+}
+
+void USRPHandler::stream_frame(void){
+    //set the start time
+    reset_usrp_clock();
+
+    //create transmit thread
+    tx_stream_complete = false;
+    std::thread transmit_thread([&]() {
+        stream_tx_frame();
+    });
+
+    //create transmit async handler
+    std::thread transmit_async_thread([&]() {
+        check_tx_async_messages();
+    });
+
+    //process receive frame
+    stream_rx_frame();
+    
+
+    //wait for transmit thread to finish
+    transmit_thread.join();
+    transmit_async_thread.join();
+    std::cout << "USRPHandler::stream_frame: Complete" << std::endl << std::endl;
 }
