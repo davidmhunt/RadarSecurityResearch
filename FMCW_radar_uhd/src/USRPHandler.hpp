@@ -9,6 +9,8 @@
     #include <complex>
     #include <csignal>
     #include <thread>
+    #include <mutex>
+    #include <stdexcept>
 
     //uhd specific libraries
     #include <uhd/exception.hpp>
@@ -37,11 +39,21 @@
         class USRPHandler {
             
             private:
-                bool overflow_message; //true if no overflow message sent
+                //status variables used by streamers
+                bool overflow_detected; //true if no overflow message sent
                 bool rx_first_buffer;
                 std::atomic<bool> tx_stream_complete;
+
+                //varialbes to track the channels
                 size_t rx_channel;
                 size_t tx_channel;
+
+                //mutex to ensure cout is thread safe
+                std::mutex cout_mutex;
+
+                //debug settings
+                bool simplified_metadata;
+
             public:
                 //class variables
                 BufferHandler_namespace::BufferHandler * buffer_handler;
@@ -74,6 +86,7 @@
 
                 //class functions
                 USRPHandler(json & config_file);
+                void configure_debug(void);
                 uhd::device_addrs_t find_devices (void);
                 void create_USRP_device(void);
                 void wait_for_setup_time(void);
@@ -91,11 +104,11 @@
                 void reset_usrp_clock(void);
                 void load_BufferHandler(
                     BufferHandler_namespace::BufferHandler * new_buffer_handler);
-                void stream_rx_frame(void);
+                void stream_rx_frames(void);
                 void check_rx_metadata(uhd::rx_metadata_t & rx_md);
-                void stream_tx_frame(void);
+                void stream_tx_frames(void);
                 void check_tx_async_messages(void);
-                void stream_frame(void);
+                void stream_frames(void);
         };
     }
 #endif

@@ -4,7 +4,18 @@ using USRPHandler_namespace::USRPHandler;
 
 USRPHandler::USRPHandler(json & config_file){
     config = config_file;
+    configure_debug();
     init_multi_usrp();
+}
+
+void USRPHandler::configure_debug(void){
+    if (config["USRPSettings"]["AdditionalSettings"]["simplified_streamer_metadata"].is_null() == false){
+        simplified_metadata = config["USRPSettings"]["AdditionalSettings"]["simplified_streamer_metadata"].get<bool>();
+        std::cout << "USRPHandler::configure_debug: simplified metadata: " << simplified_metadata << std::endl << std::endl;
+    }
+    else{
+        std::cerr << "USRPHandler::configure_debusg: couldn't find simplified_streamer_metadata in JSON" <<std::endl;
+    }
 }
 
 uhd::device_addrs_t USRPHandler::find_devices(void){
@@ -419,8 +430,8 @@ void USRPHandler::load_BufferHandler(BufferHandler_namespace::BufferHandler * ne
     return;
 }
 
-void USRPHandler::stream_rx_frame(void){
-
+void USRPHandler::stream_rx_frames(void){
+    
     //determine the number of samples to be streamed in the frame
     size_t num_samps_per_buff = buffer_handler -> rx_samples_per_buff;
     size_t num_rows = buffer_handler -> rx_num_rows;
@@ -428,53 +439,75 @@ void USRPHandler::stream_rx_frame(void){
     size_t num_samps_received;
 
     //reset the overflow message
-    overflow_message = true;
+    overflow_detected = false;
     rx_first_buffer = true;
 
     //initialize the stream command
     uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
     rx_stream_cmd.num_samps = total_samps;
     rx_stream_cmd.stream_now = false;
-    rx_stream_cmd.time_spec = frame_start_times[0] + rx_stream_start_offset;
 
-    //send the stream command
-    rx_stream -> issue_stream_cmd(rx_stream_cmd);
-
-    for (size_t i = 0; i < num_rows; i++)
+    for (size_t i = 0; i < num_frames; i++)
     {
-        //receive the data
-        num_samps_received = rx_stream -> recv(
-                        &(buffer_handler->rx_buffer[i].front()),
-                        num_samps_per_buff,rx_md,0.5,true);
-        
-        //check the metadata to confirm good receive
-        if (num_samps_received != num_samps_per_buff){
-            std::cerr << "USRPHandler::stream_rx_frame: Tried receiving " << num_samps_per_buff <<
-                        " samples, but only received " << num_samps_received << std::endl;
+        //set the time spec for the frame start
+        rx_stream_cmd.time_spec = frame_start_times[i] + rx_stream_start_offset;
+
+        //send the stream command
+        rx_stream -> issue_stream_cmd(rx_stream_cmd);
+
+        for (size_t j = 0; j < num_rows; j++)
+        {
+            //receive the data
+            num_samps_received = rx_stream -> recv(
+                            &(buffer_handler->rx_buffer[j].front()),
+                            num_samps_per_buff,rx_md,0.5,true);
+            
+            //check the metadata to confirm good receive
+            if (num_samps_received != num_samps_per_buff){
+                std::cerr << "USRPHandler::stream_rx_frame: Tried receiving " << num_samps_per_buff <<
+                            " samples, but only received " << num_samps_received << std::endl;
+            }
+            check_rx_metadata(rx_md);
+
+            //if an overflow was detected, the frame is bad, save what we had and start a new frame
+            if (overflow_detected){
+                std::cout << "USRPHandler::stream_rx_frames: Overflow detected on frame " <<
+                            j + 1 << " cancelling frame and starting again" <<std::endl;
+                //reset the overflow tag
+                overflow_detected = false;
+                break;
+            }
         }
-        check_rx_metadata(rx_md);
+        buffer_handler -> save_rx_buffer_to_file();   
     }
-    buffer_handler -> save_rx_buffer_to_file();
+    return;
 }
 
 void USRPHandler::check_rx_metadata(uhd::rx_metadata_t & rx_md){
-    if(rx_first_buffer){
-        std::cout << "USRPHandler::check_rx_metadata: start of burst metadata: " << std::endl <<
-                    rx_md.to_pp_string(false) << std::endl <<std::endl;
-        rx_first_buffer = false;
-    }
-    if(rx_md.end_of_burst && rx_md.has_time_spec) {
 
+    //create a unique lock for managing outputs using std::cout
+    std::unique_lock<std::mutex> cout_unique_lock(cout_mutex, std::defer_lock);
+
+    if(rx_first_buffer){
+        cout_unique_lock.lock();
+        std::cout << "USRPHandler::check_rx_metadata: start of burst metadata: " << std::endl <<
+                    rx_md.to_pp_string(simplified_metadata) << std::endl <<std::endl;
+        rx_first_buffer = false;
+        cout_unique_lock.unlock();
+    }
+    if(rx_md.end_of_burst && rx_md.has_time_spec && not simplified_metadata) {
+        cout_unique_lock.lock();
         std::cout << "USRPHandler::check_rx_metadata: end of burst occurred at " <<
                     rx_md.time_spec.get_real_secs() << " s" <<std::endl;
+        cout_unique_lock.unlock();
     }
     if (rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
         std::cout << "USRPHandler::stream_rx_frame: Timeout while streaming" << std::endl;
     }
     if (rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW) {
-        if (overflow_message) {
-            overflow_message = false;
-            std::cerr <<
+        if (not overflow_detected) {
+            overflow_detected = true;
+            std::cerr <<    
                         "Got an overflow indication. Please consider the following:\n" <<
                         "  Your write medium must sustain a rate of " << 
                         (usrp->get_rx_rate(rx_channel) * sizeof(std::complex<float>) / 1e6) <<"MB/s.\n" <<
@@ -491,47 +524,70 @@ void USRPHandler::check_rx_metadata(uhd::rx_metadata_t & rx_md){
     return;
 }
 
-void USRPHandler::stream_tx_frame(void){
+void USRPHandler::stream_tx_frames(void){
 
+    //create a unique lock for managing outputs using std::cout
+    std::unique_lock<std::mutex> cout_unique_lock(cout_mutex, std::defer_lock);
+    
     //determine the number of samples to be streamed in the frame
     size_t num_samps_per_buff = buffer_handler -> tx_samples_per_buff;
     size_t num_rows = buffer_handler -> tx_num_rows;
     size_t total_samps = num_samps_per_buff * num_rows;
     size_t num_samps_sent;
 
-    //initialize the metadata
-    tx_md.has_time_spec = true;
-    tx_md.time_spec = frame_start_times[0];
-    tx_md.start_of_burst = false;
-    tx_md.end_of_burst = false;
+    cout_unique_lock.lock();
+    std::cout << "USRPHandler::stream_tx_frame: streaming frame starting at : " <<
+                frame_start_times[0].get_real_secs() << " s" << std::endl;
+    cout_unique_lock.unlock();
 
-    for (size_t i = 0; i < num_rows; i++)
+    //stream desired number of frames
+    for (size_t i = 0; i < num_frames; i++)
     {
-        num_samps_sent = tx_stream -> send(
-                    &(buffer_handler -> tx_buffer[i].front()),
-                    num_samps_per_buff,
-                    tx_md,0.5);
-        
+        //initialize the metadata
+        tx_md.has_time_spec = true;
+        tx_md.time_spec = frame_start_times[i];
         tx_md.start_of_burst = false;
-        tx_md.has_time_spec = false;
+        tx_md.end_of_burst = false;
 
-        //confirm that sent correct amount of samples
-        if (num_samps_sent != num_samps_per_buff){
-            std::cerr << "USRPHandler::stream_tx_frame: Tried sending " << num_samps_per_buff <<
-                        " samples, but only received " << num_samps_sent << std::endl;
+        if (not simplified_metadata && i > 0)
+        {
+            cout_unique_lock.lock();
+            std::cout << "USRPHandler::stream_tx_frame: streaming frame starting at : " <<
+                        tx_md.time_spec.get_real_secs() << " s" << std::endl;
+            cout_unique_lock.unlock();
         }
+        
+        //stream the desired number of chirps
+        for (size_t j = 0; j < num_rows; j++)
+        {
+            num_samps_sent = tx_stream -> send(
+                        &(buffer_handler -> tx_buffer[j].front()),
+                        num_samps_per_buff,
+                        tx_md,0.5);
+            
+            tx_md.start_of_burst = false;
+            tx_md.has_time_spec = false;
+
+            //confirm that sent correct amount of samples
+            if (num_samps_sent != num_samps_per_buff){
+                std::cerr << "USRPHandler::stream_tx_frame: Tried sending " << num_samps_per_buff <<
+                            " samples, but only received " << num_samps_sent << std::endl;
+            }
+        }
+
+        // send a mini EOB packet
+        tx_md.end_of_burst = true;
+        tx_stream->send("", 0, tx_md);
+
     }
-
-    // send a mini EOB packet
-    tx_md.end_of_burst = true;
-    tx_stream->send("", 0, tx_md);
-
-    std::cout << "USRPHandler::stream_tx_frame: frame streamed starting at : " <<
-                tx_md.time_spec.get_real_secs() << " s" << std::endl;
     tx_stream_complete = true;
 }
 
 void USRPHandler::check_tx_async_messages(void){
+    
+    //create a unique lock for managing outputs using std::cout
+    std::unique_lock<std::mutex> cout_unique_lock(cout_mutex, std::defer_lock);
+    
     bool exit_flag = false;
     while (true) {
         if (tx_stream_complete) {
@@ -540,7 +596,9 @@ void USRPHandler::check_tx_async_messages(void){
 
         if (not tx_stream->recv_async_msg(tx_async_md)) {
             if (exit_flag == true){
+                cout_unique_lock.lock();
                 std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to exit flag" <<std::endl;
+                cout_unique_lock.unlock();
                 return;
             }
             continue;
@@ -550,11 +608,14 @@ void USRPHandler::check_tx_async_messages(void){
         switch (tx_async_md.event_code) {
             case uhd::async_metadata_t::EVENT_CODE_BURST_ACK:
                 //std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to end of burst" <<std::endl;
-                if (tx_async_md.has_time_spec){
+                if (tx_async_md.has_time_spec && not simplified_metadata){
+                    cout_unique_lock.lock();
                     std::cout << "USRPHandler::check_tx_async_messages: end of burst occurred at " <<
                             tx_async_md.time_spec.get_real_secs() << " s" << std::endl;
+                    cout_unique_lock.unlock();
                 }
-                return;
+                continue;
+                //return;
 
             case uhd::async_metadata_t::EVENT_CODE_UNDERFLOW:
             case uhd::async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET:
@@ -575,14 +636,14 @@ void USRPHandler::check_tx_async_messages(void){
     }
 }
 
-void USRPHandler::stream_frame(void){
+void USRPHandler::stream_frames(void){
     //set the start time
     reset_usrp_clock();
 
     //create transmit thread
     tx_stream_complete = false;
     std::thread transmit_thread([&]() {
-        stream_tx_frame();
+        stream_tx_frames();
     });
 
     //create transmit async handler
@@ -591,7 +652,7 @@ void USRPHandler::stream_frame(void){
     });
 
     //process receive frame
-    stream_rx_frame();
+    stream_rx_frames();
     
 
     //wait for transmit thread to finish

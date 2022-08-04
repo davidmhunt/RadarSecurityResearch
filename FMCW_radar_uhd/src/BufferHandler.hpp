@@ -48,9 +48,9 @@
                 BufferHandler(
                     json config,
                     size_t rx_spb,
-                    size_t tx_spb,
-                    bool debug = false);
+                    size_t tx_spb);
                 ~BufferHandler();
+                void configure_debug(json &config);
                 void load_tx_chirp(void);
                 void init_tx_buffer(void);
                 void init_rx_buffer(void);

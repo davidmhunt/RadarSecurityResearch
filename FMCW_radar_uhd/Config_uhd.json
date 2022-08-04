@@ -4,7 +4,7 @@
             "args":"serial: 3231EFC",
             "ref":"internal",
             "sampling_rate":28.8e6,
-            "center_freq":1.8e9,
+            "center_freq":5.8e9,
             "lo-offset":0.0,
             "IF_filter_bw":28.8e6,
             "wirefmt":"sc16",
@@ -32,20 +32,17 @@
         },
         "AdditionalSettings":{
             "setup_time":1.0,
-            "progress":false,
-            "stats":false,
-            "sizemap":false,
-            "null":false,
-            "continue":false,
             "skip-lo":false,
-            "int-n":false
+            "int-n":false,
+            "bufferHandler_debug":false,
+            "simplified_streamer_metadata":true
         }
     },
     "FMCWSettings":{
         "tx_file_name":"/home/david/Documents/MATLAB_generated/chirp_full.bin",
         "rx_file_name":"/home/david/Documents/MATLAB_generated/rx_data.bin",
         "num_chirps": 256,
-        "num_frames": 5,
+        "num_frames": 70,
         "frame_periodicity_ms": 33.34
     }
 }

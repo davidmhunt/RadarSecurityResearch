@@ -5,8 +5,7 @@ using BufferHandler_namespace::BufferHandler;
 BufferHandler::BufferHandler(
     json config,
     size_t rx_spb,
-    size_t tx_spb,
-    bool debug){
+    size_t tx_spb){
         if (config["FMCWSettings"]["tx_file_name"].is_null() ||
             config["FMCWSettings"]["rx_file_name"].is_null() ||
             config["FMCWSettings"]["num_chirps"].is_null()){
@@ -17,10 +16,8 @@ BufferHandler::BufferHandler(
         num_chirps = config["FMCWSettings"]["num_chirps"].get<size_t>();
         rx_samples_per_buff = rx_spb;
         tx_samples_per_buff = tx_spb;
-        debug_status = debug;
-        if (debug_status){
-            std::cout << "BufferHandler: Debug Status = " << debug_status << std::endl;
-        }
+        
+        configure_debug(config);
         
         //run the initialization function
         init_BufferHandler();
@@ -32,6 +29,16 @@ BufferHandler::~BufferHandler(){
     }
     if (tx_file_stream.is_open()){
         tx_file_stream.close();
+    }
+}
+
+void BufferHandler::configure_debug(json & config){
+    if (config["USRPSettings"]["AdditionalSettings"]["bufferHandler_debug"].is_null() == false){
+        debug_status = config["USRPSettings"]["AdditionalSettings"]["bufferHandler_debug"].get<bool>();
+        std::cout << "BufferHandler::configure_debug: bufferHandler_debug: " << debug_status << std::endl << std::endl;
+    }
+    else{
+        std::cerr << "BufferHandler::configure_debug: couldn't find bufferHandler_debug in JSON" <<std::endl;
     }
 }
 
