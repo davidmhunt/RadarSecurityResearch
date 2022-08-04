@@ -1,0 +1,48 @@
+{
+    "USRPSettings":{
+        "Multi-USRP":{
+            "args":"serial: 3231EFC",
+            "ref":"internal",
+            "sampling_rate":28.8e6,
+            "center_freq":5.8e9,
+            "lo-offset":0.0,
+            "IF_filter_bw":28.8e6,
+            "wirefmt":"sc16",
+            "type":"float",
+            "cpufmt":"fc32",
+            "stream_start_time":0.25
+        },
+        "TX":{
+            "file":"",
+            "spb":0,
+            "gain":50,
+            "ant":"TX/RX",
+            "subdev":"A:A A:B",
+            "channel":1
+        },
+        "RX":{
+            "file":"",
+            "spb":0,
+            "spp":0,
+            "gain":50,
+            "ant":"RX2",
+            "subdev":"A:A A:B",
+            "channel":1,
+            "offset_us": 5.70
+        },
+        "AdditionalSettings":{
+            "setup_time":1.0,
+            "skip-lo":false,
+            "int-n":false,
+            "bufferHandler_debug":false,
+            "simplified_streamer_metadata":true
+        }
+    },
+    "FMCWSettings":{
+        "tx_file_name":"/home/david/Documents/MATLAB_generated/chirp_full.bin",
+        "rx_file_name":"/home/david/Documents/MATLAB_generated/rx_data.bin",
+        "num_chirps": 128,
+        "num_frames": 15,
+        "frame_periodicity_ms": 200.04
+    }
+}

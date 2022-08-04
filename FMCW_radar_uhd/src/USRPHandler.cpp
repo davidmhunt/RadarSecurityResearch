@@ -472,7 +472,7 @@ void USRPHandler::stream_rx_frames(void){
             //if an overflow was detected, the frame is bad, save what we had and start a new frame
             if (overflow_detected){
                 std::cout << "USRPHandler::stream_rx_frames: Overflow detected on frame " <<
-                            j + 1 << " cancelling frame and starting again" <<std::endl;
+                            i + 1 << " cancelling frame and starting again" <<std::endl;
                 //reset the overflow tag
                 overflow_detected = false;
                 break;
