@@ -174,6 +174,32 @@ classdef Simulator_revA < handle
             obj.Attacker.compute_calculated_vals();
         end
 
+        function load_B210_victim_params(obj)
+            %setup the victim's chirp parameters
+            obj.Victim.StartFrequency_GHz         = 77.0;
+            obj.Victim.FrequencySlope_MHz_us      = 1.2;
+            obj.Victim.TxStartTime_us             = 0;
+            obj.Victim.ADC_Samples                = 64;
+            obj.Victim.ADC_SampleRate_MSps        = 1.54;
+            obj.Victim.ChirpCycleTime_us          = 49.98;             
+
+            %setup the victim's frame parameters
+            obj.Victim.NumChirps                  = 64;
+            obj.Victim.FramePeriodicity_ms        = 33.33;
+            
+            %define plot color default values
+            obj.Victim.plotResolution_us = 0.01;
+            obj.Victim.tx_period_plot_color = 'blue';
+            obj.Victim.tx_sampling_period_plot_color = 'cyan';
+            obj.Victim.radar_name = 'Victim';
+
+            %set timing offset to zero as this is the victim
+            obj.Victim.timing_offset_us = 0;
+
+            %compute all remaining "calculated" values
+            obj.Victim.compute_calculated_vals();
+        end
+
         function load_B210_victim_params_highvres(obj)
             %setup the victim's chirp parameters
             obj.Victim.StartFrequency_GHz         = 5.8;
@@ -224,7 +250,32 @@ classdef Simulator_revA < handle
             %compute all remaining "calculated" values
             obj.Victim.compute_calculated_vals();
         end
+        
+        function load_B210_attacker_params(obj)
+            %setup the victim's chirp parameters
+            obj.Attacker.Subsystem_tracking.StartFrequency_GHz                  = 77.0;
+            obj.Attacker.Subsystem_tracking.FrequencySlope_MHz_us               = 1.2;
+            obj.Attacker.Subsystem_tracking.TxStartTime_us                      = 0;
+            obj.Attacker.Subsystem_tracking.ADC_Samples                         = 64;
+            obj.Attacker.Subsystem_tracking.ADC_SampleRate_MSps                 = 1.54;
+            obj.Attacker.Subsystem_tracking.ChirpCycleTime_us                   = 49.98;             
 
+            %setup the victim's frame parameters
+            obj.Attacker.Subsystem_tracking.NumChirps                  = 64;
+            obj.Attacker.Subsystem_tracking.FramePeriodicity_ms        = 33.33;
+            
+            %define plot color default values
+            obj.Attacker.Subsystem_tracking.plotResolution_us = 0.01;
+            obj.Attacker.Subsystem_tracking.tx_period_plot_color = 'red';
+            obj.Attacker.Subsystem_tracking.tx_sampling_period_plot_color = 'magenta';
+            obj.Attacker.Subsystem_tracking.radar_name = 'Attacker';
+
+            %set timing offset to zero as this is the victim
+            obj.Attacker.Subsystem_tracking.timing_offset_us = 0;
+
+            %compute all remaining "calculated" values
+            obj.Attacker.Subsystem_tracking.compute_calculated_vals();
+        end
         function load_B210_attacker_params_lowBW(obj)
             %setup the attacker's chirp parameters
             obj.Attacker.Subsystem_tracking.StartFrequency_GHz         = 5.8;
@@ -250,7 +301,6 @@ classdef Simulator_revA < handle
             %compute all remaining "calculated" values
             obj.Attacker.Subsystem_tracking.compute_calculated_vals();
         end
-
         function load_B210_attacker_params_highvres(obj)
             %setup the attacker's chirp parameters
             obj.Attacker.Subsystem_tracking.StartFrequency_GHz         = 5.8;
@@ -382,7 +432,7 @@ classdef Simulator_revA < handle
                 [tgt_pos,tgt_vel] = obj.SimulatedTarget.platform(chirp_end_time);
                 [attacker_pos, attacker_vel] = obj.Attacker.platform(chirp_end_time);
             end
-        end
+        end     
         
         function received_signal = generate_sensing_subsystem_received_signal(obj)
             %{
