@@ -28,7 +28,7 @@
             "ant":"RX2",
             "subdev":"A:A A:B",
             "channel":1,
-            "offset_us": 5.70
+            "offset_us": 0
         },
         "AdditionalSettings":{
             "setup_time":1.0,
