@@ -84,7 +84,8 @@
                 //json config file
                 json config;
 
-                //class functions
+                //CLASS FUNCTIONS
+                    //initialization functions
                 USRPHandler(json & config_file);
                 void configure_debug(void);
                 uhd::device_addrs_t find_devices (void);
@@ -104,11 +105,16 @@
                 void reset_usrp_clock(void);
                 void load_BufferHandler(
                     BufferHandler_namespace::BufferHandler * new_buffer_handler);
+
+                    //streaming functions
                 void stream_rx_frames(void);
                 void check_rx_metadata(uhd::rx_metadata_t & rx_md);
                 void stream_tx_frames(void);
                 void check_tx_async_messages(void);
                 void stream_frames(void);
+                    
+                    //synchronization functions
+                void synchronize_rx_and_tx (void);
         };
     }
 #endif

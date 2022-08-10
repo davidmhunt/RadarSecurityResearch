@@ -35,7 +35,8 @@
             "skip-lo":false,
             "int-n":false,
             "bufferHandler_debug":false,
-            "simplified_streamer_metadata":true
+            "simplified_streamer_metadata":true,
+            "synchronize_rx_tx": true
         }
     },
     "FMCWSettings":{
