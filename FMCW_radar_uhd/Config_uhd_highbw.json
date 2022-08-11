@@ -3,10 +3,10 @@
         "Multi-USRP":{
             "args":"serial: 3231EFC",
             "ref":"internal",
-            "sampling_rate":28.8e6,
+            "sampling_rate":42.09e6,
             "center_freq":5.8e9,
             "lo-offset":0.0,
-            "IF_filter_bw":28.8e6,
+            "IF_filter_bw":42.09e6,
             "wirefmt":"sc16",
             "type":"float",
             "cpufmt":"fc32",
@@ -28,7 +28,7 @@
             "ant":"RX2",
             "subdev":"A:A A:B",
             "channel":1,
-            "offset_us": 5.7639
+            "offset_us": 3.7938
         },
         "AdditionalSettings":{
             "setup_time":1.0,
