@@ -129,7 +129,7 @@ classdef Radar_Signal_Processor_revA < handle
                 frequency components in a signal
             %}
             
-            obj.FIRDecimator = dsp.FIRDecimator(obj.decimation_factor,designMultirateFIR(1,obj.decimation_factor/2));
+            obj.FIRDecimator = dsp.FIRDecimator(obj.decimation_factor,designMultirateFIR(1,ceil(obj.decimation_factor/2)));
             %obj.FIRDecimator = dsp.FIRDecimator(obj.decimation_factor,'Auto');
         end
 
