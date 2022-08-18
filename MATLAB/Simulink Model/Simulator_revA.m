@@ -281,7 +281,7 @@ classdef Simulator_revA < handle
         function load_B210_victim_params_100MHzBW(obj)
             %setup the victim's chirp parameters
             obj.Victim.StartFrequency_GHz         = 5.8;
-            obj.Victim.FrequencySlope_MHz_us      = 2.20;
+            obj.Victim.FrequencySlope_MHz_us      = 2.13;
             obj.Victim.TxStartTime_us             = 0;
             obj.Victim.ADC_Samples                = 64;
             obj.Victim.ADC_SampleRate_MSps        = 1.6;
@@ -385,7 +385,7 @@ classdef Simulator_revA < handle
         function load_B210_attacker_params_100MHzBW(obj)
             %setup the attacker's chirp parameters
             obj.Attacker.Subsystem_tracking.StartFrequency_GHz         = 5.8;
-            obj.Attacker.Subsystem_tracking.FrequencySlope_MHz_us      = 2.20;
+            obj.Attacker.Subsystem_tracking.FrequencySlope_MHz_us      = 2.13;
             obj.Attacker.Subsystem_tracking.TxStartTime_us             = 0;
             obj.Attacker.Subsystem_tracking.ADC_Samples                = 64;
             obj.Attacker.Subsystem_tracking.ADC_SampleRate_MSps        = 1.6;

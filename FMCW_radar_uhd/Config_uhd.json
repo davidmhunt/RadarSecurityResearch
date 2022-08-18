@@ -4,7 +4,7 @@
             "args":"serial: 3231EFC",
             "ref":"internal",
             "sampling_rate":28.8e6,
-            "center_freq":5.8e9,
+            "center_freq":1e9,
             "lo-offset":0.0,
             "IF_filter_bw":28.8e6,
             "wirefmt":"sc16",
@@ -15,7 +15,7 @@
         "TX":{
             "file":"",
             "spb":0,
-            "gain":50,
+            "gain":35,
             "ant":"TX/RX",
             "subdev":"A:A A:B",
             "channel":1
@@ -24,7 +24,7 @@
             "file":"",
             "spb":0,
             "spp":0,
-            "gain":50,
+            "gain":35,
             "ant":"RX2",
             "subdev":"A:A A:B",
             "channel":1,
