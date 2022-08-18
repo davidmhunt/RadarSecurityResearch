@@ -29,7 +29,7 @@
 //set namespaces
 using json = nlohmann::json;
 using USRPHandler_namespace::USRPHandler;
-using BufferHandler_namespace::BufferHandler;
+using Buffers::Buffer;
 
 int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
@@ -46,6 +46,7 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     USRPHandler usrp_handler(config);
 
     //initialize buffers
+ /* START OF CODE NOT WORKING YET  
     std::cout << "\nMAIN: Initializing Buffer Handler\n";
     BufferHandler buffer_handler(config,
                                 usrp_handler.rx_samples_per_buffer,
@@ -64,6 +65,6 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
     //buffer_handler.rx_buffer = buffer_handler.tx_buffer;
     //buffer_handler.save_rx_buffer_to_file();
-
+*/
     return EXIT_SUCCESS;
 }
