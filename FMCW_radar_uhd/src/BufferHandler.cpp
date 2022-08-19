@@ -1,6 +1,12 @@
 #include "BufferHandler.hpp"
 
 using Buffers::Buffer;
+using Buffers::Buffer_2D;
+
+/*
+    CODE FOR BUFER CLASS
+*/
+
 
 /**
  * @brief Default Constructor for Buffer class
@@ -164,4 +170,194 @@ std::vector<data_type> Buffer<data_type>::load_data_from_read_file(){
         std::cerr << "Buffer::load_data_from_read_file: read_file_stream is not open\n";
     }
     return data_vector;
+}
+
+
+/*
+    CODE FOR BUFFER_2D Class
+*/
+
+/**
+ * @brief Construct a new Buffer_2D<data_type>::Buffer_2D object
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+Buffer_2D<data_type>::Buffer_2D() : Buffer<data_type>(){}
+
+/**
+ * @brief Construct a new Buffer_2D<data_type>::Buffer_2D object
+ * 
+ * @tparam data_type: the typeof data that the buffer stores
+ * @param debug the specified debug setting
+ */
+template<typename data_type>
+Buffer_2D<data_type>::Buffer_2D(bool debug) : Buffer<data_type>(debug){}
+
+/**
+ * @brief Construct a new Buffer_2D<data_type>::Buffer_2D object
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ * @param rows the number of rows to be in the buffer
+ * @param cols the number of columns to be in the buffer
+ * @param exces the number of excess/unused samples in the buffer
+ * @param debug the specified debug setting
+ */
+template<typename data_type>
+Buffer_2D<data_type>::Buffer_2D(size_t rows, size_t cols,size_t exces,bool debug)
+                                 : Buffer<data_type>(debug),buffer(rows,std::vector<data_type>(cols)),
+                                 num_rows(rows),num_cols(cols){}
+
+/**
+ * @brief Destroy the Buffer_2D<data_type>::Buffer_2D object
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+Buffer_2D<data_type>::~Buffer_2D(){}
+
+/**
+ * @brief prints out a 1d buffer
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ * @param buffer_to_print the buffer to be printed
+ */
+template<typename data_type>
+void Buffer_2D<data_type>::print_1d_buffer_preview(std::vector<data_type> & buffer_to_print){
+    //declare variable to keep track of how many samples to print out (limited to the first 5 and the last sample)
+    size_t samples_to_print;
+    if (buffer_to_print.size() > 5){
+        samples_to_print = 5;
+    }
+    else if (buffer_to_print.size() > 0)
+    {
+        samples_to_print = buffer_to_print.size();
+    }
+    
+    else{
+        std::cerr << "Buffer_2D::print_1d_buffer_preview: buffer to print is empty" << std::endl;
+        return;
+    }
+
+    //print out the first five samples
+    for (size_t i = 0; i < samples_to_print; i++)
+    {
+        std::cout << buffer_to_print[i].real() << " + " << buffer_to_print[i].imag() << "j, ";
+    }
+
+    //if there are more than 5 samples, print out the last sample from the vector as well
+    if(buffer_to_print.size() > 5){
+        std::cout << "\t...\t" << buffer_to_print.back().real() << " + " <<
+                 buffer_to_print.back().imag() << "j" <<std::endl;
+    }
+    else{
+        std::cout << std::endl;
+    }
+    return;
+}
+
+/**
+ * @brief print a prevew of the buffer (1st 3 rows, 1st 5 columns, last row, last column)
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+void Buffer_2D<data_type>::print_preview(void){
+    
+    size_t rows_to_print;
+    if (buffer.size() > 3){
+        rows_to_print = 3;
+    }
+    else if (buffer.size() > 0)
+    {
+        rows_to_print = buffer.size();
+    }
+    
+    else{
+        std::cerr << "Buffer_2D::print_preview: buffer to print is empty" << std::endl;
+    }
+
+    //print out the first three samples
+    for (size_t i = 0; i < rows_to_print; i++)
+    {
+        print_1d_buffer_preview(buffer[i]);
+    }
+
+    //if there are more than 5 samples, print out the last sample from the vector as well
+    if(buffer.size() > 5){
+        std::cout << "\t...\t" << std::endl;
+        print_1d_buffer_preview(buffer.back());
+    }
+    else{
+        std::cout << std::endl;
+    }
+    return;
+}
+
+
+/**
+ * @brief load data from a vector into the buffer
+ * 
+ * @tparam data_type: the ype of data that the buffer stores 
+ * @param data_to_load the data to load into the bufer
+ * @param copy_until_buffer_full (on true) continuously copies data from the vector into the buffer until
+ * the buffer is full or until the excess samples is reached, even if multiple copies of the data are made
+ * (on false) inserts up to only 1 copy of the data into the buffer
+ */
+template<typename data_type>
+void Buffer_2D<data_type>::load_data_into_buffer(std::vector<data_type> & data_to_load, bool copy_until_buffer_full){
+        
+        //setup bool to stop copying if copy_until_buffer_full is false
+        bool stop_signal = false;
+        //setup iterators
+        typename std::vector<data_type>::iterator data_iterator = data.begin();
+        size_t row = 0;
+        typename std::vector<data_type>::iterator buffer_iterator = buffer[0].begin();
+        while (buffer_iterator != (buffer[num_rows - 1].end() - excess_samples) && stop_signal == false)
+        {
+            *buffer_iterator = *data_iterator;
+
+            //increment data iterator
+            if(data_iterator == data.end() - 1){
+                if(copy_until_buffer_full){
+                    data_iterator = data.begin();
+                }
+                else{
+                    stop_signal = true;
+                }
+                
+            }
+            else{
+                ++data_iterator;
+            }
+
+            //increment buffer iterator
+            if(buffer_iterator == buffer[row].end() - 1){
+                if(row == (num_rows - 1) && excess_samples == 0){
+                    buffer_iterator = buffer[row].end();
+                }
+                else{
+                    row = row + 1;
+                    buffer_iterator = buffer[row].begin();
+                }
+            }
+            else{
+                ++buffer_iterator;
+            }
+        }
+}
+
+/**
+ * @brief Load data into a pre-initialized Buffer_2D using the already opened read_file_stream,
+ * only one copy of the data from the file is loadd though
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+void Buffer_2D<data_type>::import_from_file(void){
+
+        //save the data from the file into a vector
+        std::vector<data_type> data = load_data_from_read_file();
+
+        load_data_into_buffer(data,false);
 }
