@@ -34,6 +34,7 @@
     #include "BufferHandler.hpp"
 
     using json = nlohmann::json;
+    using Buffers::FMCW_Buffer;
 
     namespace USRPHandler_namespace {
         class USRPHandler {
@@ -56,7 +57,8 @@
 
             public:
                 //class variables
-                BufferHandler_namespace::BufferHandler * buffer_handler;
+                FMCW_Buffer<std::complex<float>> * tx_buffer;
+                FMCW_Buffer<std::complex<float>> * rx_buffer;
                 //usrp device
                 uhd::usrp::multi_usrp::sptr usrp;
                 
@@ -103,8 +105,9 @@
                 void init_frame_start_times(void);
                 void init_stream_args(void);
                 void reset_usrp_clock(void);
-                void load_BufferHandler(
-                    BufferHandler_namespace::BufferHandler * new_buffer_handler);
+                void load_Buffers(
+                    FMCW_Buffer<std::complex<float>> * new_tx_buffer,
+                    FMCW_Buffer<std::complex<float>> * new_rx_buffer);
 
                     //streaming functions
                 void stream_rx_frames(void);

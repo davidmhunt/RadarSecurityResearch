@@ -25,7 +25,7 @@
         class Buffer {
             //variables
                 //read and write file paths
-                private:
+                protected:
                     std::string read_file;
                     std::string write_file;
                 //file streams
@@ -42,20 +42,20 @@
                     virtual ~Buffer();
 
                     //managing and initializing file streams
-                    void set_read_file(std::string file_path);
-                    void set_write_file(std::string file_path);
+                    void set_read_file(std::string file_path, bool init_stream = true);
+                    void set_write_file(std::string file_path, bool init_stream = true);
                     void init_read_file_stream(void);
                     void init_write_file_stream(void);
                     void close_read_file_stream(void);
                     void close_write_file_stream(void);
 
                     //load data from a file
-                    std::vector<data_type> load_data_from_read_file();
+                    std::vector<data_type> load_data_from_read_file(void);
 
                 //abstract functions
-                    virtual void print_preview() = 0;
-                    virtual void import_from_file() = 0;
-                    virtual void save_to_file() = 0;
+                    virtual void print_preview(void) = 0;
+                    virtual void import_from_file(void) = 0;
+                    virtual void save_to_file(void) = 0;
         }; // end of Buffer class
 
         /**

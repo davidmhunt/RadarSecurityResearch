@@ -425,16 +425,19 @@ void USRPHandler::reset_usrp_clock(void){
     return;
 }
 
-void USRPHandler::load_BufferHandler(BufferHandler_namespace::BufferHandler * new_buffer_handler){
-    buffer_handler = new_buffer_handler;
+void USRPHandler::load_Buffers(
+    FMCW_Buffer<std::complex<float>> * new_tx_buffer,
+    FMCW_Buffer<std::complex<float>> * new_rx_buffer){
+        tx_buffer = new_tx_buffer;
+        rx_buffer = new_rx_buffer;
     return;
 }
 
 void USRPHandler::stream_rx_frames(void){
     
     //determine the number of samples to be streamed in the frame
-    size_t num_samps_per_buff = buffer_handler -> rx_samples_per_buff;
-    size_t num_rows = buffer_handler -> rx_num_rows;
+    size_t num_samps_per_buff = rx_buffer -> num_cols;
+    size_t num_rows = rx_buffer -> num_rows;
     size_t total_samps = num_samps_per_buff * num_rows;
     size_t num_samps_received;
 
@@ -459,7 +462,7 @@ void USRPHandler::stream_rx_frames(void){
         {
             //receive the data
             num_samps_received = rx_stream -> recv(
-                            &(buffer_handler->rx_buffer[j].front()),
+                            &(rx_buffer->buffer[j].front()),
                             num_samps_per_buff,rx_md,0.5,true);
             
             //check the metadata to confirm good receive
@@ -478,7 +481,7 @@ void USRPHandler::stream_rx_frames(void){
                 break;
             }
         }
-        buffer_handler -> save_rx_buffer_to_file();   
+        rx_buffer -> save_to_file();   
     }
     return;
 }
@@ -530,8 +533,8 @@ void USRPHandler::stream_tx_frames(void){
     std::unique_lock<std::mutex> cout_unique_lock(cout_mutex, std::defer_lock);
     
     //determine the number of samples to be streamed in the frame
-    size_t num_samps_per_buff = buffer_handler -> tx_samples_per_buff;
-    size_t num_rows = buffer_handler -> tx_num_rows;
+    size_t num_samps_per_buff = tx_buffer -> num_cols;
+    size_t num_rows = tx_buffer -> num_rows;
     size_t total_samps = num_samps_per_buff * num_rows;
     size_t num_samps_sent;
 
@@ -561,7 +564,7 @@ void USRPHandler::stream_tx_frames(void){
         for (size_t j = 0; j < num_rows; j++)
         {
             num_samps_sent = tx_stream -> send(
-                        &(buffer_handler -> tx_buffer[j].front()),
+                        &(tx_buffer -> buffer[j].front()),
                         num_samps_per_buff,
                         tx_md,0.5);
             
@@ -571,7 +574,7 @@ void USRPHandler::stream_tx_frames(void){
             //confirm that sent correct amount of samples
             if (num_samps_sent != num_samps_per_buff){
                 std::cerr << "USRPHandler::stream_tx_frame: Tried sending " << num_samps_per_buff <<
-                            " samples, but only received " << num_samps_sent << std::endl;
+                            " samples, but only sent " << num_samps_sent << std::endl;
             }
         }
 

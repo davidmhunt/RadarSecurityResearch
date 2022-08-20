@@ -36,6 +36,7 @@ find_package(Threads REQUIRED)
 add_library(JSONHandler JSONHandler.cpp)
 add_library(USRPHandler USRPHandler.cpp)
 add_library(BufferHandler BufferHandler.cpp)
+add_library(FMCWHandler FMCWHandler.cpp)
 
 #link libraries as needed
 target_link_libraries(JSONHandler PRIVATE nlohmann_json::nlohmann_json)
@@ -45,3 +46,7 @@ target_link_libraries(USRPHandler PRIVATE ${UHD_LIBRARIES}
 target_link_libraries(USRPHandler PRIVATE BufferHandler)
 target_link_libraries(USRPHandler PRIVATE Threads::Threads)
 target_link_libraries(BufferHandler PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(FMCWHandler PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(FMCWHandler PRIVATE PRIVATE ${UHD_LIBRARIES} 
+                                        PRIVATE ${BoostLIBRARIES})
+target_link_libraries(FMCWHandler PRIVATE BufferHandler)

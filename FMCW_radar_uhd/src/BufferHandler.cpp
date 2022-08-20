@@ -42,10 +42,15 @@ Buffer<data_type>::~Buffer(){
  * 
  * @tparam data_type: type of data that the buffer holds
  * @param file_name the file name to be read
+ * @param init_stream (on true) also initializes the read file stream,
+ * (on false) only sets the read file name
  */
 template <typename data_type>
-void Buffer<data_type>::set_read_file(std::string file_name){
+void Buffer<data_type>::set_read_file(std::string file_name, bool init_stream){
     read_file = file_name;
+    if (init_stream){
+        init_read_file_stream();
+    }
 }
 
 /**
@@ -53,10 +58,15 @@ void Buffer<data_type>::set_read_file(std::string file_name){
  * 
  * @tparam data_type: type of data that the buffer holds
  * @param file_name the file name to be read
+ * @param init_stream (on true) also initializes the write file stream, 
+ * (on false) only sets the write file
  */
 template <typename data_type>
-void Buffer<data_type>::set_write_file(std::string file_name){
+void Buffer<data_type>::set_write_file(std::string file_name, bool init_stream){
     write_file = file_name;
+    if (init_stream){
+        init_write_file_stream();
+    }
 }
 
 /**
@@ -110,7 +120,7 @@ void Buffer<data_type>::init_write_file_stream(void){
  */
 template <typename data_type>
 void Buffer<data_type>::close_read_file_stream(void){
-    if(read_file_stream.open){
+    if(read_file_stream.is_open()){
         read_file_stream.close();
         std::cout << "Buffer::close_read_file_stream: read file stream closed" << std::endl;
     }
@@ -127,7 +137,7 @@ void Buffer<data_type>::close_read_file_stream(void){
  */
 template <typename data_type>
 void Buffer<data_type>::close_write_file_stream(void){
-    if(write_file_stream.open){
+    if(write_file_stream.is_open()){
         write_file_stream.close();
         std::cout << "Buffer::close_write_file_stream: write file stream closed" << std::endl;
     }
@@ -144,7 +154,7 @@ void Buffer<data_type>::close_write_file_stream(void){
  * @return std::vector<data_type>: a vector with the data stored in the read file
  */
 template <typename data_type>
-std::vector<data_type> Buffer<data_type>::load_data_from_read_file(){
+std::vector<data_type> Buffer<data_type>::load_data_from_read_file(void){
     //initialize the return vector
     std::vector<data_type> data_vector;
     
@@ -312,7 +322,7 @@ void Buffer_2D<data_type>::load_data_into_buffer(std::vector<data_type> & data_t
         //setup bool to stop copying if copy_until_buffer_full is false
         bool stop_signal = false;
         //setup iterators
-        typename std::vector<data_type>::iterator data_iterator = data.begin();
+        typename std::vector<data_type>::iterator data_iterator = data_to_load.begin();
         size_t row = 0;
         typename std::vector<data_type>::iterator buffer_iterator = buffer[0].begin();
         while (buffer_iterator != (buffer[num_rows - 1].end() - excess_samples) && stop_signal == false)
@@ -320,9 +330,9 @@ void Buffer_2D<data_type>::load_data_into_buffer(std::vector<data_type> & data_t
             *buffer_iterator = *data_iterator;
 
             //increment data iterator
-            if(data_iterator == data.end() - 1){
+            if(data_iterator == data_to_load.end() - 1){
                 if(copy_until_buffer_full){
-                    data_iterator = data.begin();
+                    data_iterator = data_to_load.begin();
                 }
                 else{
                     stop_signal = true;
@@ -360,7 +370,7 @@ template<typename data_type>
 void Buffer_2D<data_type>::import_from_file(void){
 
         //save the data from the file into a vector
-        std::vector<data_type> data = load_data_from_read_file();
+        std::vector<data_type> data = Buffer<data_type>::load_data_from_read_file();
 
         load_data_into_buffer(data,false);
 }
@@ -420,7 +430,7 @@ Buffer_1D<data_type>::Buffer_1D(bool debug) : Buffer<data_type>(debug) {}
  */
 template<typename data_type>
 Buffer_1D<data_type>::Buffer_1D(
-                        size_t samples, bool debug = false)
+                        size_t samples, bool debug)
                         : Buffer<data_type>(debug),buffer(samples),
                         num_samples(samples) {}
 
@@ -483,7 +493,7 @@ template<typename data_type>
 void Buffer_1D<data_type>::import_from_file(){
 
     //load the data from the read file
-    buffer = load_data_from_read_file();
+    buffer = Buffer<data_type>::load_data_from_read_file();
     num_samples = buffer.size();
 }
 

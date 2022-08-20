@@ -25,11 +25,13 @@
 #include "src/JSONHandler.hpp"
 #include "src/USRPHandler.hpp"
 #include "src/BufferHandler.hpp"
+#include "src/FMCWHandler.hpp"
 
 //set namespaces
 using json = nlohmann::json;
 using USRPHandler_namespace::USRPHandler;
 using Buffers::Buffer;
+using FMCW_namespace::FMCW;
 
 int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
@@ -40,6 +42,36 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     //read the config file
     std::cout << "\nMAIN: Parsing JSON\n";
     json config = JSONHandler::parse_JSON(config_file,false);
+
+    //initialize the FMCW device
+        //determine that there is a valid cpu format and type
+        if(config["USRPSettings"]["Multi-USRP"]["type"].is_null() ||
+            config["USRPSettings"]["Multi-USRP"]["cpufmt"].is_null()){
+                std::cerr << "MAIN: type or cpu format is not specified in config file" <<std::endl;
+                return;
+        }
+        std::string type = config["USRPSettings"]["Multi-USRP"]["type"].get<std::string>();
+        std::string cpufmt = config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>();
+
+        if (type == "double" && cpufmt == "fc64"){
+            FMCW<std::complex<double>> fmcw_handler(config);
+        }
+        else if (type == "float" && cpufmt == "fc32")
+        {
+            FMCW<std::complex<float>> fmcw_handler(config);
+        }
+        else if (type == "int16_t" && cpufmt == "sc16")
+        {
+            FMCW<std::complex<int16_t>> fmcw_handler(config);
+        }
+        else if (type == "int8_t" && cpufmt == "sc8")
+        {
+            FMCW<std::complex<int8_t>> fmcw_handler(config);
+        }
+        else{
+            std::cerr << "MAIN: type and cpufmt don't match valid combination" << std::endl;
+        }
+        
 
     //configure USRP
     std::cout << "\nMAIN: Initializing USRP Handler\n";
