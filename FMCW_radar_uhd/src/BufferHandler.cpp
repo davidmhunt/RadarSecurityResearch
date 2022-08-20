@@ -2,6 +2,8 @@
 
 using Buffers::Buffer;
 using Buffers::Buffer_2D;
+using Buffers::Buffer_1D;
+using Buffers::FMCW_Buffer;
 
 /*
     CODE FOR BUFER CLASS
@@ -348,8 +350,9 @@ void Buffer_2D<data_type>::load_data_into_buffer(std::vector<data_type> & data_t
 }
 
 /**
- * @brief Load data into a pre-initialized Buffer_2D using the already opened read_file_stream,
- * only one copy of the data from the file is loadd though
+ * @brief Function to load data from a file into the current buffer
+ * (assumes that the current buffer is already initialized and that the read file stream is 
+ * already open)
  * 
  * @tparam data_type: the type of data that the buffer stores
  */
@@ -361,3 +364,238 @@ void Buffer_2D<data_type>::import_from_file(void){
 
         load_data_into_buffer(data,false);
 }
+
+/**
+ * @brief Save the current buffer to the file (assumes that the write file stream is already open)
+ * 
+ * @tparam data_type: the type of data that the buffer stores 
+ */
+template<typename data_type>
+void Buffer_2D<data_type>::save_to_file(void){
+    //the out file stream must already be open when the function is called
+    if(write_file_stream.is_open()){
+        //save all of the rows except for the last one
+        for (size_t i = 0; i < num_rows - 1; i++)
+        {
+            write_file_stream.write((char*) &buffer[i].front(), buffer[i].size() * sizeof(data_type));
+        }
+        //for the last row, since there may be excess samples in the buffer, only save those pertaining to a chirp
+        write_file_stream.write((char*) &buffer.back().front(), (num_cols - excess_samples) * sizeof(data_type));
+
+    }
+    else{
+        std::cerr << "Buffer_2D::save_to_file: write_file_stream not open" << std::endl;
+    }
+}
+
+
+/*
+    CODE FOR BUFFER_1D Class
+*/
+
+/**
+ * @brief Construct a new Buffer_1D<data_type>::Buffer_1D object
+ * 
+ * @tparam data_type: the type of data that the buffer stores 
+ */
+template<typename data_type>
+Buffer_1D<data_type>::Buffer_1D() : Buffer<data_type>() {}
+
+/**
+ * @brief Construct a new Buffer_1D<data_type>::Buffer_1D object
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ * @param debug the desired debug setting
+ */
+template<typename data_type>
+Buffer_1D<data_type>::Buffer_1D(bool debug) : Buffer<data_type>(debug) {}
+
+/**
+ * @brief Construct a new Buffer_1D<data_type>::Buffer_1D object
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ * @param samples the number of samples that the buffer stores
+ * @param excess the number of excess/unused in the buffer (defaults to zero)
+ * @param debug the desired debug setting
+ */
+template<typename data_type>
+Buffer_1D<data_type>::Buffer_1D(
+                        size_t samples, bool debug = false)
+                        : Buffer<data_type>(debug),buffer(samples),
+                        num_samples(samples) {}
+
+/**
+ * @brief Destroy the Buffer_1D<data_type>::Buffer_1D object
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+Buffer_1D<data_type>::~Buffer_1D(){}
+
+/**
+ * @brief print a preview of the buffer (assumes buffer already has samples in it)
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+void Buffer_1D<data_type>::print_preview(void){
+    
+    //determine whether or not to print the full buffer or a preview of the buffer
+    size_t samples_to_print;
+    if (buffer.size() > 5){
+        samples_to_print = 5;
+    }
+    else if (buffer.size() > 0)
+    {
+        samples_to_print = buffer.size();
+    }
+    
+    else{
+        std::cerr << "Buffer_1D::print_preview: buffer to print is empty" << std::endl;
+        return;
+    }
+
+    //print out the first five samples
+    for (size_t i = 0; i < samples_to_print; i++)
+    {
+        std::cout << buffer[i].real() << " + " << buffer[i].imag() << "j, ";
+    }
+
+    //if there are more than 5 samples, print out the last sample from the buffer as well
+    if(buffer.size() > 5){
+        std::cout << "\t...\t" << buffer.back().real() << " + " <<
+                 buffer.back().imag() << "j" <<std::endl;
+    }
+    else{
+        std::cout << std::endl;
+    }
+    return;
+}
+
+/**
+ * @brief imports data from an already opened read_file_stream and loads it into the buffer,
+ * sets the buffer to be equal to the data in the buffer and sets num_samples to the number
+ * of samples imported from the file
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+void Buffer_1D<data_type>::import_from_file(){
+
+    //load the data from the read file
+    buffer = load_data_from_read_file();
+    num_samples = buffer.size();
+}
+
+/**
+ * @brief save the current buffer to the write_file_sream (assumes write file stream
+ * is already open)
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+void Buffer_1D<data_type>::save_to_file(){
+    if(write_file_stream.is_open()){
+        //save all of the rows except for the last one
+        write_file_stream.write((char*) &buffer.front(), buffer.size() * sizeof(data_type));
+    }
+    else{
+        std::cerr << "Buffer_1D::save_to_file: write_file_stream not open" << std::endl;
+    }
+}
+
+/*
+    FMCW_BUFFER code
+*/
+
+/**
+ * @brief Construct a new fmcw buffer<data type>::fmcw buffer object (unitialized)
+ * 
+ * @tparam data_type: the type of data that the FMCW buffer stores
+ */
+template<typename data_type>
+FMCW_Buffer<data_type>::FMCW_Buffer() : Buffer_2D<data_type>() {}
+
+
+/**
+ * @brief Construct a new fmcw buffer<data type>::fmcw buffer object (initialized)
+ * 
+ * @tparam data_type: the type of data that the FMCW buffer stores
+ * @param desired_samples_per_buff the number of samples per buffer (for the USRP)
+ * @param required_samples_per_chirp the number of samples in a single chirp
+ * @param desired_num_chirps the number of chirps the buffer should contain
+ * @param debug the desired debug setting (optional)
+ */
+template<typename data_type>
+FMCW_Buffer<data_type>::FMCW_Buffer(
+                                    size_t desired_samples_per_buff,
+                                    size_t required_samples_per_chirp,
+                                    size_t desired_num_chirps,
+                                    bool debug) 
+                                    : Buffer_2D<data_type>(debug){
+                                        configure_fmcw_buffer(
+                                            desired_samples_per_buff,
+                                            required_samples_per_chirp,
+                                            desired_num_chirps);
+                                    }
+
+/**
+ * @brief Destroy the fmcw buffer<data type>::fmcw buffer object
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ */
+template<typename data_type>
+FMCW_Buffer<data_type>::~FMCW_Buffer() {}
+
+/**
+ * @brief configures a Buffer_2D to be able to operate as a buffer used by the FMCW radar,
+ * and initializes a buffer (vector) of the correct dimensions
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ * @param desired_samples_per_buff the number of samples in a buffer
+ * @param required_samples_per_chirp the number of samples per chirp
+ * @param desired_num_chirps the number of chirps
+ */
+template<typename data_type>
+void FMCW_Buffer<data_type>::configure_fmcw_buffer(
+                        size_t desired_samples_per_buff,
+                        size_t required_samples_per_chirp,
+                        size_t desired_num_chirps){
+    
+    //start of code for function
+    num_chirps = desired_num_chirps;
+    samples_per_chirp = required_samples_per_chirp;
+    num_cols = desired_samples_per_buff;
+
+    if (desired_samples_per_buff == required_samples_per_chirp){
+        num_rows = desired_num_chirps;
+        excess_samples = 0;
+    }
+    else if (((desired_num_chirps * required_samples_per_chirp) % desired_samples_per_buff) == 0){
+        num_rows = (desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff;
+        excess_samples = 0;   
+    }
+    else
+    {
+        num_rows = ((desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff) + 1;
+        excess_samples = (num_rows * desired_samples_per_buff) - (desired_num_chirps * required_samples_per_chirp);
+    }
+
+    buffer = std::vector<std::vector<data_type>>(num_rows,std::vector<data_type>(num_cols));
+}
+
+/**
+ * @brief loads data from a vector into the initizlized FMCW buffer, making copies of the 
+ * vector as necessary until the buffer is full or the number of excess samples has been
+ * reached
+ * 
+ * @tparam data_type: the type of data that the buffer stores
+ * @param chirp a vector containing the samples for a signle chirp
+ */
+template<typename data_type>
+void FMCW_Buffer<data_type>::load_chirp_into_buffer(std::vector<data_type> & chirp){
+   load_data_into_buffer(chirp,true);
+}
+
+
+
