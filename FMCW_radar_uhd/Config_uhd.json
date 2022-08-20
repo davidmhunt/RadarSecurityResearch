@@ -3,7 +3,7 @@
         "Multi-USRP":{
             "args":"serial: 3231EFC",
             "ref":"internal",
-            "sampling_rate":28.8e6,
+            "sampling_rate":25e6,
             "center_freq":1e9,
             "lo-offset":0.0,
             "IF_filter_bw":28.8e6,
