@@ -25,14 +25,14 @@
 #include "src/JSONHandler.hpp"
 #include "src/USRPHandler.hpp"
 #include "src/BufferHandler.hpp"
-//#include "src/FMCWHandler.hpp"
+#include "src/FMCWHandler.hpp"
 
 //set namespaces
 using json = nlohmann::json;
 using USRPHandler_namespace::USRPHandler;
 using Buffers::Buffer;
 using Buffers::Buffer_1D;
-//using FMCW_namespace::FMCW;
+using FMCW_namespace::FMCW;
 
 int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
@@ -43,7 +43,7 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     //read the config file
     std::cout << "\nMAIN: Parsing JSON\n";
     json config = JSONHandler::parse_JSON(config_file,false);
-/*
+
     //initialize the FMCW device
     //determine that there is a valid cpu format and type
     if(config["USRPSettings"]["Multi-USRP"]["type"].is_null() ||
@@ -72,31 +72,14 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     else{
         std::cerr << "MAIN: type and cpufmt don't match valid combination" << std::endl;
     }
-  */      
 
+
+/*
     //configure USRP
     std::cout << "\nMAIN: Initializing USRP Handler\n";
     USRPHandler usrp_handler(config);
-
-    //initialize buffers
-    std::cout << "\nMAIN: Initializing Buffer Handler\n";
-    //initialize a vector to store the chirp data
-    Buffer_1D<std::complex<double>> tx_chirp_buffer;
-
-    if (config["FMCWSettings"]["tx_file_name"].is_null()){
-        std::cerr << "FMCW: tx_file_name not specified in JSON";
-        return EXIT_FAILURE;
-    }
-    std::string tx_file = config["FMCWSettings"]["tx_file_name"].get<std::string>();
-
-    //create a buffer to load the chirp data into it
-    tx_chirp_buffer.set_read_file(tx_file,true);
-    tx_chirp_buffer.import_from_file();
-    tx_chirp_buffer.close_read_file_stream();
-
-    tx_chirp_buffer.print_preview();
  
- /*
+ 
     usrp_handler.load_BufferHandler( & buffer_handler);
     
     //stream the frame

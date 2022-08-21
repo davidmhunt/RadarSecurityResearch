@@ -47,7 +47,7 @@ target_link_libraries(FMCWRadar PRIVATE nlohmann_json::nlohmann_json)
 target_link_libraries(FMCWRadar PRIVATE ${UHD_LIBRARIES} 
                                 PRIVATE ${BoostLIBRARIES})
 target_link_libraries(FMCWRadar PRIVATE BufferHandler)
-#target_link_libraries(FMCWRadar PRIVATE FMCWHandler)
+target_link_libraries(FMCWRadar PRIVATE FMCWHandler)
 
 #include directories
 target_link_directories(FMCWRadar PRIVATE 

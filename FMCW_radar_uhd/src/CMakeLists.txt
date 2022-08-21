@@ -33,7 +33,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 #declare libraries
-#add_library(FMCWHandler FMCWHandler.cpp)
+add_library(FMCWHandler FMCWHandler.cpp)
 add_library(JSONHandler JSONHandler.cpp)
 add_library(USRPHandler USRPHandler.cpp)
 add_library(BufferHandler BufferHandler.cpp)
@@ -47,8 +47,8 @@ target_link_libraries(USRPHandler PRIVATE ${UHD_LIBRARIES}
 target_link_libraries(USRPHandler PRIVATE BufferHandler)
 target_link_libraries(USRPHandler PRIVATE Threads::Threads)
 target_link_libraries(BufferHandler PRIVATE nlohmann_json::nlohmann_json)
-#target_link_libraries(FMCWHandler PRIVATE nlohmann_json::nlohmann_json)
-#target_link_libraries(FMCWHandler PRIVATE ${UHD_LIBRARIES} 
-#                                PRIVATE ${BoostLIBRARIES})
-#target_link_libraries(FMCWHandler PRIVATE BufferHandler)
-#target_link_libraries(FMCWHandler PRIVATE USRPHandler)
+target_link_libraries(FMCWHandler PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(FMCWHandler PRIVATE ${UHD_LIBRARIES} 
+                                PRIVATE ${BoostLIBRARIES})
+target_link_libraries(FMCWHandler PRIVATE BufferHandler)
+target_link_libraries(FMCWHandler PRIVATE USRPHandler)
