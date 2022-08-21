@@ -381,16 +381,16 @@ void Buffer_2D<data_type>::import_from_file(void){
  * @tparam data_type: the type of data that the buffer stores 
  */
 template<typename data_type>
-void Buffer_2D<data_type>::save_to_file(void){
+void Buffer_2D<data_type>::save_to_file(){
     //the out file stream must already be open when the function is called
-    if(write_file_stream.is_open()){
+    if(Buffer<data_type>::write_file_stream.is_open()){
         //save all of the rows except for the last one
         for (size_t i = 0; i < num_rows - 1; i++)
         {
-            write_file_stream.write((char*) &buffer[i].front(), buffer[i].size() * sizeof(data_type));
+            Buffer<data_type>::write_file_stream.write((char*) &buffer[i].front(), buffer[i].size() * sizeof(data_type));
         }
         //for the last row, since there may be excess samples in the buffer, only save those pertaining to a chirp
-        write_file_stream.write((char*) &buffer.back().front(), (num_cols - excess_samples) * sizeof(data_type));
+        Buffer<data_type>::write_file_stream.write((char*) &buffer.back().front(), (num_cols - excess_samples) * sizeof(data_type));
 
     }
     else{
@@ -505,9 +505,9 @@ void Buffer_1D<data_type>::import_from_file(){
  */
 template<typename data_type>
 void Buffer_1D<data_type>::save_to_file(){
-    if(write_file_stream.is_open()){
+    if(Buffer<data_type>::write_file_stream.is_open()){
         //save all of the rows except for the last one
-        write_file_stream.write((char*) &buffer.front(), buffer.size() * sizeof(data_type));
+        Buffer<data_type>::write_file_stream.write((char*) &buffer.front(), buffer.size() * sizeof(data_type));
     }
     else{
         std::cerr << "Buffer_1D::save_to_file: write_file_stream not open" << std::endl;
@@ -575,23 +575,23 @@ void FMCW_Buffer<data_type>::configure_fmcw_buffer(
     //start of code for function
     num_chirps = desired_num_chirps;
     samples_per_chirp = required_samples_per_chirp;
-    num_cols = desired_samples_per_buff;
+    Buffer_2D<data_type>::num_cols = desired_samples_per_buff;
 
     if (desired_samples_per_buff == required_samples_per_chirp){
-        num_rows = desired_num_chirps;
-        excess_samples = 0;
+        Buffer_2D<data_type>::num_rows = desired_num_chirps;
+        Buffer_2D<data_type>::excess_samples = 0;
     }
     else if (((desired_num_chirps * required_samples_per_chirp) % desired_samples_per_buff) == 0){
-        num_rows = (desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff;
-        excess_samples = 0;   
+        Buffer_2D<data_type>::num_rows = (desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff;
+        Buffer_2D<data_type>::excess_samples = 0;   
     }
     else
     {
-        num_rows = ((desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff) + 1;
-        excess_samples = (num_rows * desired_samples_per_buff) - (desired_num_chirps * required_samples_per_chirp);
+        Buffer_2D<data_type>::num_rows = ((desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff) + 1;
+        Buffer_2D<data_type>::excess_samples = (Buffer_2D<data_type>::num_rows * desired_samples_per_buff) - (desired_num_chirps * required_samples_per_chirp);
     }
 
-    buffer = std::vector<std::vector<data_type>>(num_rows,std::vector<data_type>(num_cols));
+    Buffer_2D<data_type>::buffer = std::vector<std::vector<data_type>>(Buffer_2D<data_type>::num_rows,std::vector<data_type>(Buffer_2D<data_type>::num_cols));
 }
 
 /**

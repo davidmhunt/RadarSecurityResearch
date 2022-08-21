@@ -42,7 +42,9 @@
             //functions
                 //constructors and destructors
             public:
-                FMCW(json & config_data);
+                FMCW();
+                FMCW(json config_data);
+                ~FMCW();
 
                 //functions to aid in buffer initializations
                 std::vector<data_type> get_tx_chirp(void);

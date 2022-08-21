@@ -25,7 +25,7 @@
         class Buffer {
             //variables
                 //read and write file paths
-                protected:
+                public:
                     std::string read_file;
                     std::string write_file;
                 //file streams
@@ -55,7 +55,7 @@
                 //abstract functions
                     virtual void print_preview(void) = 0;
                     virtual void import_from_file(void) = 0;
-                    virtual void save_to_file(void) = 0;
+                    virtual void save_to_file() = 0;
         }; // end of Buffer class
 
         /**
