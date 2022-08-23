@@ -36,7 +36,7 @@
             //variables
             private:
                 json config;
-                USRPHandler usrp_handler;
+                USRPHandler<data_type> usrp_handler;
                 FMCW_Buffer<data_type> tx_buffer;
                 FMCW_Buffer<data_type> rx_buffer;
                 size_t samples_per_chirp;
