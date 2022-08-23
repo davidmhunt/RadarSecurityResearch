@@ -54,6 +54,8 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     std::string type = config["USRPSettings"]["Multi-USRP"]["type"].get<std::string>();
     std::string cpufmt = config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>();
 
+    FMCW<std::complex<float>> fmcw_handler(config);
+    /*
     if (type == "double" && cpufmt == "fc64"){
         FMCW<std::complex<double>> fmcw_handler(config);
     }
@@ -72,7 +74,7 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     else{
         std::cerr << "MAIN: type and cpufmt don't match valid combination" << std::endl;
     }
-
+*/
 
 /*
     //configure USRP

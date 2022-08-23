@@ -46,7 +46,7 @@
         "tx_file_name":"/home/david/Documents/MATLAB_generated/chirp_full.bin",
         "rx_file_name":"/home/david/Documents/MATLAB_generated/rx_data.bin",
         "num_chirps": 256,
-        "num_frames": 3,
+        "num_frames": 30,
         "frame_periodicity_ms": 33.34
     }
 }
