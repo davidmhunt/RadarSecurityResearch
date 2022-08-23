@@ -1,12 +1,12 @@
 {
     "USRPSettings":{
         "Multi-USRP":{
-            "args":"serial: 3231EFC",
+            "args":"addr=192.168.70.6",
             "ref":"internal",
-            "sampling_rate":104e6,
-            "center_freq":5.8e9,
+            "sampling_rate":25e6,
+            "center_freq":1.5e9,
             "lo-offset":0.0,
-            "IF_filter_bw":104e6,
+            "IF_filter_bw":25e6,
             "wirefmt":"sc16",
             "type":"float",
             "cpufmt":"fc32",
@@ -15,19 +15,19 @@
         "TX":{
             "file":"",
             "spb":0,
-            "gain":50,
+            "gain":25,
             "ant":"TX/RX",
-            "subdev":"A:A A:B",
+            "subdev":"B:0",
             "channel":1
         },
         "RX":{
             "file":"",
             "spb":0,
             "spp":0,
-            "gain":50,
-            "ant":"RX2",
-            "subdev":"A:A A:B",
-            "channel":1,
+            "gain":25,
+            "ant":"TX/RX",
+            "subdev":"A:0",
+            "channel":0,
             "offset_us": 0
         },
         "AdditionalSettings":{
@@ -38,15 +38,15 @@
             "simplified_streamer_metadata":true,
             "synchronize_rx_tx": true,
             "synchronize_rx_tx_debug":true,
-            "rx_sync_file_name": "/home/david/Documents/MATLAB_generated/rx__sync_data.bin",
-            "sync_out_file_name": "/home/david/Documents/MATLAB_generated/sync_out_data.bin"
+            "rx_sync_file_name": "/home/zq40/Desktop/David_Radar/MATLAB_generated/rx__sync_data.bin",
+            "sync_out_file_name": "/home/zq40/Desktop/David_Radar/MATLAB_generated/sync_out_data.bin"
         }
     },
     "FMCWSettings":{
-        "tx_file_name":"/home/david/Documents/MATLAB_generated/chirp_full.bin",
-        "rx_file_name":"/home/david/Documents/MATLAB_generated/rx_data.bin",
+        "tx_file_name":"/home/zq40/Desktop/David_Radar/MATLAB_generated/chirp_full.bin",
+        "rx_file_name":"/home/zq40/Desktop/David_Radar/MATLAB_generated/rx_data.bin",
         "num_chirps": 256,
-        "num_frames": 20,
-        "frame_periodicity_ms": 33.34
+        "num_frames": 100,
+        "frame_periodicity_ms": 200
     }
 }
