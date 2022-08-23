@@ -102,7 +102,7 @@
                         std::cerr << "Buffer::init_read_file_stream: no read_file name" <<std::endl;
                     }
                     else{
-                        read_file_stream.open(read_file.c_str(), std::ios::out | std::ios::binary);
+                        read_file_stream.open(read_file.c_str(), std::ios::in | std::ios::binary);
                         if(read_file_stream.is_open()){
                             std::cout << "Buffer::init_read_file_stream: read file opened successfully" <<std::endl;
                         }
@@ -122,7 +122,7 @@
                         std::cerr << "Buffer::init_write_file_stream: no write_file name" <<std::endl;
                     }
                     else{
-                        write_file_stream.open(write_file.c_str(), std::ios::in | std::ios::binary);
+                        write_file_stream.open(write_file.c_str(), std::ios::out | std::ios::binary);
                         if(write_file_stream.is_open()){
                             std::cout << "Buffer::init_write_file_stream: write file opened successfully" <<std::endl;
                         }
@@ -164,7 +164,8 @@
 
                 /**
                  * @brief Read the data stored in the read_file_stream (must already be opened), 
-                 * and return a vector with the data
+                 * and return a vector with the data. 
+                 * NOTE: The read file stream is closed after data has been loaded
                  * 
                  * @return std::vector<data_type>: a vector with the data stored in the read file
                  */
@@ -500,7 +501,7 @@
                 /**
                  * @brief imports data from an already opened read_file_stream and loads it into the buffer,
                  * sets the buffer to be equal to the data in the buffer and sets num_samples to the number
-                 * of samples imported from the file
+                 * of samples imported from the file, Note: read file stream is closed after data is imported
                  * 
                  */
                 virtual void import_from_file(){
