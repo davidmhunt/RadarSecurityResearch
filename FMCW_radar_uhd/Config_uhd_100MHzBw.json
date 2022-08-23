@@ -1,12 +1,12 @@
 {
     "USRPSettings":{
         "Multi-USRP":{
-            "args":"addr=192.168.70.6",
+            "args":"addr=192.168.70.2",
             "ref":"internal",
-            "sampling_rate":25e6,
+            "sampling_rate":100e6,
             "center_freq":1.5e9,
             "lo-offset":0.0,
-            "IF_filter_bw":25e6,
+            "IF_filter_bw":100e6,
             "wirefmt":"sc16",
             "type":"float",
             "cpufmt":"fc32",
@@ -15,20 +15,20 @@
         "TX":{
             "file":"",
             "spb":0,
-            "gain":25,
+            "gain":10,
             "ant":"TX/RX",
             "subdev":"B:0",
-            "channel":1
+            "channel":0
         },
         "RX":{
             "file":"",
             "spb":0,
             "spp":0,
-            "gain":25,
-            "ant":"TX/RX",
-            "subdev":"A:0",
+            "gain":10,
+            "ant":"RX2",
+            "subdev":"B:0",
             "channel":0,
-            "offset_us": 0
+            "offset_us": 0.8433
         },
         "AdditionalSettings":{
             "setup_time":1.0,
@@ -46,7 +46,7 @@
         "tx_file_name":"/home/zq40/Desktop/David_Radar/MATLAB_generated/chirp_full.bin",
         "rx_file_name":"/home/zq40/Desktop/David_Radar/MATLAB_generated/rx_data.bin",
         "num_chirps": 256,
-        "num_frames": 100,
-        "frame_periodicity_ms": 200
+        "num_frames": 30,
+        "frame_periodicity_ms": 33.33
     }
 }

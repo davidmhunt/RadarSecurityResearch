@@ -39,6 +39,8 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     std::string config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd.json";
     //std::string config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_highbw.json";
     //std::string config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_highvres.json";
+    //std::string config_file = "/home/zq40/Desktop/David_Radar/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_100MHzBw.json";
+    
 
     //read the config file
     std::cout << "\nMAIN: Parsing JSON\n";
