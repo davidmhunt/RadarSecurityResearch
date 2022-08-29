@@ -6,6 +6,17 @@ classdef Subsystem_spectrum_sensing < handle
         
         FMCW_sample_rate_Msps
 
+        %variable to track the current state
+        state % potential states: "Measuring Noise","Waiting for Chirp","Sampling Chirp","Processing"
+
+        %struct to hold buffers for streaming the received signal
+        rx_signal_buffer %buffer to store a sample of the signal once the first chirp has been received
+        rx_temp_buffer % 2 row buffer to temporarially store samples in while waiting a chirp event to occue
+        rx_buffer_params
+
+        %struct to hold the detection parameters
+        detection_params
+        
         %struct to hold all of the spectogram parameters
         spectogram_params
 
@@ -65,6 +76,14 @@ classdef Subsystem_spectrum_sensing < handle
                 FMCW_sample_rate_Msps: the sampling rate of the spectrum
                     sensing subsystem
         %}
+            %set the FMCW sampling rate
+            obj.FMCW_sample_rate_Msps = FMCW_sample_rate_Msps;
+
+            %initialize rx_buffers for energy detection
+            obj.configure_rx_buffers(obj.FMCW_sample_rate_Msps,5);
+            obj.state = "Measuring Noise"; 
+
+            %initialize the remaining parameters
             obj.initialize_spectogram_params(FMCW_sample_rate_Msps);
             obj.initialize_chirp_and_frame_tracking();
             obj.initialize_plot_params(FMCW_sample_rate_Msps);
@@ -85,6 +104,51 @@ classdef Subsystem_spectrum_sensing < handle
             obj.sampling_window_count = 0;
         end
 
+        function configure_rx_buffers(obj, FMCW_sample_rate_Msps, min_recording_time_ms)
+            %specify preferences
+            samples_per_buffer = 1020;
+            
+            %initialize the rx_buffer parameters
+                %specify samples per buffer
+                obj.rx_buffer_params.samples_per_buffer = samples_per_buffer; %similar to value on USRPB210
+
+                %determine number of rows needed to meet minimum recording
+                %time
+                row_period_s = (obj.rx_buffer_params.samples_per_buffer/FMCW_sample_rate_Msps) * 1e-6;
+                obj.rx_buffer_params.num_rows = ceil((min_recording_time_ms * 1e-3) / row_period_s);
+
+                %varialbes to track indicies when "sampling" a received
+                %signal
+                obj.rx_buffer_params.next_sample_index = 1; %next sample index (column index)
+                obj.rx_buffer_params.current_row_index = 1; %current row index
+
+                %variable to track the current rx_temp buffer (1st row or
+                %2nd row)
+                obj.rx_buffer_params.current_temp_buff_row = 1;
+
+                %boolean to determine if the current buffer (i.e: the
+                %current row) has been filled
+                obj.rx_buffer_params.buffer_full = false;
+
+            %initialize the rx_buffer
+            obj.rx_signal_buffer = zeros(obj.rx_buffer_params.num_rows,obj.rx_buffer_params.samples_per_buffer);
+
+            %initialize the rx_temp buffer - when the buffer is in "waiting
+            %for chirp mode" it will continuously sample the signal until a
+            %threshold is reached
+            obj.rx_temp_buffer = zeros(2,obj.rx_buffer_params.samples_per_buffer);
+        end
+
+        function initialize_detection_params(obj)
+            %initialize a variable to keep track of the relative noise
+            %power
+            obj.detection_params.relative_noise_power = 0;
+
+            %specify an amount (in dB) that a received signal must be
+            %greater than the noise level, before the sensing subsystem
+            %starts to record samples
+            obj.detection_params.threshold_level = 7;
+        end
         function  initialize_spectogram_params(obj,FMCW_sample_rate_Msps)
             %{
                 Purpose: initializes the default settings for the
@@ -237,6 +301,122 @@ classdef Subsystem_spectrum_sensing < handle
         end
 
         %functions for processing the received signal
+        function receive_signal(obj,signal)
+            import_complete = false;
+            next_signal_index = 1;
+
+            %figure out a way to track the timing in this function
+
+            while ~import_complete
+                switch obj.state
+                    case "Measuring Noise"
+                        [next_signal_index,import_complete] = obj.load_signal_into_buffer(signal,next_signal_index);
+                        if obj.rx_buffer_params.buffer_full
+
+                            %set the relative noise power
+                            obj.detection_params.relative_noise_power = obj.compute_signal_power(reshape(obj.rx_signal_buffer.',1,[]));
+                            
+                            %re-initialize the buffers for sensing chirps
+                            %now
+                            obj.configure_rx_buffers(obj.FMCW_sample_rate_Msps,2);
+
+                            %change the state to "processing" to simulate
+                            %needing to wait for a certain amount of time
+                            obj.state = "Processing";
+
+                        end
+    
+                    case"Waiting for Chirp"
+                        %create a new function to handle the temporary
+                        %buffer behavior
+
+                    case "Sampling Chirp"
+                        %the buffer should already be initialized, I should
+                        %be able to use the same function to load the
+                        %signal into the buffer
+                        
+                    case "Processing"
+                       %not initialized
+                    otherwise
+                end
+            end
+        end
+        
+        function [next_signal_index,import_complete] = load_signal_into_buffer(...
+                obj,signal,next_signal_index)
+        %{
+            Purpose: load as much of an input signal into a buffer as
+                    possible
+            Outputs:
+                next_signal_index: the index of the next sample to be read
+                    in for the signal (if the buffer filled before the full
+                    signal could be read)
+                import_complete: true if the full signal was read into the
+                    buffer
+            Inputs:
+                signal: the signal to load into the buffer
+                next_signal_index: the index of the next sample to be read
+                    in for the signal
+        %}
+            %determine the number of unloaded samples in the buffer and the
+            %signal
+            unloaded_samples_signal = size(signal,2) - next_signal_index;
+            unloaded_samples_buffer = obj.rx_buffer_params.samples_per_buffer - obj.rx_buffer_params.next_sample_index;
+            
+            %if the buffer has more unloaded samples
+            if unloaded_samples_buffer > unloaded_samples_signal
+                %compute the start and end coordinates to insert the
+                %remaining signal into the buffer
+                buff_start = obj.rx_buffer_params.next_sample_index;
+                buff_end = buff_start + unloaded_samples_signal;
+
+                %load the signal into the buffer
+                obj.rx_signal_buffer(obj.rx_buffer_params.current_row_index,buff_start:buff_end) = signal(next_signal_index:end);
+                
+                %adjust settings as needed
+                import_complete = true;
+                next_signal_index = size(signal,2) + 1; %would throw an error, but doing for consistent behavior
+                obj.rx_buffer_params.next_sample_index = buff_end + 1;
+            %if the signal has more unloaded samples
+            else
+                buff_start = obj.rx_buffer_params.next_sample_index;
+                sig_end = next_signal_index + unloaded_samples_buffer;
+
+                obj.rx_signal_buffer(obj.rx_buffer_params.current_row_index,buff_start:end) = signal(next_signal_index:sig_end);
+                
+                import_complete = false;
+
+                obj.rx_buffer_params.next_sample_index = 1;
+                next_signal_index = sig_end + 1;
+
+                if obj.rx_buffer_params.current_row_index == obj.rx_buffer_params.num_rows
+                    %if the buffer is now filled, reset the row index and
+                    %set the buffer full flag to true
+                    obj.rx_buffer_params.current_row_index = 1;
+                    obj.rx_buffer_params.buffer_full = true;
+                else
+                    %otherwise just increment the row index
+                    obj.rx_buffer_params.current_row_index = obj.rx_buffer_params.current_row_index + 1;
+                    obj.rx_buffer_params.buffer_full = false;
+                end
+            end
+
+        end
+
+        function power = compute_signal_power(obj,signal)
+            %{
+                Purpose: computes the power of a signal
+                Inputs: a 1xN complex signal
+                Outputs: 
+                    power = the signal power in decibels
+            %}
+            t_period = 1/obj.FMCW_sample_rate_Msps;
+            t = 0:t_period:(size(signal,2) - 1) * t_period;
+            signal_period = size(signal,2) / (obj.FMCW_sample_rate_Msps * 1e6);
+            power = 10 * log10(sum(abs(signal).^2)/signal_period);
+            
+        end
+
         function process_received_signal(obj,received_signal)
             %{
                 Purpose: takes in a received signal, generates a spectogram

@@ -75,6 +75,7 @@ classdef Radar_revA < handle
         FMCW_sampling_period_s
         downsample_factor
         sweep_time
+        num_samples_per_chirp
         num_samples_idle_time
         num_samples_per_frame
         num_samples_active_frame_time
@@ -98,6 +99,11 @@ classdef Radar_revA < handle
 
         %parameter for the Radar Signal Processor
         Radar_Signal_Processor
+
+        %parameter's for tracking the current chirp or frame
+        current_chirp
+        current_frame
+        num_samples_sent
 
     end
 
@@ -229,6 +235,7 @@ classdef Radar_revA < handle
                     computes what the sent chirp will be including the idle
                     time samples
             %}
+            obj.num_samples_per_chirp = int32(obj.ChirpCycleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz);
             obj.num_samples_idle_time = int32(obj.IdleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz);
             obj.num_samples_per_frame = int32(obj.FramePeriodicity_ms * 1e-3 * obj.FMCW_sampling_rate_Hz);
             obj.num_samples_active_frame_time = int32(obj.NumChirps * obj.ChirpCycleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz);
@@ -243,6 +250,10 @@ classdef Radar_revA < handle
                 'NumSweeps',1);
             
             obj.chirp = [zeros(obj.num_samples_idle_time,1); obj.waveform()];
+
+            obj.current_chirp = 1;
+            obj.current_frame = 1;
+            obj.num_samples_sent = 0;
         end
         
         function configure_radar_signal_processor(obj)
@@ -259,6 +270,33 @@ classdef Radar_revA < handle
             obj.chirps = repmat(obj.chirp,1,obj.NumChirps);
             chirps = obj.chirps;
         end
+
+        function signal = get_radar_signal(obj)
+            %{
+                Purpose: outputs the current radar chirp, and updates the
+                chirp and frame trackers
+            %}
+            if obj.current_chirp <= obj.NumChirps
+                signal = obj.chirp;
+                obj.num_samples_sent = obj.num_samples_sent + obj.num_samples_per_chirp;
+                obj.current_chirp = obj.current_chirp + 1;
+            else
+                if (obj.num_samples_per_frame - obj.num_samples_sent) > obj.num_samples_per_chirp
+                    samples_to_send = obj.num_samples_per_chirp;
+                    obj.num_samples_sent = obj.num_samples_sent + obj.num_samples_per_chirp;
+                else
+                    %this means that the end of the frame has arrived
+                    samples_to_send = obj.num_samples_per_frame - obj.num_samples_sent;
+                    obj.current_chirp = 1;
+                    obj.current_frame = obj.current_frame + 1;
+                    obj.num_samples_sent = 0;
+                end
+                signal = zeros(samples_to_send,1);
+            end
+
+
+        end
+
         
         %% [4] Functions for plotting chirp plots to aid in visualization
         function [t,f] = generate_chirp_f_over_t_vals(obj,chirp_start_time_us)
