@@ -53,8 +53,8 @@ classdef Simulator_revB < handle
         function obj = Simulator_revB()
             %Simulator Construct an instance of this class
             %   Detailed explanation goes here
-            obj.Attacker = Attacker_revA();
-            obj.Victim = Radar_revA();
+            obj.Attacker = Attacker_revB();
+            obj.Victim = Radar_revB();
         end
 
 %% [1] Functions to configure the simulation
@@ -214,34 +214,34 @@ classdef Simulator_revB < handle
             obj.Attacker.configure_platform();
         end
     
-        function initialize_sensing_subsystem_support(obj)
-            %{
-                Purpose: the purpose of this function is to initialize
-                private parameters that will be used in assembling the
-                signal that the sensing subsystem will receive from victim
-            %}
-            %parameters to keep track of the index from the transmitted
-            %chirp signal from the victim
-            obj.sensing_subsystem_support.chirp_sample_index = 1;
-            obj.sensing_subsystem_support.max_chirp_sample_index = size(obj.Victim.chirp,1);
-            obj.sensing_subsystem_support.chirp_samples_left = obj.sensing_subsystem_support.max_chirp_sample_index;
-            
-            %parameters to keep track of the index from the transmitted
-            %signal frame from the victim
-            obj.sensing_subsystem_support.max_frame_sample_index = obj.Victim.num_samples_per_frame;
-            obj.sensing_subsystem_support.frame_samples_left = obj.sensing_subsystem_support.max_frame_sample_index;
-             
-            %parameters to keep track of the index of the received signal
-            %received by the sensing subsystem
-            obj.sensing_subsystem_support.received_sample_index = 1;
-            obj.sensing_subsystem_support.max_received_sample_index = obj.Attacker.Subsystem_spectrum_sensing.spectogram_params.num_ADC_samples_per_spectogram;
-            obj.sensing_subsystem_support.received_samples_left = obj.sensing_subsystem_support.max_received_sample_index;
-            
-            %parameters to keep track of the index of how many chirps and
-            %frames the victim has transmitted
-            obj.sensing_subsystem_support.chirp_count = 0;
-            obj.sensing_subsystem_support.frame_count = 0;
-        end
+%         function initialize_sensing_subsystem_support(obj)
+%             %{
+%                 Purpose: the purpose of this function is to initialize
+%                 private parameters that will be used in assembling the
+%                 signal that the sensing subsystem will receive from victim
+%             %}
+%             %parameters to keep track of the index from the transmitted
+%             %chirp signal from the victim
+%             obj.sensing_subsystem_support.chirp_sample_index = 1;
+%             obj.sensing_subsystem_support.max_chirp_sample_index = size(obj.Victim.chirp,1);
+%             obj.sensing_subsystem_support.chirp_samples_left = obj.sensing_subsystem_support.max_chirp_sample_index;
+%             
+%             %parameters to keep track of the index from the transmitted
+%             %signal frame from the victim
+%             obj.sensing_subsystem_support.max_frame_sample_index = obj.Victim.num_samples_per_frame;
+%             obj.sensing_subsystem_support.frame_samples_left = obj.sensing_subsystem_support.max_frame_sample_index;
+%              
+%             %parameters to keep track of the index of the received signal
+%             %received by the sensing subsystem
+%             obj.sensing_subsystem_support.received_sample_index = 1;
+%             obj.sensing_subsystem_support.max_received_sample_index = obj.Attacker.Subsystem_spectrum_sensing.spectogram_params.num_ADC_samples_per_spectogram;
+%             obj.sensing_subsystem_support.received_samples_left = obj.sensing_subsystem_support.max_received_sample_index;
+%             
+%             %parameters to keep track of the index of how many chirps and
+%             %frames the victim has transmitted
+%             obj.sensing_subsystem_support.chirp_count = 0;
+%             obj.sensing_subsystem_support.frame_count = 0;
+%         end
 
 %% [2] Functions for running the FMCW Simulation on Matlab
 

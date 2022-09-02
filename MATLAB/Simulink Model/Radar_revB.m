@@ -16,7 +16,7 @@
     after the end of the sampling period
 %}
 
-classdef Radar_revA < handle
+classdef Radar_revB < handle
     %UNTITLED3 Summary of this class goes here
     %   Detailed explanation goes here
 
@@ -108,7 +108,7 @@ classdef Radar_revA < handle
     end
 
     methods (Access = public)
-        function obj = Radar_revA()
+        function obj = Radar_revB()
             %Radar construct an instance of this class
             %   Detailed explanation goes here
             obj.Radar_Signal_Processor = Radar_Signal_Processor_revA(obj);
