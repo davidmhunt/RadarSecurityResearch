@@ -16,7 +16,7 @@
     after the end of the sampling period
 %}
 
-classdef Radar_revA < handle
+classdef Radar_revB < handle
     %UNTITLED3 Summary of this class goes here
     %   Detailed explanation goes here
 
@@ -75,6 +75,7 @@ classdef Radar_revA < handle
         FMCW_sampling_period_s
         downsample_factor
         sweep_time
+        num_samples_per_chirp
         num_samples_idle_time
         num_samples_per_frame
         num_samples_active_frame_time
@@ -99,10 +100,16 @@ classdef Radar_revA < handle
         %parameter for the Radar Signal Processor
         Radar_Signal_Processor
 
+        %parameter's for streaming chirps/frames
+        current_chirp %the current chirp that the radar is transmitting
+        current_frame
+        num_samples_sent
+        signal_received % a boolean to confirm that each transmitted signal was received before a new signal is transmitted
+        tx_sig %the transmitted signal (used when receiving the signal)
     end
 
     methods (Access = public)
-        function obj = Radar_revA()
+        function obj = Radar_revB()
             %Radar construct an instance of this class
             %   Detailed explanation goes here
             obj.Radar_Signal_Processor = Radar_Signal_Processor_revA(obj);
@@ -229,6 +236,7 @@ classdef Radar_revA < handle
                     computes what the sent chirp will be including the idle
                     time samples
             %}
+            obj.num_samples_per_chirp = int32(obj.ChirpCycleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz);
             obj.num_samples_idle_time = int32(obj.IdleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz);
             obj.num_samples_per_frame = int32(obj.FramePeriodicity_ms * 1e-3 * obj.FMCW_sampling_rate_Hz);
             obj.num_samples_active_frame_time = int32(obj.NumChirps * obj.ChirpCycleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz);
@@ -243,6 +251,11 @@ classdef Radar_revA < handle
                 'NumSweeps',1);
             
             obj.chirp = [zeros(obj.num_samples_idle_time,1); obj.waveform()];
+
+            obj.current_chirp = 1;
+            obj.current_frame = 1;
+            obj.num_samples_sent = 0;
+            obj.signal_received = true; %set the flag to true when initializing
         end
         
         function configure_radar_signal_processor(obj)
@@ -259,6 +272,80 @@ classdef Radar_revA < handle
             obj.chirps = repmat(obj.chirp,1,obj.NumChirps);
             chirps = obj.chirps;
         end
+
+        function signal = get_radar_tx_signal(obj)
+            %{
+                Purpose: outputs the full radar signal on a chirp by chirp basis
+                    ,and updates the chirp and frame trackers. When there
+                    are no more chirps in the current frame, outputs zeros
+                    until the next frame starts. Simulates the output from
+                    the radar's transmiter
+                Signal: a transmitted radar signal (ex:chirp)
+            %}
+
+            %check to make sure that the signal received flag is not still
+            %false
+            if obj.signal_received == false
+                error("Radar/get_radar_tx_signal: attempted to sent signal without receiving first");
+            else
+                obj.signal_received = false; %set the flag to note that there is another signal to send
+            end
+
+            if obj.current_chirp <= obj.NumChirps
+                %if the radar is still sending out chirps
+                obj.tx_sig = obj.chirp;
+                obj.num_samples_sent = obj.num_samples_sent + obj.num_samples_per_chirp;
+            else
+                %if all chirps have been transmitted, but the frame isn't
+                %over
+                if (obj.num_samples_per_frame - obj.num_samples_sent) > obj.num_samples_per_chirp
+                    samples_to_send = obj.num_samples_per_chirp;
+                    obj.num_samples_sent = obj.num_samples_sent + obj.num_samples_per_chirp;
+                else
+                    %this means that the end of the frame has arrived
+                    samples_to_send = obj.num_samples_per_frame - obj.num_samples_sent;
+                    obj.num_samples_sent = 0;
+                end
+                obj.tx_sig = zeros(samples_to_send,1);
+            end
+            signal = obj.transmitter(obj.tx_sig);
+        end
+
+        function receive_signal(obj,rx_sig)
+            %{
+                Purpose: captures the signals received by the radar (ex:
+                    reflections or malicious signals from an attacker), and
+                    loads them as needed
+                Inputs: 
+                    rx_sig: the raw received signal from reflected objects
+                        or from an attacker
+            %}
+
+            %if the radar is currently receiving chirps
+            if obj.current_chirp <= obj.NumChirps
+                obj.Radar_Signal_Processor.update_radar_cube(obj.tx_sig,obj.receiver(rx_sig),obj.current_chirp);
+                
+
+                %if this is the last chirp in the frame, process the received
+                %signal
+                if obj.current_chirp == obj.NumChirps
+                    obj.Radar_Signal_Processor.process_radar_cube();
+                    obj.Radar_Signal_Processor.reset_radar_cube();
+                end
+
+                obj.current_chirp = obj.current_chirp + 1;
+            else
+                %if all chirps have been transmitted, but the frame isn't
+                %over
+                if obj.num_samples_sent == 0
+                    %this means that the end of the frame has arrived
+                    obj.current_chirp = 1;
+                    obj.current_frame = obj.current_frame + 1;
+                end
+            end
+            obj.signal_received = true;
+        end
+
         
         %% [4] Functions for plotting chirp plots to aid in visualization
         function [t,f] = generate_chirp_f_over_t_vals(obj,chirp_start_time_us)

@@ -70,6 +70,16 @@ classdef Radar_Signal_Processor_revA < handle
         NumEstimates_dplr
         ClusterInputPort_dplr
 
+        %variables for radar signal processor operation
+        radar_cube
+
+        %variables to store results from each frame
+        capture_movies = false
+        F_rngdop = struct('cdata',[],'colormap',[])
+        F_clusters = struct('cdata',[],'colormap',[])
+        range_estimates
+        velocity_estimates
+
     end
 
     methods (Access = public)
@@ -101,6 +111,7 @@ classdef Radar_Signal_Processor_revA < handle
             obj.configure_Range_and_Doppler_Estimators();
             obj.configure_CFAR_detector();
             obj.configure_DB_scan();
+            obj.reset_radar_cube();
         end
         
         function configure_lowpass_filter(obj)
@@ -257,8 +268,46 @@ classdef Radar_Signal_Processor_revA < handle
             obj.minpts = 3;
         end       
         
+        function reset_radar_cube(obj)
+            %{
+                Purpose: initializes the radar cube
+            %}
+            obj.radar_cube = zeros(obj.Radar.ADC_Samples,obj.Radar.NumChirps);
+        end
+        
+        function configure_movie_capture(obj,frames_to_capture,capture_movies)
+            %{
+                Purpose: this function configures parameters to save each
+                    frame's range-doppler,clustering,range-detections, and
+                    velocity detections so that they can be saved and reviewed
+                    after the simulation
+                Inputs:
+                    frames_to_capture: the number of frames to capture
+                    capture_movies: a bool on whether or not to capture
+                        movies of the range doppler and clustering outputs
+            %}
+            obj.F_rngdop(frames_to_capture) = struct('cdata',[],'colormap',[]);
+            obj.F_clusters(frames_to_capture) = struct('cdata',[],'colormap',[]);
+            obj.capture_movies = capture_movies;
+        end
+        
         %% [3] Functions for processing the signals
         
+        function update_radar_cube(obj,Tx_sig,Rx_sig,chirp)
+            %{
+                Purpose: updates the radar cube at the specific chirp index
+                    using the provided Tx and Rx signals (also computes the IF
+                    and sampled signal as well)
+                Input:
+                    Tx_sig: the transmitted signal (chirp)
+                    Rx_sig: the received signal (reflected or otherwise)
+                    chirp: the index in the radar cube to update
+            %}
+            
+            %assemble the radar cube
+            obj.radar_cube(:,chirp) = obj.FMCW_dechirp_and_decimate(Tx_sig,Rx_sig);
+        end
+
         function sampled_IF_sig = FMCW_dechirp_and_decimate(obj,Tx_sig,Rx_sig)
             %{
                 Purpose: simulates a received signal going through a mixer
@@ -296,5 +345,63 @@ classdef Radar_Signal_Processor_revA < handle
                 obj.num_samples_prior_to_sample_period + 1:...
                 obj.num_samples_prior_to_sample_period + obj.num_samples_in_sampling_period);
         end
-     end
+        
+        function process_radar_cube(obj)
+            %{
+                Purpose: processes the radar cube and saves videos of the
+                range-doppler plot, clusters, and also a list of the
+                detections
+            %}
+
+            %range-doppler response
+            [resp, rnggrid,dopgrid] = obj.RangeDopplerResponse(obj.radar_cube);
+        
+            %CA CFAR 2-D
+            detections = obj.CFARDetector2D(abs(resp).^2,obj.CUT_indicies);
+            detected_velocities = dopgrid(detections(2,:));
+            detected_ranges = rnggrid(detections(1,:));
+            
+            %DBSCAN Clustering
+            idx = dbscan(detections.',obj.Epsilon,obj.minpts);
+        
+            %estimate the range and the velocities
+            obj.range_estimates(obj.Radar.current_frame,:) = obj.RangeEstimator(resp,rnggrid,detections,idx.');
+            obj.velocity_estimates(obj.Radar.current_frame,:) = obj.DopplerEstimator(resp,dopgrid,detections,idx.');
+            
+            %plot the range-doppler and clustering responses if the
+            %capture_movies flag is set
+            if obj.capture_movies
+                %plot range doppler
+                plotResponse(obj.RangeDopplerResponse,obj.radar_cube);
+                drawnow
+                obj.F_rngdop(obj.Radar.current_frame) = getframe(gcf);
+
+                %plot the clusters
+                gscatter(detected_velocities,detected_ranges,idx);
+                axis([-1 * obj.Radar.V_Max_m_per_s, obj.Radar.V_Max_m_per_s, 0,obj.Radar.Range_Max_m]);
+                drawnow
+                obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
+            end
+
+            
+        
+            
+        end
+    
+        function play_range_doppler_movie(obj)
+           %{
+                Purpose: play the range doppler movie at 10fps
+           %}
+            fig = figure;
+            movie(fig,obj.F_rngdop,1,10);
+        end
+
+        function play_clustering_movie(obj)
+           %{
+                Purpose: play the clustering movie at 10fps
+           %}
+            fig = figure;
+            movie(fig,obj.F_clusters,1,10);
+        end
+    end
 end

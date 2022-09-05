@@ -122,6 +122,12 @@ classdef Simulator_revA < handle
             %
         end
 
+        function load_params_from_JSON(obj,file_path)
+            fileID = fopen(file_path,"r");
+            json_text = fileread(fileID);
+            json = jsondecode(json_text);
+        end
+        
         function load_realistic_victim_params(obj)
             %setup the victim's chirp parameters
             obj.Victim.StartFrequency_GHz         = 77.0;

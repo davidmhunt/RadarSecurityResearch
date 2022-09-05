@@ -6,6 +6,23 @@ classdef Subsystem_spectrum_sensing < handle
         
         FMCW_sample_rate_Msps
 
+        %variable to track the current state
+        state % potential states: "Measuring Noise","Waiting for Chirp","Sampling Chirp","Processing"
+
+        %struct to hold buffers for streaming the received signal
+        rx_signal_buffer %buffer to store a sample of the signal once the first chirp has been received
+        rx_temp_buffer % 2 row buffer to temporarially store samples in while waiting a chirp event to occue
+        rx_buffer_params
+
+        %struct to hold the detection parameters
+        detection_params
+        detection_start_time %to track the time that the first sample of a detection starts at
+        
+        %variables to keep track of timing
+        num_samples_streamed %specifies the number of samples that have previously been streamed
+        processing_delay_samples %specifies the number of samples to stream (simulating processing delay)
+        current_processing_delay %variable to track the current number of samples that have occurred while in the "processing" state
+        
         %struct to hold all of the spectogram parameters
         spectogram_params
 
@@ -27,7 +44,7 @@ classdef Subsystem_spectrum_sensing < handle
         
         %other support variables used by the sensing subsystem
         spectogram_points
-        previous_spectogram_points
+%         previous_spectogram_points
         sampling_window_count
 
         %other variables used to log progress and validate the simulink
@@ -37,7 +54,7 @@ classdef Subsystem_spectrum_sensing < handle
         reshaped_signal_for_fft
         windowed_signal
         generated_spectogram
-        combined_spectogram
+%         combined_spectogram
         detected_times
         detected_frequencies
         detected_chirps
@@ -65,6 +82,16 @@ classdef Subsystem_spectrum_sensing < handle
                 FMCW_sample_rate_Msps: the sampling rate of the spectrum
                     sensing subsystem
         %}
+            %set the FMCW sampling rate
+            obj.FMCW_sample_rate_Msps = FMCW_sample_rate_Msps;
+
+            %initialize rx_buffers for energy detection
+            obj.configure_rx_buffers(obj.FMCW_sample_rate_Msps,5); %specify 5ms of capture for noise computation
+            obj.state = "Measuring Noise"; 
+
+            %initialize the remaining parameters
+            obj.initialize_detection_params();
+            obj.initialize_timing_params(10); %specify 10 ms of processing delay
             obj.initialize_spectogram_params(FMCW_sample_rate_Msps);
             obj.initialize_chirp_and_frame_tracking();
             obj.initialize_plot_params(FMCW_sample_rate_Msps);
@@ -74,8 +101,8 @@ classdef Subsystem_spectrum_sensing < handle
             %initialize the other miscellaneous parameters
             %initialize array to hold the current and previously measured spectrum
             obj.spectogram_points = [];
-            obj.previous_spectogram_points = [];
-            obj.combined_spectogram = [];
+%             obj.previous_spectogram_points = [];
+%             obj.combined_spectogram = [];
             obj.detected_times = [];
             obj.detected_times = [];
             obj.detected_chirps = zeros(obj.clustering_params.max_num_clusters,2);
@@ -85,6 +112,66 @@ classdef Subsystem_spectrum_sensing < handle
             obj.sampling_window_count = 0;
         end
 
+        function configure_rx_buffers(obj, FMCW_sample_rate_Msps, min_recording_time_ms)
+            %specify preferences
+            samples_per_buffer = 1020;
+            
+            %initialize the rx_buffer parameters
+                %specify samples per buffer
+                obj.rx_buffer_params.samples_per_buffer = samples_per_buffer; %similar to value on USRPB210
+
+                %determine number of rows needed to meet minimum recording
+                %time
+                row_period_s = (obj.rx_buffer_params.samples_per_buffer/FMCW_sample_rate_Msps) * 1e-6;
+                obj.rx_buffer_params.num_rows = ceil((min_recording_time_ms * 1e-3) / row_period_s);
+
+                %varialbes to track indicies when "sampling" a received
+                %signal
+                obj.rx_buffer_params.next_sample_index = 1; %next sample index (column index)
+                obj.rx_buffer_params.current_row_index = 1; %current row index
+
+                %variable to track the current rx_temp buffer (1st row or
+                %2nd row)
+                obj.rx_buffer_params.current_temp_buff_row = 1;
+
+                %boolean to determine if the current buffer (i.e: the
+                %current row) has been filled
+                obj.rx_buffer_params.buffer_full = false;
+
+            %initialize the rx_buffer
+            obj.rx_signal_buffer = zeros(obj.rx_buffer_params.num_rows,obj.rx_buffer_params.samples_per_buffer);
+
+            %initialize the rx_temp buffer - when the buffer is in "waiting
+            %for chirp mode" it will continuously sample the signal until a
+            %threshold is reached
+            obj.rx_temp_buffer = zeros(2,obj.rx_buffer_params.samples_per_buffer);
+        end
+
+        function initialize_detection_params(obj)
+            %initialize a variable to keep track of the relative noise
+            %power
+            obj.detection_params.relative_noise_power = 0;
+
+            %specify an amount (in dB) that a received signal must be
+            %greater than the noise level, before the sensing subsystem
+            %starts to record samples
+            obj.detection_params.threshold_level = 7;
+        end
+       
+        function initialize_timing_params(obj,min_processing_time_ms)
+            %{
+                Purpose: initializes the parameters used to keep track of
+                    timing in the sensing subsystem
+                Inputs: 
+                    min_processing_time_ms: the minimum processing time that the sensing
+                        subsystem must while in the "processing" state before
+                        transitioning to another state
+            %}
+            obj.num_samples_streamed = 0; 
+            obj.processing_delay_samples = ceil(min_processing_time_ms * 1e-3 * obj.FMCW_sample_rate_Msps * 1e6);
+            obj.current_processing_delay = 0;
+        end
+        
         function  initialize_spectogram_params(obj,FMCW_sample_rate_Msps)
             %{
                 Purpose: initializes the default settings for the
@@ -107,10 +194,10 @@ classdef Subsystem_spectrum_sensing < handle
                 obj.spectogram_params.num_samples_per_sampling_window / FMCW_sample_rate_Msps;
 
             %continue setting the parameters
-            obj.spectogram_params.num_freq_spectrum_samples_per_spectogram = 25;
-            obj.spectogram_params.num_ADC_samples_per_spectogram = ...
-                obj.spectogram_params.num_freq_spectrum_samples_per_spectogram * ...
-                obj.spectogram_params.num_samples_per_sampling_window;
+%             obj.spectogram_params.num_freq_spectrum_samples_per_spectogram = 25;
+%             obj.spectogram_params.num_ADC_samples_per_spectogram = ...
+%                 obj.spectogram_params.num_freq_spectrum_samples_per_spectogram * ...
+%                 obj.spectogram_params.num_samples_per_sampling_window;
             
             %added a computation for the timing offset when computing the point values
             obj.spectogram_params.detected_time_offset = ...
@@ -210,20 +297,23 @@ classdef Subsystem_spectrum_sensing < handle
 %             obj.plot_params.freq_resolution = FMCW_sample_rate_Msps/obj.spectogram_params.fft_size;
 
             obj.plot_params.frequencies = 0:obj.plot_params.freq_resolution:obj.plot_params.max_freq - obj.plot_params.freq_resolution;
-            obj.plot_params.times = (0: obj.spectogram_params.freq_sampling_period_us : ...
-                obj.spectogram_params.num_freq_spectrum_samples_per_spectogram * ...
-                obj.spectogram_params.freq_sampling_period_us - obj.spectogram_params.freq_sampling_period_us)...
-                + obj.spectogram_params.detected_time_offset;
+            %obj.plot_params.times is initialized when the spectogram is
+            %computed (allows for increased flexibility)
+
+%             obj.plot_params.times = (0: obj.spectogram_params.freq_sampling_period_us : ...
+%                 obj.spectogram_params.num_freq_spectrum_samples_per_spectogram * ...
+%                 obj.spectogram_params.freq_sampling_period_us - obj.spectogram_params.freq_sampling_period_us)...
+%                 + obj.spectogram_params.detected_time_offset;
             
             %compute times for the combined_spectogram
-            obj.plot_params.combined_spectogram_times = (0: obj.spectogram_params.freq_sampling_period_us : ...
-                2 * obj.spectogram_params.num_freq_spectrum_samples_per_spectogram * ...
-                obj.spectogram_params.freq_sampling_period_us - obj.spectogram_params.freq_sampling_period_us) + ...
-                obj.spectogram_params.detected_time_offset;
+%             obj.plot_params.combined_spectogram_times = (0: obj.spectogram_params.freq_sampling_period_us : ...
+%                 2 * obj.spectogram_params.num_freq_spectrum_samples_per_spectogram * ...
+%                 obj.spectogram_params.freq_sampling_period_us - obj.spectogram_params.freq_sampling_period_us) + ...
+%                 obj.spectogram_params.detected_time_offset;
         end
     
         function initialize_peak_detection_params(obj)
-            obj.peak_detection_params.threshold = 5;    %threshold height for a peak to be detected in the spectogram
+            obj.peak_detection_params.threshold = 7;    %threshold height below the peak value to detect a point in the spectogram
             obj.peak_detection_params.numPeaks = 2;     %maximum number of peaks for each spectogram window   
         end
         
@@ -237,53 +327,351 @@ classdef Subsystem_spectrum_sensing < handle
         end
 
         %functions for processing the received signal
-        function process_received_signal(obj,received_signal)
+        function receive_signal(obj,signal)
+            import_complete = false;
+            next_signal_index = 1;
+
+            %figure out a way to track the timing in this function
+
+            while ~import_complete
+                switch obj.state
+                    case "Measuring Noise"
+                        [next_signal_index,import_complete] = obj.load_signal_into_buffer(signal,next_signal_index);
+                        if obj.rx_buffer_params.buffer_full
+
+                            %set the relative noise power
+                            obj.detection_params.relative_noise_power = obj.compute_signal_power(reshape(obj.rx_signal_buffer.',1,[]));
+
+                            %change the state to "processing" to simulate
+                            %needing to wait for a certain amount of time
+                            obj.state = "Processing";
+                            obj.current_processing_delay = 0;
+                        end
+    
+                    case"Waiting for Chirp"
+                        %create a new function to handle the temporary
+                        %buffer behavior
+                        [next_signal_index,import_complete,detected_chirp] = obj.check_for_chirp(signal,next_signal_index);
+                        if detected_chirp
+                            obj.state = "Sampling Chirp";
+                            obj.detection_start_time = ((obj.num_samples_streamed - 2*obj.rx_buffer_params.samples_per_buffer)...
+                                / (obj.FMCW_sample_rate_Msps * 1e6)) * 1e6; %convert to us
+                        end
+
+                    case "Sampling Chirp"
+                        %the buffer should already be initialized, I should
+                        %be able to use the same function to load the
+                        %signal into the buffer
+                        [next_signal_index,import_complete] = obj.load_signal_into_buffer(signal,next_signal_index);
+                        if obj.rx_buffer_params.buffer_full
+                            %process the sampled signal
+                            obj.process_sampled_signal();
+                            %change the state to "processing" to simulate
+                            %needing to wait for a certain amount of time
+                            obj.state = "Processing";
+                            obj.current_processing_delay = 0;
+                        end
+
+                    case "Processing"
+                       [next_signal_index,import_complete] = obj.simulate_processing(signal,next_signal_index);
+                       if obj.current_processing_delay == obj.processing_delay_samples
+                           obj.state = "Waiting for Chirp";
+                           obj.configure_rx_buffers(obj.FMCW_sample_rate_Msps,2);%specify 2ms for recording samples once triggered
+                       end
+                    otherwise
+                end
+            end
+        end
+        
+        function [next_signal_index,import_complete] = load_signal_into_buffer(...
+                obj,signal,next_signal_index)
+        %{
+            Purpose: load as much of an input signal into a buffer as
+                    possible, and update the num_samples_streamed variable
+                    as well
+            Outputs:
+                next_signal_index: the index of the next sample to be read
+                    in for the signal (if the buffer filled before the full
+                    signal could be read)
+                import_complete: true if the full signal was read into the
+                    buffer
+            Inputs:
+                signal: the signal to load into the buffer
+                next_signal_index: the index of the next sample to be read
+                    in for the signal
+        %}
+            %determine the number of unloaded samples in the buffer and the
+            %signal
+            unloaded_samples_signal = size(signal,2) - next_signal_index;
+            unloaded_samples_buffer = obj.rx_buffer_params.samples_per_buffer - obj.rx_buffer_params.next_sample_index;
+            
+            %if the buffer has more unloaded samples
+            if unloaded_samples_buffer > unloaded_samples_signal
+                %compute the start and end coordinates to insert the
+                %remaining signal into the buffer
+                buff_start = obj.rx_buffer_params.next_sample_index;
+                buff_end = buff_start + unloaded_samples_signal;
+
+                %load the signal into the buffer
+                obj.rx_signal_buffer(obj.rx_buffer_params.current_row_index,buff_start:buff_end) = signal(next_signal_index:end);
+                
+                %adjust settings as needed
+                import_complete = true;
+                next_signal_index = size(signal,2) + 1; %would throw an error, but doing for consistent behavior
+                obj.rx_buffer_params.next_sample_index = buff_end + 1;
+
+                obj.num_samples_streamed = obj.num_samples_streamed + unloaded_samples_signal + 1;
+            %if the signal has more unloaded samples
+            else
+                buff_start = obj.rx_buffer_params.next_sample_index;
+                sig_end = next_signal_index + unloaded_samples_buffer;
+
+                obj.rx_signal_buffer(obj.rx_buffer_params.current_row_index,buff_start:end) = signal(next_signal_index:sig_end);
+                
+                if unloaded_samples_signal == unloaded_samples_buffer
+                    import_complete = true;
+                else
+                    import_complete = false;
+                end
+
+                obj.rx_buffer_params.next_sample_index = 1;
+                next_signal_index = sig_end + 1;
+
+                if obj.rx_buffer_params.current_row_index == obj.rx_buffer_params.num_rows
+                    %if the buffer is now filled, reset the row index and
+                    %set the buffer full flag to true
+                    obj.rx_buffer_params.current_row_index = 1;
+                    obj.rx_buffer_params.buffer_full = true;
+                else
+                    %otherwise just increment the row index
+                    obj.rx_buffer_params.current_row_index = obj.rx_buffer_params.current_row_index + 1;
+                    obj.rx_buffer_params.buffer_full = false;
+                end
+
+                obj.num_samples_streamed = obj.num_samples_streamed + unloaded_samples_buffer + 1;
+            end
+
+        end
+
+        function power = compute_signal_power(obj,signal)
+            %{
+                Purpose: computes the power of a signal
+                Inputs: a 1xN complex signal
+                Outputs: 
+                    power = the signal power in decibels
+            %}
+            t_period = 1/obj.FMCW_sample_rate_Msps;
+            t = 0:t_period:(size(signal,2) - 1) * t_period;
+            signal_period = size(signal,2) / (obj.FMCW_sample_rate_Msps * 1e6);
+            power = 10 * log10(sum(abs(signal).^2)/signal_period);
+            
+        end
+
+        function [next_signal_index,import_complete] = simulate_processing( ...
+                obj,signal,next_signal_index)
+            %{
+                Purpose: simulate a processing delay for the sensing
+                    subsystem to perform computations
+                Outputs:
+                    next_signal_index: the index of the next sample to be read
+                        in for the signal (if the buffer filled before the full
+                        signal could be read)
+                    import_complete: true if the full signal was read into the
+                        buffer
+                Inputs:
+                    signal: the signal to load into the buffer
+                    next_signal_index: the index of the next sample to be read
+                        in for the signal
+            %}
+            %determine the number of unloaded samples
+            unloaded_samples = size(signal,2) - next_signal_index;
+            remaining_processing_delay_samples = obj.processing_delay_samples - obj.current_processing_delay;
+
+            if remaining_processing_delay_samples > unloaded_samples
+                %if the remaining delay is longer than the number of
+                %unloaded samples in the signal
+
+                %update the timing counters
+                obj.num_samples_streamed = obj.num_samples_streamed + unloaded_samples + 1;
+                obj.current_processing_delay = obj.current_processing_delay + unloaded_samples;
+
+                %specify that import is complete
+                next_signal_index = next_signal_index + unloaded_samples + 1;
+                import_complete = true;
+                
+            else
+                %if this is the end of the processing delay
+                
+                %update the timing counters
+                obj.num_samples_streamed = obj.num_samples_streamed + remaining_processing_delay_samples + 1;
+                obj.current_processing_delay = obj.current_processing_delay + remaining_processing_delay_samples;
+
+                %specify that that the import is not complete
+                next_signal_index = next_signal_index + remaining_processing_delay_samples + 1;
+                if remaining_processing_delay_samples == unloaded_samples
+                    import_complete = true;
+                else
+                    import_complete = false;
+                end
+            end
+        end
+
+        function [next_signal_index,import_complete,detected_chirp] = check_for_chirp( ...
+                obj,signal,next_signal_index)
+            %{
+                Purpose: loads the signal into a temp buffer and checks to
+                see if there is a chirp present in the signal
+                Outputs:
+                    next_signal_index: the index of the next sample to be read
+                        in for the signal (if the buffer filled before the full
+                        signal could be read)
+                    import_complete: true if the full signal was read into the
+                        buffer
+                Inputs:
+                    signal: the signal to load into the buffer
+                    next_signal_index: the index of the next sample to be read
+                        in for the signal
+            %}
+
+            %load the chirp into the buffer
+            %determine the number of unloaded samples in the buffer and the
+            %signal
+            unloaded_samples_signal = size(signal,2) - next_signal_index;
+            unloaded_samples_buffer = obj.rx_buffer_params.samples_per_buffer - obj.rx_buffer_params.next_sample_index;
+            
+            %if the buffer has more unloaded samples
+            if unloaded_samples_buffer > unloaded_samples_signal
+                %compute the start and end coordinates to insert the
+                %remaining signal into the buffer
+                buff_start = obj.rx_buffer_params.next_sample_index;
+                buff_end = buff_start + unloaded_samples_signal;
+
+                %load the signal into the buffer
+                obj.rx_temp_buffer(obj.rx_buffer_params.current_temp_buff_row,buff_start:buff_end) = signal(next_signal_index:end);
+                
+                %adjust settings as needed
+                import_complete = true;
+                next_signal_index = size(signal,2) + 1; %would throw an error, but doing for consistent behavior
+                obj.rx_buffer_params.next_sample_index = buff_end + 1;
+
+                %since the buffer wasn't filled, no chirp detected
+                detected_chirp = false;
+                
+                obj.num_samples_streamed = obj.num_samples_streamed + unloaded_samples_signal + 1;
+            %if the signal has more unloaded samples, the current temp
+            %buffer will be filled
+            else
+                %fill the temp buffer
+                buff_start = obj.rx_buffer_params.next_sample_index;
+                sig_end = next_signal_index + unloaded_samples_buffer;
+
+                obj.rx_temp_buffer(obj.rx_buffer_params.current_temp_buff_row,buff_start:end) = signal(next_signal_index:sig_end);
+                
+                %specify whether or not the full signal has been imported
+                if unloaded_samples_signal == unloaded_samples_buffer
+                    import_complete = true;
+                else
+                    import_complete = false;
+                end
+
+                obj.rx_buffer_params.next_sample_index = 1;
+                next_signal_index = sig_end + 1;
+
+                %compute the signal power level for the current buffer
+                sig_power = obj.compute_signal_power(obj.rx_temp_buffer(obj.rx_buffer_params.current_temp_buff_row,:));
+                
+                %if there is a chirp present, set the detected_chirp flag
+                %and load the buffers into rx_buffer
+                if sig_power > obj.detection_params.relative_noise_power + obj.detection_params.threshold_level
+                    if obj.rx_buffer_params.current_temp_buff_row == 1
+                        obj.rx_signal_buffer(1,:) = obj.rx_temp_buffer(2,:);
+                        obj.rx_signal_buffer(2,:) = obj.rx_temp_buffer(1,:);
+                    else
+                        obj.rx_signal_buffer(1,:) = obj.rx_temp_buffer(1,:);
+                        obj.rx_signal_buffer(2,:) = obj.rx_temp_buffer(2,:);
+                    end
+                    
+                    %set the row vector to be the third row now
+                    obj.rx_buffer_params.current_row_index = 3;
+                    obj.rx_buffer_params.buffer_full = false;
+
+                    %set the chirp_detected flag
+                    detected_chirp = true;
+                else
+                    %change the current temp_buffer_row
+                    if obj.rx_buffer_params.current_temp_buff_row == 1
+                        obj.rx_buffer_params.current_temp_buff_row = 2;
+                    else
+                        obj.rx_buffer_params.current_temp_buff_row = 1;
+                    end
+                    detected_chirp = false;
+                end
+
+                obj.num_samples_streamed = obj.num_samples_streamed + unloaded_samples_buffer + 1;
+            end
+        end
+
+        function process_sampled_signal(obj)
             %{
                 Purpose: takes in a received signal, generates a spectogram
-                Inputs:
-                    received_signal: the signal received the by sensing
-                    system
+                
             %}
-            obj.received_signal = received_signal;
-            obj.generate_spectogram(obj.received_signal)
+            obj.received_signal = reshape(obj.rx_signal_buffer.',1,[]);
+            obj.generate_spectogram();
             obj.spectogram_points = obj.detect_peaks_in_spectogram(obj.generated_spectogram);
 
             %combine the detected points with the previously detected points
-                if ~isempty(obj.spectogram_points)
-                    obj.combined_spectogram = [obj.previous_spectogram_points,obj.spectogram_points...
-                        + [0;obj.spectogram_params.num_freq_spectrum_samples_per_spectogram]];
-                else
-                    obj.combined_spectogram = obj.previous_spectogram_points;
-                end
-                obj.previous_spectogram_points = obj.spectogram_points;
+%                 if ~isempty(obj.spectogram_points)
+%                     obj.combined_spectogram = [obj.previous_spectogram_points,obj.spectogram_points...
+%                         + [0;obj.spectogram_params.num_freq_spectrum_samples_per_spectogram]];
+%                 else
+%                     obj.combined_spectogram = obj.previous_spectogram_points;
+%                 end
+%                 obj.previous_spectogram_points = obj.spectogram_points;
             
             %provided there were detected points in the combined
             %spectogram, continue with the rest of the program
-            if ~isempty(obj.combined_spectogram)
-                obj.compute_detected_times_and_frequencies(obj.combined_spectogram);
+            if ~isempty(obj.generated_spectogram)
+                obj.compute_detected_times_and_frequencies(obj.spectogram_points);
                 obj.compute_clusters();
                 obj.fit_linear_model();
-                obj.compute_victim_parameters()
+                obj.compute_victim_parameters();
             end
             obj.sampling_window_count = obj.sampling_window_count + 1;
         end
-    
-        function generate_spectogram(obj,received_signal)
+
+        function generate_spectogram(obj)
             %{
                 Purpose: takes in the received signal (not reshaped yet),
                     reshapes it for fft processing, performs windowing, and
                     generates the spectogram. The updated spectogram is stored
                     in the generated_spectogram property of the
                     spectrum_sensing class
-                Inputs:
-                    received_signal: the signal received the by sensing
-                    system
             %}
-            %first reshape the received signal
-            obj.reshaped_signal = reshape(received_signal,...
-                obj.spectogram_params.num_ADC_samples_per_spectogram / ...
-                obj.spectogram_params.num_freq_spectrum_samples_per_spectogram,...
-                obj.spectogram_params.num_freq_spectrum_samples_per_spectogram);
+
+            %remove a few extra samples at the end of the receive rx buffer
+            %(if needed) so that it can be reshaped for fft processing
+            received_samples = size(obj.received_signal,2);
+
+            %determine the number of spectrum samples that will be taken
+            num_spectrum_samples = floor(received_samples/...
+                obj.spectogram_params.num_samples_per_sampling_window);
+            
+            
+            num_samples_per_spectogram = num_spectrum_samples * ...
+                obj.spectogram_params.num_samples_per_sampling_window;
+            obj.received_signal = obj.received_signal(1:num_samples_per_spectogram);
+
+            %set the plot_params.times variable now that the spectogram
+            %size has been determined
+            obj.plot_params.times = (0: obj.spectogram_params.freq_sampling_period_us : ...
+                num_spectrum_samples * obj.spectogram_params.freq_sampling_period_us...
+                - obj.spectogram_params.freq_sampling_period_us)...
+                + obj.spectogram_params.detected_time_offset;
+
+            %reshape the received signal for fft processing
+            obj.reshaped_signal = reshape(obj.received_signal,...
+                obj.spectogram_params.num_samples_per_sampling_window,[]);
             
             %next, shave off the last few samples so that we get the desired fft size
             obj.reshaped_signal_for_fft = obj.reshaped_signal(1:obj.spectogram_params.fft_size,:);
@@ -293,8 +681,11 @@ classdef Subsystem_spectrum_sensing < handle
             
             %perform an fft
             obj.generated_spectogram = fft(obj.windowed_signal);
+
+            %convert the spectrum to dB
+            obj.generated_spectogram = 10*log10(abs(obj.generated_spectogram));
             
-            %clip off the negative frequencies - only is not using complex
+            %clip off the negative frequencies - only if not using complex
             %sampling
 %            obj.generated_spectogram = obj.generated_spectogram(1:obj.spectogram_params.fft_size/2,:);
         end
@@ -315,28 +706,41 @@ classdef Subsystem_spectrum_sensing < handle
             %}
             spectogram_points = [];  %array to hold the time, freq locations of valid spectogram points
             
+            %determine the maximum value in the spectogram to set the
+            %threshold around
+            threshold = max(generated_spectogram,[],'all') - obj.peak_detection_params.threshold;
+
+
+%             for i = 1:size(generated_spectogram,2)
+%                 [peaks,locations] = findpeaks(generated_spectogram(:,i),"NPeaks",obj.peak_detection_params.numPeaks);
+%                 locations = locations(peaks > threshold);
+%                 if ~isempty(locations)
+%                     locations = [locations.'; i * ones(1,size(locations,1))];
+%                     spectogram_points = [spectogram_points,locations];
+%                 end
+%             end
+
             for i = 1:size(generated_spectogram,2)
-                [peaks,locations] = findpeaks(abs(generated_spectogram(:,i)),"NPeaks",obj.peak_detection_params.numPeaks);
-                locations = locations(peaks > obj.peak_detection_params.threshold);
-                if ~isempty(locations)
-                    locations = [locations.'; i * ones(1,size(locations,1))];
+                [M,I] = max(generated_spectogram(:,i));
+                if M > threshold
+                    locations = [I; i ];
                     spectogram_points = [spectogram_points,locations];
                 end
             end
         end
 
-        function compute_detected_times_and_frequencies(obj,combined_spectogram)
+        function compute_detected_times_and_frequencies(obj,spectogram_points)
             %{
                 Purpose: takes the combined spectogram of array indicies in
                     the generated spectogram and converts the indicies to times
                     and frequencies
                 Inputs: 
-                    combined_spectogram: the array of indicies of peaks in
+                    spectogram_points: the array of indicies of peaks in
                     the generated spectogram stored in the combined
                     spectogram object
             %}
-            obj.detected_frequencies = obj.plot_params.frequencies(combined_spectogram(1,:));
-            obj.detected_times = obj.plot_params.combined_spectogram_times(combined_spectogram(2,:));
+            obj.detected_frequencies = obj.plot_params.frequencies(spectogram_points(1,:));
+            obj.detected_times = obj.plot_params.times(spectogram_points(2,:));
         end
         
         function compute_clusters(obj)
@@ -392,68 +796,60 @@ classdef Subsystem_spectrum_sensing < handle
         function compute_victim_parameters(obj)
 
             %compute the actual time that the chirp intercept occured at
-            obj.detected_chirps = obj.detected_chirps + [obj.spectogram_params.num_freq_spectrum_samples_per_spectogram * ...
-                    obj.spectogram_params.freq_sampling_period_us * (obj.sampling_window_count - 1), 0];
-
-
+            obj.detected_chirps = obj.detected_chirps + [obj.detection_start_time, 0];
+            
+            %update captured chirps tracking
             for i = 1:size(obj.detected_chirps,1)
-                if obj.detected_chirps(i,2) ~= 0 && obj.chirp_tracking.num_captured_chirps < obj.chirp_tracking.captured_chirps_buffer_size
-                    if obj.chirp_tracking.num_captured_chirps == 0 %if the captured chirps buffer is empty (i.e: first chirp detected or first chirp in a frame)
-                        obj.chirp_tracking.captured_chirps(1,:) = obj.detected_chirps(i,:);
-                        obj.chirp_tracking.num_captured_chirps = obj.chirp_tracking.num_captured_chirps + 1;
-                        obj.debugger_save_detection_points(i);                
-                    elseif all(abs(obj.chirp_tracking.captured_chirps - obj.detected_chirps(i,1)) > obj.chirp_tracking.new_chirp_threshold_us,'all')
-                        if obj.chirp_tracking.num_captured_chirps >= 2
-                            duration_difference_from_avg = abs(obj.detected_chirps(i,1) - ...
-                                obj.chirp_tracking.captured_chirps(obj.chirp_tracking.num_captured_chirps,1) - obj.chirp_tracking.average_chirp_duration);
-                            if duration_difference_from_avg >= obj.frame_tracking.new_frame_threshold_us %declare as part of a new frame
-                                %increment the frame counter
-                                obj.frame_tracking.num_captured_frames = obj.frame_tracking.num_captured_frames + 1;
-                                %save the duration, number of chirps, average slope, average chirp duration, start time, and sampling window count
-                                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,1) = obj.detected_chirps(i,1) - obj.chirp_tracking.captured_chirps(1,1);  % duration
-                                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,2) = obj.chirp_tracking.num_captured_chirps;                          % number of chirps
-                                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,3) = obj.chirp_tracking.average_slope;                                % average slope
-                                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,4) = obj.chirp_tracking.average_chirp_duration;                       % average_chirp_duration
-                                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) = obj.chirp_tracking.captured_chirps(1,1);
-                                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,6) = obj.sampling_window_count;
-    
-                                %reset the chirp tracking
-                                obj.chirp_tracking.num_captured_chirps = 0;
-                                obj.chirp_tracking.captured_chirps = zeros(obj.chirp_tracking.captured_chirps_buffer_size, 2);
-                                obj.chirp_tracking.average_chirp_duration = 0;
-                                obj.chirp_tracking.average_slope = 0;
-                                
-                                %reset sampling window - not implemented yet
-                                obj.frame_tracking.average_frame_duration = sum(obj.frame_tracking.captured_frames(:,1)) / obj.frame_tracking.num_captured_frames;
-                                
-                                %compute the overall averages for chirp slope
-                                %and duration
-                                obj.frame_tracking.average_chirp_duration =  ...
-                                    sum(obj.frame_tracking.captured_frames(:,4) .* (obj.frame_tracking.captured_frames(:,2) - 1))/ ...
-                                    sum((obj.frame_tracking.captured_frames(obj.frame_tracking.captured_frames(:,2) ~=0,2) - 1));
-                                obj.frame_tracking.average_slope = ...
-                                    sum(obj.frame_tracking.captured_frames(:,3) .* (obj.frame_tracking.captured_frames(:,2) - 1))/ ...
-                                    sum((obj.frame_tracking.captured_frames(obj.frame_tracking.captured_frames(:,2) ~=0,2) - 1));
-    
-                                %compute the predicted time for the next chirp
-                                %to occur on.
-                                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,7) = ...
-                                            obj.detected_chirps(i,1) + obj.frame_tracking.average_frame_duration;
-                            end
-                        end
-                        obj.chirp_tracking.captured_chirps(obj.chirp_tracking.num_captured_chirps + 1,:) = obj.detected_chirps(i,:);
-                        obj.chirp_tracking.num_captured_chirps = obj.chirp_tracking.num_captured_chirps + 1;
-    
-                        obj.debugger_save_detection_points(i);
-                    end
-                    obj.chirp_tracking.average_slope = sum(obj.chirp_tracking.captured_chirps(1:obj.chirp_tracking.num_captured_chirps,2))/...
-                        double(obj.chirp_tracking.num_captured_chirps);
-                    if obj.chirp_tracking.num_captured_chirps >= 2
-                        obj.chirp_tracking.average_chirp_duration = (obj.chirp_tracking.captured_chirps(obj.chirp_tracking.num_captured_chirps,1)...
-                            - obj.chirp_tracking.captured_chirps(1,1))/double(obj.chirp_tracking.num_captured_chirps - 1);
-                    end
-                end
+                obj.chirp_tracking.captured_chirps(obj.chirp_tracking.num_captured_chirps + 1,:) = ...
+                    obj.detected_chirps(i,:);
+                obj.chirp_tracking.num_captured_chirps = obj.chirp_tracking.num_captured_chirps + 1;
+                obj.debugger_save_detection_points(i);
             end
+
+            %compute average chirp statistics
+            obj.chirp_tracking.average_slope = sum(obj.chirp_tracking.captured_chirps(1:obj.chirp_tracking.num_captured_chirps,2))/...
+                        double(obj.chirp_tracking.num_captured_chirps);
+            obj.chirp_tracking.average_chirp_duration = (obj.chirp_tracking.captured_chirps(obj.chirp_tracking.num_captured_chirps,1)...
+                            - obj.chirp_tracking.captured_chirps(1,1))/double(obj.chirp_tracking.num_captured_chirps - 1);
+
+            %increment the frame counter
+                obj.frame_tracking.num_captured_frames = obj.frame_tracking.num_captured_frames + 1;
+
+            %save frame information
+                %save the duration, number of chirps, average slope, average chirp duration, start time, and sampling window count
+                
+                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,2) = obj.chirp_tracking.num_captured_chirps;                          % number of chirps
+                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,3) = obj.chirp_tracking.average_slope;                                % average slope
+                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,4) = obj.chirp_tracking.average_chirp_duration;                       % average_chirp_duration
+                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) = obj.chirp_tracking.captured_chirps(1,1);                
+                
+                %compute the predicted time for the next chirp
+                %to occur on.
+                if obj.frame_tracking.num_captured_frames > 1
+                    %compute frame duration
+                    obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,1) = obj.detected_chirps(1,1) - ...
+                        obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames - 1,5);
+                    %compute the average frame duration
+                    obj.frame_tracking.average_frame_duration = sum(obj.frame_tracking.captured_frames(:,1)) / (obj.frame_tracking.num_captured_frames - 1);
+                    %predict next frame
+                    obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,7) = ...
+                                obj.chirp_tracking.captured_chirps(1,1) + obj.frame_tracking.average_frame_duration;
+                end
+            %compute the overall averages for chirp slope
+            %and duration
+            obj.frame_tracking.average_chirp_duration =  ...
+                sum(obj.frame_tracking.captured_frames(:,4) .* (obj.frame_tracking.captured_frames(:,2) - 1))/ ...
+                sum((obj.frame_tracking.captured_frames(obj.frame_tracking.captured_frames(:,2) ~=0,2) - 1));
+            obj.frame_tracking.average_slope = ...
+                sum(obj.frame_tracking.captured_frames(:,3) .* (obj.frame_tracking.captured_frames(:,2) - 1))/ ...
+                sum((obj.frame_tracking.captured_frames(obj.frame_tracking.captured_frames(:,2) ~=0,2) - 1));
+                
+            %reset captured chirps tracking
+            obj.chirp_tracking.num_captured_chirps = 0;
+            obj.chirp_tracking.captured_chirps = zeros(obj.chirp_tracking.captured_chirps_buffer_size, 2);
+            obj.chirp_tracking.average_chirp_duration = 0;
+            obj.chirp_tracking.average_slope = 0;
+
         end
         
         %debugger functions - These should eventually get updated, but for
@@ -465,10 +861,14 @@ classdef Subsystem_spectrum_sensing < handle
                 detected_chirp_index - the cluster I.D (in the idx) for the whose chirp whose values are being stored
         %}
             if obj.Debugger.enabled
-                 
-                debugger_index = (obj.frame_tracking.num_captured_frames) * obj.Debugger.actual_num_chirps_per_frame + obj.chirp_tracking.num_captured_chirps;
-                timing_offset = obj.spectogram_params.num_freq_spectrum_samples_per_spectogram * ...
-                            obj.spectogram_params.freq_sampling_period_us * (obj.sampling_window_count - 1);
+                
+                %the first frame that the sensing subsystem detects will
+                %actually be the 2nd frame that it receives (the first was
+                %used to compute the relative noise floor)
+
+                current_frame = obj.frame_tracking.num_captured_frames + 1;
+                debugger_index = current_frame * obj.Debugger.actual_num_chirps_per_frame + obj.chirp_tracking.num_captured_chirps;
+                timing_offset = obj.detection_start_time;
         
                 %save the detected times
                 obj.Debugger.detected_times(debugger_index,1: 2 + size(obj.idx(obj.idx == detected_chirp_index),1)) = ...
@@ -476,12 +876,12 @@ classdef Subsystem_spectrum_sensing < handle
                     timing_offset + obj.detected_times(obj.idx == detected_chirp_index)];
                 %save the detected frequencies
                 obj.Debugger.detected_frequencies(debugger_index,1:2 + size(obj.idx(obj.idx == detected_chirp_index),1)) = ...
-                    [obj.frame_tracking.num_captured_frames + 1,obj.chirp_tracking.num_captured_chirps, obj.detected_frequencies(obj.idx == detected_chirp_index)];
+                    [current_frame + 1,obj.chirp_tracking.num_captured_chirps, obj.detected_frequencies(obj.idx == detected_chirp_index)];
         
                 obj.Debugger.detected_chirp_slopes(debugger_index,:) = ...
-                    [obj.frame_tracking.num_captured_frames + 1,obj.chirp_tracking.num_captured_chirps,obj.detected_chirps(detected_chirp_index,2)];
+                    [current_frame + 1,obj.chirp_tracking.num_captured_chirps,obj.detected_chirps(detected_chirp_index,2)];
                 obj.Debugger.detected_chirp_intercepts(debugger_index,:) = ...
-                    [obj.frame_tracking.num_captured_frames + 1,obj.chirp_tracking.num_captured_chirps,obj.detected_chirps(detected_chirp_index,1)];
+                    [current_frame + 1,obj.chirp_tracking.num_captured_chirps,obj.detected_chirps(detected_chirp_index,1)];
             end
         end
         
@@ -497,14 +897,22 @@ classdef Subsystem_spectrum_sensing < handle
                 Debugger_updated - the updated debugger object
         %}
             if obj.Debugger.enabled
+                %remove any rows in the detected arrays with zeros
+                %(undetected for one reason on another)
+                obj.Debugger.detected_times = obj.Debugger.detected_times(obj.Debugger.detected_times(:,1) ~= 0,:);
+                obj.Debugger.detected_frequencies = obj.Debugger.detected_frequencies(obj.Debugger.detected_frequencies(:,1) ~= 0,:);
+                obj.Debugger.detected_chirp_slopes = obj.Debugger.detected_chirp_slopes(obj.Debugger.detected_chirp_slopes(:,1) ~= 0,:);
+                obj.Debugger.detected_chirp_intercepts = obj.Debugger.detected_chirp_intercepts(obj.Debugger.detected_chirp_intercepts(:,1) ~= 0,:);
+                
                 %update the sizes of the error trackers as the size may have
                 %changed slightly when computing:
                 obj.Debugger.detected_times_errors = zeros(size(obj.Debugger.detected_times));
                 obj.Debugger.detected_frequencies_errors = zeros(size(obj.Debugger.detected_frequencies));
                 obj.Debugger.detected_chirp_slopes_errors = zeros(size(obj.Debugger.detected_chirp_slopes));
                 obj.Debugger.detected_chirp_intercepts_errors = zeros(size(obj.Debugger.detected_chirp_intercepts));
+               
                 
-            %compute the errors
+                %compute the errors
                 true_chirp_intercepts = ...
                     (obj.Debugger.detected_chirp_intercepts(:,1) - 1) * victim.FramePeriodicity_ms * 1e3 +...
                     (obj.Debugger.detected_chirp_intercepts(:,2) - 1) * victim.ChirpCycleTime_us + ...
@@ -571,7 +979,7 @@ classdef Subsystem_spectrum_sensing < handle
                 obj.Debugger.detected_chirp_slopes_errors_summary;...
                 obj.Debugger.detected_chirp_intercepts_errors_summary], ...
                 "VariableNames",[ "Mean","Variance","MSE"], ...
-                "RowNames",["Detected Times","Detected Frequencies","Computed Slope","Computed Intercept"]);
+                "RowNames",["Detected Times (us)","Detected Frequencies","Computed Slope","Computed Intercept (us)"]);
         end
         
         function [sample_mean,sample_variance,MSE] = compute_summary_statistics(obj,errors_array, debugger_array)
@@ -604,7 +1012,7 @@ classdef Subsystem_spectrum_sensing < handle
                 Purpose: Plot the last spectogram computed by the sensing
                 subsystem
             %}
-            surf(obj.plot_params.times,obj.plot_params.frequencies, abs(obj.generated_spectogram));
+            surf(obj.plot_params.times,obj.plot_params.frequencies,obj.generated_spectogram);
             title_str = sprintf('Spectogram');
             title(title_str);
             xlabel('Time(us)')
