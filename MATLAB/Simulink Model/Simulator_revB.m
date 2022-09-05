@@ -219,23 +219,23 @@ classdef Simulator_revB < handle
 
 %% [2] Functions for running the FMCW Simulation on Matlab
 
-function [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = FMCW_determine_positions_and_velocities(obj,victim_frame,victim_samples_sent)
-        %{
-            Purpose: determine the position and velocity for the
-                attacker,defender, and target at the end of a given chirp
-                in a given frame
-            Inputs:
-                victim_samples_sent: the number of samples that the victim
-                    has sent in the current frame
-                victim_frame: the desired frame
-            Outputs:
-                [victim_pos, victim_vel]: the position and velocity of
-                    the victim at the start of the desired chirp
-                [attacker_pos, attacker_vel]: the position and velocity of
-                    the attacker at the start of the desired chirp
-                [target_pos, target_vel]: the position and velocity of
-                    the attacker at the start of the desired chirp
-        %}
+        function [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = FMCW_determine_positions_and_velocities(obj,victim_frame,victim_samples_sent)
+            %{
+                Purpose: determine the position and velocity for the
+                    attacker,defender, and target at the end of a given chirp
+                    in a given frame
+                Inputs:
+                    victim_samples_sent: the number of samples that the victim
+                        has sent in the current frame
+                    victim_frame: the desired frame
+                Outputs:
+                    [victim_pos, victim_vel]: the position and velocity of
+                        the victim at the start of the desired chirp
+                    [attacker_pos, attacker_vel]: the position and velocity of
+                        the attacker at the start of the desired chirp
+                    [target_pos, target_vel]: the position and velocity of
+                        the attacker at the start of the desired chirp
+            %}
             %calculate the time that the desired chirp will end at
             frame_start_time_s = double((obj.Victim.FramePeriodicity_ms * 1e-3) * (victim_frame - 1));
             current_time = frame_start_time_s + double(victim_samples_sent) / (obj.Victim.FMCW_sampling_rate_Hz);
@@ -403,6 +403,33 @@ function [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = 
             end
         end
 
+        function run_simulation_no_attack(obj,frames_to_compute)
+            %{
+                Purpose: runs the simulation (with no attacker) for the
+                    given number of frames
+                Inputs:
+                    frames_to_compute: the number of frames to simulate
+            %}
+
+
+                while obj.Victim.current_frame <= frames_to_compute
+                
+                    %get the transmitted signal from the radar
+                    sig = obj.Victim.get_radar_tx_signal();
+                
+                    %update positions
+                    [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = ...
+                        obj.FMCW_determine_positions_and_velocities(...
+                        obj.Victim.current_frame,obj.Victim.num_samples_sent);
+                    
+                    %propagate the signal and reflect it off of the target
+                    sig = obj.channel_target(sig,victim_pos,tgt_pos,victim_vel,tgt_vel);
+                    sig = obj.SimulatedTarget.radar_target(sig);
+            
+                    %have the radar receive the signal
+                    obj.Victim.receive_signal(sig);
+                end
+        end
     end
 
 end
