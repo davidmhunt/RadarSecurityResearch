@@ -861,8 +861,13 @@ classdef Subsystem_spectrum_sensing < handle
                 detected_chirp_index - the cluster I.D (in the idx) for the whose chirp whose values are being stored
         %}
             if obj.Debugger.enabled
-                 
-                debugger_index = (obj.frame_tracking.num_captured_frames) * obj.Debugger.actual_num_chirps_per_frame + obj.chirp_tracking.num_captured_chirps;
+                
+                %the first frame that the sensing subsystem detects will
+                %actually be the 2nd frame that it receives (the first was
+                %used to compute the relative noise floor)
+
+                current_frame = obj.frame_tracking.num_captured_frames + 1;
+                debugger_index = current_frame * obj.Debugger.actual_num_chirps_per_frame + obj.chirp_tracking.num_captured_chirps;
                 timing_offset = obj.detection_start_time;
         
                 %save the detected times
@@ -871,12 +876,12 @@ classdef Subsystem_spectrum_sensing < handle
                     timing_offset + obj.detected_times(obj.idx == detected_chirp_index)];
                 %save the detected frequencies
                 obj.Debugger.detected_frequencies(debugger_index,1:2 + size(obj.idx(obj.idx == detected_chirp_index),1)) = ...
-                    [obj.frame_tracking.num_captured_frames + 1,obj.chirp_tracking.num_captured_chirps, obj.detected_frequencies(obj.idx == detected_chirp_index)];
+                    [current_frame + 1,obj.chirp_tracking.num_captured_chirps, obj.detected_frequencies(obj.idx == detected_chirp_index)];
         
                 obj.Debugger.detected_chirp_slopes(debugger_index,:) = ...
-                    [obj.frame_tracking.num_captured_frames + 1,obj.chirp_tracking.num_captured_chirps,obj.detected_chirps(detected_chirp_index,2)];
+                    [current_frame + 1,obj.chirp_tracking.num_captured_chirps,obj.detected_chirps(detected_chirp_index,2)];
                 obj.Debugger.detected_chirp_intercepts(debugger_index,:) = ...
-                    [obj.frame_tracking.num_captured_frames + 1,obj.chirp_tracking.num_captured_chirps,obj.detected_chirps(detected_chirp_index,1)];
+                    [current_frame + 1,obj.chirp_tracking.num_captured_chirps,obj.detected_chirps(detected_chirp_index,1)];
             end
         end
         
@@ -892,14 +897,22 @@ classdef Subsystem_spectrum_sensing < handle
                 Debugger_updated - the updated debugger object
         %}
             if obj.Debugger.enabled
+                %remove any rows in the detected arrays with zeros
+                %(undetected for one reason on another)
+                obj.Debugger.detected_times = obj.Debugger.detected_times(obj.Debugger.detected_times(:,1) ~= 0,:);
+                obj.Debugger.detected_frequencies = obj.Debugger.detected_frequencies(obj.Debugger.detected_frequencies(:,1) ~= 0,:);
+                obj.Debugger.detected_chirp_slopes = obj.Debugger.detected_chirp_slopes(obj.Debugger.detected_chirp_slopes(:,1) ~= 0,:);
+                obj.Debugger.detected_chirp_intercepts = obj.Debugger.detected_chirp_intercepts(obj.Debugger.detected_chirp_intercepts(:,1) ~= 0,:);
+                
                 %update the sizes of the error trackers as the size may have
                 %changed slightly when computing:
                 obj.Debugger.detected_times_errors = zeros(size(obj.Debugger.detected_times));
                 obj.Debugger.detected_frequencies_errors = zeros(size(obj.Debugger.detected_frequencies));
                 obj.Debugger.detected_chirp_slopes_errors = zeros(size(obj.Debugger.detected_chirp_slopes));
                 obj.Debugger.detected_chirp_intercepts_errors = zeros(size(obj.Debugger.detected_chirp_intercepts));
+               
                 
-            %compute the errors
+                %compute the errors
                 true_chirp_intercepts = ...
                     (obj.Debugger.detected_chirp_intercepts(:,1) - 1) * victim.FramePeriodicity_ms * 1e3 +...
                     (obj.Debugger.detected_chirp_intercepts(:,2) - 1) * victim.ChirpCycleTime_us + ...
@@ -966,7 +979,7 @@ classdef Subsystem_spectrum_sensing < handle
                 obj.Debugger.detected_chirp_slopes_errors_summary;...
                 obj.Debugger.detected_chirp_intercepts_errors_summary], ...
                 "VariableNames",[ "Mean","Variance","MSE"], ...
-                "RowNames",["Detected Times","Detected Frequencies","Computed Slope","Computed Intercept"]);
+                "RowNames",["Detected Times (us)","Detected Frequencies","Computed Slope","Computed Intercept (us)"]);
         end
         
         function [sample_mean,sample_variance,MSE] = compute_summary_statistics(obj,errors_array, debugger_array)

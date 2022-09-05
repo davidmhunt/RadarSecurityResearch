@@ -101,6 +101,8 @@ classdef Simulator_revB < handle
             obj.Victim.configure_waveform_and_chirp();
             obj.Attacker.Subsystem_tracking.configure_waveform_and_chirp();
             
+            
+            %configure the free-space channels
             obj.channel_target = phased.FreeSpace( ...
                 "PropagationSpeed",physconst('LightSpeed'), ...
                 "OperatingFrequency", obj.Victim.StartFrequency_GHz * 1e9, ...
@@ -214,44 +216,17 @@ classdef Simulator_revB < handle
             obj.Attacker.configure_platform();
         end
     
-%         function initialize_sensing_subsystem_support(obj)
-%             %{
-%                 Purpose: the purpose of this function is to initialize
-%                 private parameters that will be used in assembling the
-%                 signal that the sensing subsystem will receive from victim
-%             %}
-%             %parameters to keep track of the index from the transmitted
-%             %chirp signal from the victim
-%             obj.sensing_subsystem_support.chirp_sample_index = 1;
-%             obj.sensing_subsystem_support.max_chirp_sample_index = size(obj.Victim.chirp,1);
-%             obj.sensing_subsystem_support.chirp_samples_left = obj.sensing_subsystem_support.max_chirp_sample_index;
-%             
-%             %parameters to keep track of the index from the transmitted
-%             %signal frame from the victim
-%             obj.sensing_subsystem_support.max_frame_sample_index = obj.Victim.num_samples_per_frame;
-%             obj.sensing_subsystem_support.frame_samples_left = obj.sensing_subsystem_support.max_frame_sample_index;
-%              
-%             %parameters to keep track of the index of the received signal
-%             %received by the sensing subsystem
-%             obj.sensing_subsystem_support.received_sample_index = 1;
-%             obj.sensing_subsystem_support.max_received_sample_index = obj.Attacker.Subsystem_spectrum_sensing.spectogram_params.num_ADC_samples_per_spectogram;
-%             obj.sensing_subsystem_support.received_samples_left = obj.sensing_subsystem_support.max_received_sample_index;
-%             
-%             %parameters to keep track of the index of how many chirps and
-%             %frames the victim has transmitted
-%             obj.sensing_subsystem_support.chirp_count = 0;
-%             obj.sensing_subsystem_support.frame_count = 0;
-%         end
 
 %% [2] Functions for running the FMCW Simulation on Matlab
 
-        function [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = FMCW_determine_positions_and_velocities(obj,victim_frame,victim_chirp)
+function [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = FMCW_determine_positions_and_velocities(obj,victim_frame,victim_samples_sent)
         %{
             Purpose: determine the position and velocity for the
                 attacker,defender, and target at the end of a given chirp
                 in a given frame
             Inputs:
-                victim_chirp: the desired chirp
+                victim_samples_sent: the number of samples that the victim
+                    has sent in the current frame
                 victim_frame: the desired frame
             Outputs:
                 [victim_pos, victim_vel]: the position and velocity of
@@ -262,16 +237,15 @@ classdef Simulator_revB < handle
                     the attacker at the start of the desired chirp
         %}
             %calculate the time that the desired chirp will end at
-            frame_start_time_s = (obj.Victim.FramePeriodicity_ms * 1e-3) * (victim_frame - 1);
-            chirp_end_time = frame_start_time_s + (obj.Victim.ChirpCycleTime_us * 1e-6) *...
-                (victim_chirp);
+            frame_start_time_s = double((obj.Victim.FramePeriodicity_ms * 1e-3) * (victim_frame - 1));
+            current_time = frame_start_time_s + double(victim_samples_sent) / (obj.Victim.FMCW_sampling_rate_Hz);
             
             %reset the positions of each platform to be safe
             reset(obj.Victim.platform);
             reset(obj.Attacker.platform);
             reset(obj.SimulatedTarget.platform);
 
-            if chirp_end_time <= 0
+            if current_time <= 0
                 time_increment = obj.Victim.ChirpCycleTime_us * 1e-6;
                 [victim_pos, victim_vel] = obj.Victim.platform(time_increment);
                 [tgt_pos,tgt_vel] = obj.SimulatedTarget.platform(time_increment);
@@ -279,15 +253,15 @@ classdef Simulator_revB < handle
             else
                 %take a step for each platform so that they update to the
                 %values at the start of the frame
-                obj.Victim.platform(chirp_end_time);
-                obj.SimulatedTarget.platform(chirp_end_time);
-                obj.Attacker.platform(chirp_end_time);
+                obj.Victim.platform(current_time);
+                obj.SimulatedTarget.platform(current_time);
+                obj.Attacker.platform(current_time);
     
                 %repeat the process to obtain the positions and velocities at
                 %the start of the given chirp
-                [victim_pos, victim_vel] = obj.Victim.platform(chirp_end_time);
-                [tgt_pos,tgt_vel] = obj.SimulatedTarget.platform(chirp_end_time);
-                [attacker_pos, attacker_vel] = obj.Attacker.platform(chirp_end_time);
+                [victim_pos, victim_vel] = obj.Victim.platform(current_time);
+                [tgt_pos,tgt_vel] = obj.SimulatedTarget.platform(current_time);
+                [attacker_pos, attacker_vel] = obj.Attacker.platform(current_time);
             end
         end     
         
