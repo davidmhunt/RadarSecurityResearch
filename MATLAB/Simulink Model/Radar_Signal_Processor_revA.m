@@ -361,31 +361,35 @@ classdef Radar_Signal_Processor_revA < handle
             detected_velocities = dopgrid(detections(2,:));
             detected_ranges = rnggrid(detections(1,:));
             
-            %DBSCAN Clustering
-            idx = dbscan(detections.',obj.Epsilon,obj.minpts);
+            
         
             %estimate the range and the velocities
-            obj.range_estimates(obj.Radar.current_frame,:) = obj.RangeEstimator(resp,rnggrid,detections,idx.');
-            obj.velocity_estimates(obj.Radar.current_frame,:) = obj.DopplerEstimator(resp,dopgrid,detections,idx.');
-            
-            %plot the range-doppler and clustering responses if the
-            %capture_movies flag is set
-            if obj.capture_movies
-                %plot range doppler
-                plotResponse(obj.RangeDopplerResponse,obj.radar_cube);
-                drawnow
-                obj.F_rngdop(obj.Radar.current_frame) = getframe(gcf);
+            if ~isempty(detections)
 
-                %plot the clusters
-                gscatter(detected_velocities,detected_ranges,idx);
-                axis([-1 * obj.Radar.V_Max_m_per_s, obj.Radar.V_Max_m_per_s, 0,obj.Radar.Range_Max_m]);
-                drawnow
-                obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
+                %DBSCAN Clustering
+                idx = dbscan(detections.',obj.Epsilon,obj.minpts);
+
+                obj.range_estimates(obj.Radar.current_frame,:) = obj.RangeEstimator(resp,rnggrid,detections,idx.');
+                obj.velocity_estimates(obj.Radar.current_frame,:) = obj.DopplerEstimator(resp,dopgrid,detections,idx.');
+                
+                %plot the range-doppler and clustering responses if the
+                %capture_movies flag is set
+                if obj.capture_movies
+                    %plot range doppler
+                    plotResponse(obj.RangeDopplerResponse,obj.radar_cube);
+                    drawnow
+                    obj.F_rngdop(obj.Radar.current_frame) = getframe(gcf);
+    
+                    %plot the clusters
+                    gscatter(detected_velocities,detected_ranges,idx);
+                    axis([-1 * obj.Radar.V_Max_m_per_s, obj.Radar.V_Max_m_per_s, 0,obj.Radar.Range_Max_m]);
+                    drawnow
+                    obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
+                end
+            else
+                obj.range_estimates(obj.Radar.current_frame,:) = NaN(1,obj.NumEstimates_rng);
+                obj.velocity_estimates(obj.Radar.current_frame,:) = NaN(1,obj.NumEstimates_dplr);
             end
-
-            
-        
-            
         end
     
         function play_range_doppler_movie(obj)
