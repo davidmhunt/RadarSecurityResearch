@@ -86,7 +86,7 @@ classdef Subsystem_spectrum_sensing < handle
             obj.FMCW_sample_rate_Msps = FMCW_sample_rate_Msps;
 
             %initialize rx_buffers for energy detection
-            obj.configure_rx_buffers(obj.FMCW_sample_rate_Msps,5); %specify 5ms of capture for noise computation
+            obj.configure_rx_buffers(obj.FMCW_sample_rate_Msps,15); %specify 5ms of capture for noise computation
             obj.state = "Measuring Noise"; 
 
             %initialize the remaining parameters
@@ -155,7 +155,7 @@ classdef Subsystem_spectrum_sensing < handle
             %specify an amount (in dB) that a received signal must be
             %greater than the noise level, before the sensing subsystem
             %starts to record samples
-            obj.detection_params.threshold_level = 7;
+            obj.detection_params.threshold_level = 3;
         end
        
         function initialize_timing_params(obj,min_processing_time_ms)
