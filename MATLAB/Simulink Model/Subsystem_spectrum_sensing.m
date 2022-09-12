@@ -4,6 +4,11 @@ classdef Subsystem_spectrum_sensing < handle
 
     properties
         
+        %variable to link the spectrum sensing object to its respective
+        %attacker object
+        Attacker
+
+        %parameter to keep track of the sampling rate
         FMCW_sample_rate_Msps
 
         %variable to track the current state
@@ -69,8 +74,8 @@ classdef Subsystem_spectrum_sensing < handle
     end
 
     methods
-        function obj = Subsystem_spectrum_sensing()
-
+        function obj = Subsystem_spectrum_sensing(Attacker)
+            obj.Attacker = Attacker;
         end
 
         function initialize_spectrum_sensing_parameters(obj,FMCW_sample_rate_Msps)
@@ -328,6 +333,13 @@ classdef Subsystem_spectrum_sensing < handle
 
         %functions for processing the received signal
         function receive_signal(obj,signal)
+            %{
+                Purpose: simulate the spectrum sensing subsystem receiving
+                    the signal from the victim radar (already amplified by
+                    the attacker's receiver)
+                Inputs: the raw received signal (from the receiver of the
+                    sensing subsystem)
+            %}
             import_complete = false;
             next_signal_index = 1;
 
@@ -356,6 +368,11 @@ classdef Subsystem_spectrum_sensing < handle
                             obj.state = "Sampling Chirp";
                             obj.detection_start_time = ((obj.num_samples_streamed - 2*obj.rx_buffer_params.samples_per_buffer)...
                                 / (obj.FMCW_sample_rate_Msps * 1e6)) * 1e6; %convert to us
+
+                            %update the start time by factoring in the
+                            %distance that the signal propogated
+                            distance_delay = range2time(obj.Attacker.current_victim_pos,physconst("LightSpeed"))/2 * 1e6;
+                            obj.detection_start_time = obj.detection_start_time - distance_delay;
                         end
 
                     case "Sampling Chirp"
@@ -366,6 +383,7 @@ classdef Subsystem_spectrum_sensing < handle
                         if obj.rx_buffer_params.buffer_full
                             %process the sampled signal
                             obj.process_sampled_signal();
+                            obj.send_victim_parameters_to_attack_subsystem();
                             %change the state to "processing" to simulate
                             %needing to wait for a certain amount of time
                             obj.state = "Processing";
@@ -633,7 +651,7 @@ classdef Subsystem_spectrum_sensing < handle
             %spectogram, continue with the rest of the program
             if ~isempty(obj.generated_spectogram)
                 obj.compute_detected_times_and_frequencies(obj.spectogram_points);
-                obj.compute_clusters();
+                obj.compute_clusters_simplified();
                 obj.fit_linear_model();
                 obj.compute_victim_parameters();
             end
@@ -745,11 +763,77 @@ classdef Subsystem_spectrum_sensing < handle
         
         function compute_clusters(obj)
             %{
+                ARCHIVED FUNCTION - NO LONGER USED
                 Purpose: performs the DBSCAN algorithm to identify each
                 individual chirp
             %}
 
             [obj.idx,obj.corepts] = dbscan([obj.detected_times.',obj.detected_frequencies.'],10,2);
+        end
+
+        function compute_clusters_simplified(obj)
+            %{
+                Purpose: performs the DBSCAN algorithm to identify each
+                individual chirp
+            %}
+
+            %initialize the idx and corepts outputs
+            num_points = size(obj.detected_times,2);
+            obj.idx = zeros(num_points,1);
+            obj.corepts = zeros(num_points,1);
+
+            %initialize clustering parameters
+            min_pts_per_chirp = 5;
+
+            %progress through each point
+            chirp = 1;
+            
+            %declare support variables
+            chirp_start_idx = 1;
+            num_points_in_chirp = 1; %initialized to one because we start on the 2nd points
+
+            for i = 2:num_points
+                %determine if the current point is part of a new chirp or
+                %not
+                if(obj.detected_frequencies(i) - obj.detected_frequencies(i-1) > 0)
+                    %part of the current chirp
+                    num_points_in_chirp = num_points_in_chirp + 1;
+                else
+                    %part of a new chirp, make sure there are enough points
+                    %to classify it as a new chirp
+                    if num_points_in_chirp >= min_pts_per_chirp
+                        %update the output arrays
+                        obj.idx(chirp_start_idx:i-1) = chirp;
+                        obj.corepts(chirp_start_idx:i-1) = 1;
+
+                        %reset support variables for tracking new chirp
+                        chirp_start_idx = i;
+                        num_points_in_chirp = 1;
+                        chirp = chirp + 1;
+                    else
+                        %update the output arrays to specify that points
+                        %aren't a chirp
+                        obj.idx(chirp_start_idx:i-1) = -1;
+                        obj.corepts(chirp_start_idx:i-1) = 0;
+
+                        %reset support variables for tracking new chirp
+                        chirp_start_idx = i;
+                        num_points_in_chirp = 1;
+                        %don't update the chirp number
+                    end
+                end
+            end
+            %check the last chirp
+            if num_points_in_chirp >= min_pts_per_chirp
+                %update the output arrays
+                obj.idx(chirp_start_idx:end) = chirp;
+                obj.corepts(chirp_start_idx:end) = 1;
+            else
+                %update the output arrays to specify that points
+                %aren't a chirp
+                obj.idx(chirp_start_idx:end) = -1;
+                obj.corepts(chirp_start_idx:end) = 0;
+            end
         end
         
         function fit_linear_model(obj)
@@ -849,7 +933,36 @@ classdef Subsystem_spectrum_sensing < handle
             obj.chirp_tracking.captured_chirps = zeros(obj.chirp_tracking.captured_chirps_buffer_size, 2);
             obj.chirp_tracking.average_chirp_duration = 0;
             obj.chirp_tracking.average_slope = 0;
+        end
+        
+        function send_victim_parameters_to_attack_subsystem(obj)
+            %{
+                Purpose: sends the victim parameters to the attacking
+                subsystem so that it can then attack the victim
+            %}
 
+            if obj.frame_tracking.num_captured_frames > 3
+                
+                %determine how many chirps the attacker should transmit,
+                %keeping in mind that it may not have captured all of the
+                %chirps
+                chirps_to_compute = 0;
+                num_captured_chirps = obj.frame_tracking.captured_frames(...
+                    obj.frame_tracking.num_captured_frames,2);
+                if num_captured_chirps > 32
+                    chirps_to_compute = 256;
+                else
+                    chirps_to_compute = num_captured_chirps;
+                end
+                
+                %send information to the attacking subsystem
+                obj.Attacker.Subsystem_attacking.compute_calculated_values(...
+                    obj.frame_tracking.average_chirp_duration, ...
+                    obj.frame_tracking.average_slope,...
+                    obj.frame_tracking.average_frame_duration * 1e-3, ...
+                    chirps_to_compute)
+                obj.Attacker.Subsystem_attacking.compute_next_emulated_chirps();
+            end
         end
         
         %debugger functions - These should eventually get updated, but for

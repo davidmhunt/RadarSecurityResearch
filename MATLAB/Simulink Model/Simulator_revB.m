@@ -31,7 +31,13 @@ classdef Simulator_revB < handle
 
         %variables used in computing the FMCW simulation - MOVE TO PRIVATE
         channel_target          %phased.FreeSpace object for a target
-        channel_attacker        %phased.FreeSpace object for an attacker
+
+        %phased.FreeSpace objects for the attacker's spectrum sensing and
+        %attacking subsystems
+        channel_attacker
+
+        %phased.FreeSpace object for the attacker's tracking subsystem
+        channel_attacker_tracking
 
         %the following properties are used as support parameters when
         %simulating the interaction between various parts of the FMCW
@@ -111,15 +117,22 @@ classdef Simulator_revB < handle
 
             obj.channel_attacker = phased.FreeSpace( ...
                 "PropagationSpeed",physconst('LightSpeed'), ...
-                "OperatingFrequency", obj.Victim.StartFrequency_GHz * 1e9, ...
-                "SampleRate", obj.Victim.FMCW_sampling_rate_Hz, ...
+                "OperatingFrequency", obj.Attacker.Subsystem_tracking.StartFrequency_GHz * 1e9, ...
+                "SampleRate", obj.Attacker.Subsystem_tracking.FMCW_sampling_rate_Hz, ...
                 "TwoWayPropagation", false);
+
+            obj.channel_attacker_tracking = phased.FreeSpace( ...
+                "PropagationSpeed",physconst('LightSpeed'), ...
+                "OperatingFrequency", obj.Attacker.Subsystem_tracking.StartFrequency_GHz * 1e9, ...
+                "SampleRate", obj.Attacker.Subsystem_tracking.FMCW_sampling_rate_Hz, ...
+                "TwoWayPropagation", true);
             
             
             %configure transmitters, receivers, lowpass filters, and CFAR
             %detectors
 
             obj.Attacker.Subsystem_tracking.configure_transmitter_and_receiver();
+            obj.Attacker.configure_transmitter_and_receiver(); %tx and rx for spectrum sensing and attacking modules
             obj.Attacker.Subsystem_tracking.configure_radar_signal_processor();
 
             obj.Victim.configure_transmitter_and_receiver();
