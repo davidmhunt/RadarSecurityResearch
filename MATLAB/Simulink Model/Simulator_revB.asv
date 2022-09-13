@@ -194,7 +194,7 @@ classdef Simulator_revB < handle
             %configure the simulated target
             position_m = [23;0;0];
             velocity_meters_per_s = [10;0;0];
-            rcs_sq_meters = db2pow(min(10*log10(norm(position_m))+5,20));
+            rcs_sq_meters = db2pow(min(5*log10(norm(position_m))+5,20));
             operating_frequency_Hz = obj.Victim.StartFrequency_GHz * 1e9;
 
             obj.SimulatedTarget = Target_revA(position_m,velocity_meters_per_s,rcs_sq_meters,operating_frequency_Hz);
