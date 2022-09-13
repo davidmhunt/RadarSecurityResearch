@@ -53,6 +53,17 @@ classdef Subsystem_attacking  < handle
         % "velocity spoof - similar velocity",
         % "range spoof - similar slope")
         attack_mode
+        
+        %variables to support attacker streaming operations
+        %variable to track the current state
+        state % potential states: "Waiting for Configuration", "Waiting for Attack Start", "Attacking"
+        configuration_loaded
+
+        %structure to keep track of any future frame start times
+        attack_streaming_params
+        
+        %variables to keep track of timing
+        num_samples_streamed %specifies the number of samples that have previously been streamed
 
     end
 
@@ -74,7 +85,13 @@ classdef Subsystem_attacking  < handle
             
             %set the first frame to zero
             obj.frame = 0;
-            
+
+            %initialize streaming configurations
+            obj.configuration_loaded = false;
+            obj.state = "Waiting for Configuration";
+            obj.num_samples_streamed = 0;
+
+            obj.init_attack_streaming_params();
         end
 
         function set_attacker_parameters(obj, desired_range_m, desired_velocity_m_s, attack_mode)
@@ -93,6 +110,18 @@ classdef Subsystem_attacking  < handle
             obj.attack_mode = attack_mode;
         end
 
+        function init_attack_streaming_params(obj)
+            %{
+                Purpose: initializes the attack streaming parameters
+            %}
+
+            obj.attack_streaming_params.frame_start_times_ms = zeros(128,1); %initialize to holdup to 128 future frames
+            obj.attack_streaming_params.frame_start_times_samples = zeros(128,1);
+            obj.attack_streaming_params.current_frame = 1;
+            obj.attack_streaming_params.next_frame_to_load = 1;
+            obj.attack_streaming_params.frames_loaded = false;
+        end
+
         function compute_calculated_values(obj, chirp_cycle_time_us, frequency_slope_MHz_us,estimated_frame_periodicity_ms, num_chirps)
             %{
                 Purpose: computes all of the calculated parameters for the
@@ -103,6 +132,9 @@ classdef Subsystem_attacking  < handle
                     frequency_slope_MHz_us: the estimated chirp slope in
                         MHz/us
             %}
+            
+            %specify that a configuration is now loaded:
+            obj.configuration_loaded = true;
             
             %determine needed parameters
             fmcw_sampling_period_s = 1/(obj.Attacker.FMCW_sample_rate_Msps * 1e6);
@@ -138,6 +170,28 @@ classdef Subsystem_attacking  < handle
             else
                 obj.additional_phase_variation = zeros(obj.chirps_to_compute,1);
             end
+        end
+
+        function load_frame_start_time(obj,frame_start_time_ms)
+            %{
+                Purpose: load the time of a future frame start time into
+                the attack_streaming_params.frame_start_times array
+                Inputs: 
+                    frame_start_time_ms: the start time that a future frame
+                        will occur at
+            %}
+            next_frame_to_load = obj.attack_streaming_params.next_frame_to_load;
+
+            %save the time that the next frame will start at
+            obj.attack_streaming_params.frame_start_times_ms(next_frame_to_load) = frame_start_time_ms;
+
+            %compute the sample index that the next frame will start at
+            sample_index = frame_start_time_ms * 1e-3 * (obj.Attacker.FMCW_sample_rate_Msps * 1e6);
+            obj.attack_streaming_params.frame_start_times_samples(next_frame_to_load) = sample_index;
+            
+            %%set the frames_loaded variable to be true
+            obj.attack_streaming_params.frames_loaded = true;
+            obj.attack_streaming_params.next_frame_to_load = next_frame_to_load + 1;
         end
 
         function calculate_victim_parameters(obj)
@@ -302,6 +356,94 @@ classdef Subsystem_attacking  < handle
                             zeros(int32(-1 * num_samples_delay),1)];
                 end
             end
+        end
+
+        function sig = transmit_signal(obj,num_samples)
+            %{
+                Purpose: send out the specified number of samples
+                Inputs: 
+                    num_samples: the number of samples to send out
+                Outputs:
+                    sig: the output signal to send
+            %}
+            sig_assembled = false;
+            next_signal_index = 1;
+
+            %initialize the output signal
+            sig = zeros(num_samples,1);
+
+            while ~sig_assembled
+                current_signal_index = next_signal_index;
+                switch obj.state
+                    case "Waiting for Configuration"
+                        %check if a configuration has now been loaded
+                        if obj.configuration_loaded == true
+                            obj.state = "Waiting for Attack Start";
+                        else
+                            %simulate waiting for the configuration
+                        [generated_sig,sig_assembled,next_signal_index] = ...
+                            obj.simulate_waiting_for_config(next_signal_index,num_samples);
+                        
+                        %add the generated signal to the output
+                        sig(current_signal_index:next_signal_index - 1) = generated_sig;
+                        end
+                    case "Waiting for Attack Start" 
+                    case "Attacking"
+                    otherwise
+                end
+            end
+        end
+
+        function [sig,sig_assembled,next_signal_index] = simulate_waiting_for_config(...
+                obj,next_signal_index,num_samples)
+            %{
+                Purpose: simulates the attacker being in a state where is
+                    is waiting for a configuration (i.e: doesn't have anything
+                    from the sensing subsystem yet)
+                Inputs:
+                    next_signal_index: the next signal index where the
+                        samples will be added
+                    num_samples: the final number of samples that is
+                        desired for the transmit function
+                Outputs:
+                    sig: the generated signal
+                    sig_assembled: indicator for if the signal to transmit
+                        is now fully assembled
+                    next_signal_index: the next index for a signal
+            %}
+            
+            %determine how many samples have yet to be sent
+            unsent_samples = num_samples - next_signal_index;
+
+            %update the number of samples streamed variable
+            obj.num_samples_streamed = obj.num_samples_streamed + unsent_samples + 1;
+
+            %create the output signal
+            sig = zeros(unsent_samples + 1,1);
+
+            %specify that the signal is now assembled
+            sig_assembled = true;
+            next_signal_index = next_signal_index + unsent_samples + 1;
+        end
+
+        function [sig,sig_assembled,next_signal_index] = simulate_waiting_for_attack_start(...
+                obj,next_signal_index,num_samples)
+            %{
+                Purpose: simulates the attacker being in a state where is
+                    is waiting for a configuration (i.e: doesn't have anything
+                    from the sensing subsystem yet)
+                Inputs:
+                    next_signal_index: the next signal index where the
+                        samples will be added
+                    num_samples: the final number of samples that is
+                        desired for the transmit function
+                Outputs:
+                    sig: the generated signal
+                    sig_assembled: indicator for if the signal to transmit
+                        is now fully assembled
+                    next_signal_index: the next index for a signal
+            %}
+            
         end
 
         function Tx_sig_attacker = get_transmitted_attacker_chirp(obj,chirp)

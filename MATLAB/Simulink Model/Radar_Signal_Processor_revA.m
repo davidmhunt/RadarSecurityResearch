@@ -389,6 +389,18 @@ classdef Radar_Signal_Processor_revA < handle
             else
                 obj.range_estimates(obj.Radar.current_frame,:) = NaN(1,obj.NumEstimates_rng);
                 obj.velocity_estimates(obj.Radar.current_frame,:) = NaN(1,obj.NumEstimates_dplr);
+                
+                if obj.capture_movies
+                    %plot range doppler
+                    plotResponse(obj.RangeDopplerResponse,obj.radar_cube);
+                    drawnow
+                    obj.F_rngdop(obj.Radar.current_frame) = getframe(gcf);
+    
+                    %plot the clusters
+                    clf;
+                    drawnow;
+                    obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
+                end
             end
         end
     

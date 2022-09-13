@@ -183,5 +183,21 @@ classdef Attacker_revB < handle
             %}
             obj.Subsystem_spectrum_sensing.receive_signal(obj.receiver(sig));
         end
+
+        function sig = transmit_attack(obj,num_samples)
+            %{
+                Purpose: get the attack signal (if there is one) from the
+                    attacking subsystem and amplify it using the attacker's
+                    transmitter
+                Inputs:
+                    num_samples: the number of samples for the attacker to
+                        send out
+                Outputs:
+                    sig: the attacker's signal from the
+                        output of the attacker's transmitter
+            %}
+
+            sig = obj.transmitter(obj.Subsystem_attacking.transmit_signal(num_samples));
+        end
     end
 end

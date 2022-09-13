@@ -962,6 +962,10 @@ classdef Subsystem_spectrum_sensing < handle
                     obj.frame_tracking.average_frame_duration * 1e-3, ...
                     chirps_to_compute)
                 obj.Attacker.Subsystem_attacking.compute_next_emulated_chirps();
+
+                %get the time of the next frame
+                next_frame_start_ms = obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,7) * 1e-3;
+                obj.Attacker.Subsystem_attacking.load_frame_start_time(next_frame_start_ms);
             end
         end
         
