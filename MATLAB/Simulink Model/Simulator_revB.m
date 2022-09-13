@@ -31,7 +31,13 @@ classdef Simulator_revB < handle
 
         %variables used in computing the FMCW simulation - MOVE TO PRIVATE
         channel_target          %phased.FreeSpace object for a target
-        channel_attacker        %phased.FreeSpace object for an attacker
+
+        %phased.FreeSpace objects for the attacker's spectrum sensing and
+        %attacking subsystems
+        channel_attacker
+
+        %phased.FreeSpace object for the attacker's tracking subsystem
+        channel_attacker_tracking
 
         %the following properties are used as support parameters when
         %simulating the interaction between various parts of the FMCW
@@ -111,15 +117,22 @@ classdef Simulator_revB < handle
 
             obj.channel_attacker = phased.FreeSpace( ...
                 "PropagationSpeed",physconst('LightSpeed'), ...
-                "OperatingFrequency", obj.Victim.StartFrequency_GHz * 1e9, ...
-                "SampleRate", obj.Victim.FMCW_sampling_rate_Hz, ...
+                "OperatingFrequency", obj.Attacker.Subsystem_tracking.StartFrequency_GHz * 1e9, ...
+                "SampleRate", obj.Attacker.Subsystem_tracking.FMCW_sampling_rate_Hz, ...
                 "TwoWayPropagation", false);
+
+            obj.channel_attacker_tracking = phased.FreeSpace( ...
+                "PropagationSpeed",physconst('LightSpeed'), ...
+                "OperatingFrequency", obj.Attacker.Subsystem_tracking.StartFrequency_GHz * 1e9, ...
+                "SampleRate", obj.Attacker.Subsystem_tracking.FMCW_sampling_rate_Hz, ...
+                "TwoWayPropagation", true);
             
             
             %configure transmitters, receivers, lowpass filters, and CFAR
             %detectors
 
             obj.Attacker.Subsystem_tracking.configure_transmitter_and_receiver();
+            obj.Attacker.configure_transmitter_and_receiver(); %tx and rx for spectrum sensing and attacking modules
             obj.Attacker.Subsystem_tracking.configure_radar_signal_processor();
 
             obj.Victim.configure_transmitter_and_receiver();
@@ -410,12 +423,23 @@ classdef Simulator_revB < handle
                 Inputs:
                     frames_to_compute: the number of frames to simulate
             %}
+                
+                noise_power_dBm = -174 + 10 * log10(obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6);
 
+                status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
+                progress_bar = waitbar(0,status,"Name","Running Simulation");
 
                 while obj.Victim.current_frame <= frames_to_compute
-                
+                    
+                    %update the progress_bar
+                    status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
+                    waitbar(obj.Victim.current_frame/frames_to_compute,progress_bar,status);
+
                     %get the transmitted signal from the radar
                     sig = obj.Victim.get_radar_tx_signal();
+                
+                    %compute the noise signal
+                    noise_sig = wgn(size(sig,1),1,noise_power_dBm - 30,"complex");
                 
                     %update positions
                     [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = ...
@@ -427,8 +451,66 @@ classdef Simulator_revB < handle
                     sig = obj.SimulatedTarget.radar_target(sig);
             
                     %have the radar receive the signal
-                    obj.Victim.receive_signal(sig);
+                    obj.Victim.receive_signal(noise_sig + sig);
                 end
+        end
+    
+        function run_simulation_with_attack(obj,frames_to_compute)
+            %{
+                Purpose: runs the simulation (with an attacker) for the
+                    given number of frames
+                Inputs:
+                    frames_to_compute: the number of frames to simulate
+            %}
+            
+            noise_power_dBm = -174 + 10 * log10(obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6);
+            
+            status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
+            progress_bar = waitbar(0,status,"Name","Running Simulation");
+            
+            while obj.Victim.current_frame <= frames_to_compute
+                
+                %update the progress_bar
+                status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
+                waitbar(obj.Victim.current_frame/frames_to_compute,progress_bar,status);
+            
+                %get the transmitted signal from the radar
+                sig = obj.Victim.get_radar_tx_signal();
+                
+                %compute the noise signal
+                noise_sig = wgn(size(sig_target,1),1,noise_power_dBm - 30,"complex");
+                
+                %update positions
+                [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = ...
+                    obj.FMCW_determine_positions_and_velocities(...
+                    obj.Victim.current_frame,obj.Victim.num_samples_sent);
+                
+                %propagate the signal and reflect it off of the target
+                sig_target = obj.channel_target(sig,victim_pos,tgt_pos,victim_vel,tgt_vel);
+                sig_target = obj.SimulatedTarget.radar_target(sig_target);
+                
+                %simulate attacker behavior
+            
+                    %attacker determines relative position and velocity of the victim
+                    obj.Attacker.update_victim_pos_and_velocity(attacker_pos,victim_pos,attacker_vel, victim_vel);
+                
+                    sig_attacker_sensing = noise_sig + sig;
+                
+                    %propogate the signal
+                    sig_attacker_sensing = obj.channel_attacker(sig_attacker_sensing,victim_pos,attacker_pos,victim_vel,attacker_vel);
+            
+                    %receive the signal in the attacker
+                    obj.Attacker.receive_signal(sig_attacker_sensing.');
+            
+                %get the transmitted signal from the attacker
+                sig_attacker_attacking = obj.Attacker.transmit_attack(size(sig,1));
+            
+                sig_attacker_attacking = obj.channel_attacker(sig_attacker_attacking,victim_pos,attacker_pos,victim_vel,attacker_vel);
+            
+                %have the radar receive the signal
+
+                obj.Victim.receive_signal(sig_target + sig_attacker_attacking + noise_sig);
+            end
         end
     end
 
