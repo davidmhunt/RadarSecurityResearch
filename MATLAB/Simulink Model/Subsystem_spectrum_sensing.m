@@ -186,11 +186,15 @@ classdef Subsystem_spectrum_sensing < handle
                         spectrum sensing module in MSPS
             %}
 
-            obj.spectogram_params.fft_size = 64;
+            
             
             obj.spectogram_params.freq_sampling_period_us = 2; %sample frequency every x us 
             obj.spectogram_params.num_samples_per_sampling_window = ...
                 ceil(obj.spectogram_params.freq_sampling_period_us * FMCW_sample_rate_Msps);
+            
+            %scale the fft size to be as big of a power of 2 as possible
+            obj.spectogram_params.fft_size = 2^(nextpow2(...
+                obj.spectogram_params.num_samples_per_sampling_window) - 1);
 
             %since the frequency sampling period may not have been
             %perfectly divisible by the FMCW sampling rate, adjust it so
@@ -907,18 +911,29 @@ classdef Subsystem_spectrum_sensing < handle
                 obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,4) = obj.chirp_tracking.average_chirp_duration;                       % average_chirp_duration
                 obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) = obj.chirp_tracking.captured_chirps(1,1);                
                 
+                %if the attacking subsystem now has a configuration loaded,
+                %perform precise timing adjustment on the frame start time
+                if obj.Attacker.Subsystem_attacking.configuration_loaded
+                    obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) =...
+                        obj.compute_precise_chirp_start_time(...
+                        obj.chirp_tracking.captured_chirps(1,1));
+                end
+                
                 %compute the predicted time for the next chirp
                 %to occur on.
                 if obj.frame_tracking.num_captured_frames > 1
                     %compute frame duration
-                    obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,1) = obj.detected_chirps(1,1) - ...
+                    obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,1) =...
+                        obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) - ...
                         obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames - 1,5);
                     %compute the average frame duration
                     obj.frame_tracking.average_frame_duration = sum(obj.frame_tracking.captured_frames(:,1)) / (obj.frame_tracking.num_captured_frames - 1);
                     %predict next frame
                     obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,7) = ...
-                                obj.chirp_tracking.captured_chirps(1,1) + obj.frame_tracking.average_frame_duration;
+                                obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5)...
+                                + obj.frame_tracking.average_frame_duration;
                 end
+                    
             %compute the overall averages for chirp slope
             %and duration
             obj.frame_tracking.average_chirp_duration =  ...
@@ -961,12 +976,77 @@ classdef Subsystem_spectrum_sensing < handle
                     obj.frame_tracking.average_slope,...
                     obj.frame_tracking.average_frame_duration * 1e-3, ...
                     chirps_to_compute)
-                obj.Attacker.Subsystem_attacking.compute_next_emulated_chirps();
 
                 %get the time of the next frame
                 next_frame_start_ms = obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,7) * 1e-3;
                 obj.Attacker.Subsystem_attacking.load_frame_start_time(next_frame_start_ms);
             end
+        end
+        
+        function precise_start_time = compute_precise_chirp_start_time(...
+                obj,estimated_start_time)
+            %{
+                Purpose: for the given set of detected chirps, computes a
+                    more precise chirp start time using a cross-correlation
+                    operation and returns a more precise start time for the
+                    chirp
+                Inputs:
+                    estimated_start_time: the estimated start time of the
+                        desired chirp
+                    chirp: the number of the chirp to obtain precise timing
+                        on
+                Outputs:
+                    precise_start_time: the more precise start time for the
+                    specified chirp in us
+                Note: Function requires the use of the chirp_tracking
+                object and so must be called while this is populated
+            %}
+            
+            %full window size to use for cross-correlation
+            observation_window_time_us = 10;
+            observation_window_samples = 2 * ceil(0.5 * observation_window_time_us *...
+                obj.FMCW_sample_rate_Msps); %make sure it is an even number
+            
+            time_before_start_us = 1;
+            time_before_start_samples = ceil(time_before_start_us *...
+                obj.FMCW_sample_rate_Msps);
+
+            %obtain a specific sample for the start of the chirp that we
+            %seek to estimate
+            chirp_start_time = estimated_start_time;
+
+            chirp_start_sample = round((chirp_start_time - obj.detection_start_time) ...
+                * obj.FMCW_sample_rate_Msps);
+
+            start_index = int32(chirp_start_sample - time_before_start_samples);
+            end_index = int32(chirp_start_sample + (observation_window_samples - time_before_start_samples));
+
+            estimated_chirp = obj.received_signal(start_index:end_index);
+
+            %obtain the same-sized sample of the already computed estimated
+            %chirp
+            padded_zeros = zeros(time_before_start_samples,1);
+            end_index = int32(observation_window_samples - time_before_start_samples);
+            computed_chirp = [padded_zeros;...
+                obj.Attacker.Subsystem_attacking.emulated_chirps(1:end_index + 1,1)];
+
+
+            %perform cross correlation and convert into a timing offset
+            [C,lag] = xcorr(estimated_chirp,computed_chirp,"normalized");
+%             clf;
+%             plot(lag,abs(C));
+%             xlabel("Delay in samples")
+%             title("Cross Correlation")
+
+            [M,I] = max(abs(C));
+            delay_samps = lag(I);
+
+            delay_us = delay_samps / obj.FMCW_sample_rate_Msps;
+            
+            precise_start_time_samples = chirp_start_sample + delay_samps;
+            precise_start_time = precise_start_time_samples / ...
+                obj.FMCW_sample_rate_Msps + obj.detection_start_time - 0.085;
+            
         end
         
         %debugger functions - These should eventually get updated, but for

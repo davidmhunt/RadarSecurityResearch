@@ -478,7 +478,7 @@ classdef Simulator_revB < handle
                 sig = obj.Victim.get_radar_tx_signal();
                 
                 %compute the noise signal
-                noise_sig = wgn(size(sig_target,1),1,noise_power_dBm - 30,"complex");
+                noise_sig = wgn(size(sig,1),1,noise_power_dBm - 30,"complex");
                 
                 %update positions
                 [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = ...
