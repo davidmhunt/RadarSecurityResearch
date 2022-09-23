@@ -1,14 +1,9 @@
+% Class to house performance functions, which evaluate the performance of
+% the radar's estimations of range and velocity (in progress)
+
 classdef performance_functions
-
-    % is the target being detected 
-    % error if it is
-    % additional detection if not there 
     methods(Static)
-        function performance_evaluation_functions(frames_to_compute, range_estimates)
-            p_detection(frames_to_compute, range_estimates)
-
-        end
-
+        % function to compute the range percent error (by frame)
         function [range_errors] = range_percent_error(range_actual, range_estimates)
            valid_range_column = range_estimates(:,1);
             range_errors = zeros(size(valid_range_column));
@@ -23,6 +18,8 @@ classdef performance_functions
             end
         end
 
+        % function to compute the actual distance b/t actual target and 
+        % victim
         function [range_actual] = actual_ranges(frames_to_compute, frame_duration, target_velocity, victim_velocity, target_start, victim_start)
             range_actual = zeros(size(frames_to_compute));
             for idx = 1: frames_to_compute
@@ -30,6 +27,8 @@ classdef performance_functions
             end
         end
 
+        % function to determine if an object has been detected in each
+        % frame
         function [detected] = detection(frames_to_compute, range_estimates)
             valid_range_column = range_estimates(:,1);
             detected = zeros(size(frames_to_compute));
@@ -39,7 +38,9 @@ classdef performance_functions
                  end
              end
         end
-
+        
+        % function to determine the actual relative velocity of the target 
+        % for each frame
         function [velocity_actual] = actual_velocities(frames_to_compute, target_velocity, victim_velocity)
             velocity_actual = zeros(size(frames_to_compute));
             for idx = 1: frames_to_compute
@@ -47,18 +48,16 @@ classdef performance_functions
              end
         end
 
-
+        % function to determine the velocity percent error (per frame)
         function [velocity_errors] = velocity_percent_error(velocity_estimates, velocity_actual)
             valid_velocity_column = velocity_estimates(:,1);
             velocity_errors = zeros(size(valid_velocity_column));
-                
             for idx = 1: size(valid_velocity_column)
                 if ~(isnan(valid_velocity_column(idx)))
                     error_velocity = abs(valid_velocity_column(idx) - velocity_actual(idx));
                     frame_error =  error_velocity / abs(velocity_actual(idx)) * 100;
                     velocity_errors(idx) = frame_error;     
                 end
-   
             end
         end
     end
