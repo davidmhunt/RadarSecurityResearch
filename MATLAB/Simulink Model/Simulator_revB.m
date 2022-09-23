@@ -205,8 +205,8 @@ classdef Simulator_revB < handle
             %}
 
             %configure the simulated target
-            position_m = [23;0;0];
-            velocity_meters_per_s = [10;0;0];
+            position_m = [200;0;0];
+            velocity_meters_per_s = [25;0;0];
             rcs_sq_meters = db2pow(min(10*log10(norm(position_m))+5,20));
             operating_frequency_Hz = obj.Victim.StartFrequency_GHz * 1e9;
 
@@ -219,7 +219,7 @@ classdef Simulator_revB < handle
                 victim positions and velocities
             %}
             obj.Victim.position_m = [0;0;0];
-            obj.Victim.velocity_m_per_s = [7;0;0];
+            obj.Victim.velocity_m_per_s = [2;0;0];
             obj.Victim.platform = phased.Platform( ...
                 'InitialPosition',obj.Victim.position_m, ...
                 'Velocity',obj.Victim.velocity_m_per_s);
