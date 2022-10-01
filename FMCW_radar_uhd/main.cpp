@@ -25,6 +25,7 @@
 #include "src/JSONHandler.hpp"
 #include "src/USRPHandler.hpp"
 #include "src/BufferHandler.hpp"
+#include "src/RADAR.hpp"
 #include "src/FMCWHandler.hpp"
 
 //set namespaces
@@ -32,56 +33,79 @@ using json = nlohmann::json;
 using USRPHandler_namespace::USRPHandler;
 using Buffers::Buffer;
 using Buffers::Buffer_1D;
-using FMCW_namespace::FMCW;
+using RADAR_namespace::RADAR;
+using FMCWHandler_namespace::FMCWHandler;
 
 int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
-    std::string config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd.json";
-    //std::string config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_highbw.json";
-    //std::string config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_highvres.json";
-    //std::string config_file = "/home/zq40/Desktop/David_Radar/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_100MHzBw.json";
+    //radar configuration
+    std::string radar_config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd.json";
+    //std::string radar_config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_highbw.json";
+    //std::string radar_config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_highvres.json";
+    //std::string radar_config_file = "/home/zq40/Desktop/David_Radar/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_100MHzBw.json";
     
+    //attacker configuration
+    std::string attack_config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_attack.json";
+
 
     //read the config file
     std::cout << "\nMAIN: Parsing JSON\n";
-    json config = JSONHandler::parse_JSON(config_file,false);
+    json radar_config = JSONHandler::parse_JSON(radar_config_file,false);
+    json attack_config = JSONHandler::parse_JSON(attack_config_file,false);
 
-    //initialize the FMCW device
-    //determine that there is a valid cpu format and type
-    if(config["USRPSettings"]["Multi-USRP"]["type"].is_null() ||
-        config["USRPSettings"]["Multi-USRP"]["cpufmt"].is_null()){
-            std::cerr << "MAIN: type or cpu format is not specified in config file" <<std::endl;
+
+    //check to make sure that the radar and attacker have a valid config format:
+    if(radar_config["USRPSettings"]["Multi-USRP"]["type"].is_null() ||
+        radar_config["USRPSettings"]["Multi-USRP"]["cpufmt"].is_null() ||
+        attack_config["USRPSettings"]["Multi-USRP"]["type"].is_null() ||
+        attack_config["USRPSettings"]["Multi-USRP"]["cpufmt"].is_null()){
+            std::cerr << "MAIN: type or cpu format is not specified in radar or attack config file" <<std::endl;
             return EXIT_FAILURE;
     }
-    std::string type = config["USRPSettings"]["Multi-USRP"]["type"].get<std::string>();
-    std::string cpufmt = config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>();
+
+
+    //confirm that the radar and attacker have the same type and cpu fmt
+    if(radar_config["USRPSettings"]["Multi-USRP"]["type"].get<std::string>() !=
+        attack_config["USRPSettings"]["Multi-USRP"]["type"].get<std::string>()||
+        radar_config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>() !=
+        radar_config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>()){
+            std::cerr << "MAIN: Attack and Victim cpu or type not the same" <<std::endl;
+            return EXIT_FAILURE;
+    }
+
+    //determine that there is a valid cpu format and type
+    
+    std::string type = radar_config["USRPSettings"]["Multi-USRP"]["type"].get<std::string>();
+    std::string cpufmt = radar_config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>();
 
     
     if (type == "double" && cpufmt == "fc64"){
-        FMCW<std::complex<double>> fmcw_handler(config);
+        FMCWHandler<std::complex<double>> fmcw_handler(radar_config,attack_config,false);
     }
     else if (type == "float" && cpufmt == "fc32")
     {
-        FMCW<std::complex<float>> fmcw_handler(config);
+        FMCWHandler<std::complex<float>> fmcw_handler(radar_config,attack_config,false);
     }
     else if (type == "int16_t" && cpufmt == "sc16")
     {
-        FMCW<std::complex<int16_t>> fmcw_handler(config);
+        FMCWHandler<std::complex<int16_t>> fmcw_handler(radar_config,attack_config,false);
     }
     else if (type == "int8_t" && cpufmt == "sc8")
     {
-        FMCW<std::complex<int8_t>> fmcw_handler(config);
+        FMCWHandler<std::complex<int8_t>> fmcw_handler(radar_config,attack_config,false);
     }
     else{
         std::cerr << "MAIN: type and cpufmt don't match valid combination" << std::endl;
+        return EXIT_FAILURE;
     }
 
+
 /*
-    //configure USRP
-    std::cout << "\nMAIN: Initializing USRP Handler\n";
-    USRPHandler usrp_handler(config);
+    USRPHandler<std::complex<float>> victim(radar_config);
+    USRPHandler<std::complex<float>> attack(attack_config);
+ */   
  
- 
+/* 
     usrp_handler.load_BufferHandler( & buffer_handler);
     
     //stream the frame

@@ -34,7 +34,7 @@
     #include "BufferHandler.hpp"
 
     using json = nlohmann::json;
-    using Buffers::FMCW_Buffer;
+    using Buffers::Buffer_2D;
 
     namespace USRPHandler_namespace {
         
@@ -64,18 +64,12 @@
 
             public:
                 //class variables
-                FMCW_Buffer<data_type> * tx_buffer;
-                FMCW_Buffer<data_type> * rx_buffer;
+                Buffer_2D<data_type> * tx_buffer;
+                Buffer_2D<data_type> * rx_buffer;
                 //usrp device
                 uhd::usrp::multi_usrp::sptr usrp;
                 
-                //FMCW arguments
-                size_t num_frames;
-                double frame_periodicity;
-                
                 //timing arguments
-                double stream_start_time;
-                std::vector<uhd::time_spec_t> frame_start_times;
                 uhd::time_spec_t rx_stream_start_offset;
                 
                 //stream arguments
@@ -89,13 +83,16 @@
                 uhd::rx_metadata_t rx_md;
                 size_t rx_samples_per_buffer;
 
-                
+                //Tx/Rx enabled status
+                bool tx_enabled;
+                bool rx_enabled;
+
                 //json config file
                 json config;
 
         //CLASS FUNCTIONS
             //initialization functions
-
+                
                 /**
                  * @brief Construct a new USRPHandler object
                  * 
@@ -107,6 +104,7 @@
                     init_multi_usrp();
                 }
 
+
                 /**
                  * @brief configure debug settings for the USRP handler
                  * 
@@ -117,7 +115,7 @@
                         std::cout << "USRPHandler::configure_debug: simplified metadata: " << simplified_metadata << std::endl << std::endl;
                     }
                     else{
-                        std::cerr << "USRPHandler::configure_debusg: couldn't find simplified_streamer_metadata in JSON" <<std::endl;
+                        std::cerr << "USRPHandler::configure_debug: couldn't find simplified_streamer_metadata in JSON" <<std::endl;
                     }
                 }
 
@@ -133,12 +131,47 @@
                     uhd::device_addrs_t dev_addrs = uhd::device::find(hint);
                     if (dev_addrs.size() > 0){
                         std::cout << "USRPHandler::find_devices: Number of devices found: " << dev_addrs.size() << "\n";
-                        std::cout << "USRPHandler::find_devices: Device Information: \n" << dev_addrs[0].to_pp_string() <<std::endl;
+                        for (size_t i = 0; i < dev_addrs.size(); i++)
+                        {
+                            std::cout << "USRPHandler::find_devices: Device Information: \n" << dev_addrs[i].to_pp_string() <<std::endl;
+                        }
                     }
                     else{
                         std::cerr << "USRPHandler::find_devices: No devices found\n";
                     }
                     return dev_addrs;
+                }
+
+                uhd::device_addr_t find_device_serial (std::string serial){
+                    uhd::device_addr_t hint;
+                    uhd::device_addr_t device;
+                    hint["serial"] = serial;
+                    uhd::device_addrs_t dev_addrs = uhd::device::find(hint);
+                    if (dev_addrs.size() > 0){
+                        std::cout << "USRPHandler::find_device_serial: Number of devices found: " << dev_addrs.size() << "\n";
+                            std::cout << "USRPHandler::find_device_serial: Device Information: \n" << dev_addrs[0].to_pp_string() <<std::endl;
+                            device = dev_addrs[0];
+                    }
+                    else{
+                        std::cerr << "USRPHandler::find_device_serial: No devices found\n";
+                    }
+                    return device;
+                }
+
+                uhd::device_addr_t find_device_addr (std::string addr){
+                    uhd::device_addr_t hint;
+                    uhd::device_addr_t device;
+                    hint["addr"] = addr;
+                    uhd::device_addrs_t dev_addrs = uhd::device::find(hint);
+                    if (dev_addrs.size() > 0){
+                        std::cout << "USRPHandler::find_device_addr: Number of devices found: " << dev_addrs.size() << "\n";
+                            std::cout << "USRPHandler::find_device_addr: Device Information: \n" << dev_addrs[0].to_pp_string() <<std::endl;
+                            device = dev_addrs[0];
+                    }
+                    else{
+                        std::cerr << "USRPHandler::find_device_addr: No devices found\n";
+                    }
+                    return device;
                 }
 
                 /**
@@ -147,14 +180,34 @@
                  */
                 void create_USRP_device(void){
                      // create a usrp device
-                    if (config["USRPSettings"]["Multi-USRP"]["args"].is_null() == false &&
-                        config["USRPSettings"]["Multi-USRP"]["args"].get<std::string>().empty() == false)
+                    if (config["USRPSettings"]["Multi-USRP"]["use_serial"].is_null() == false &&
+                        config["USRPSettings"]["Multi-USRP"]["use_serial"].get<bool>() == true &&
+                        config["USRPSettings"]["Multi-USRP"]["serial"].is_null() == false &&
+                        config["USRPSettings"]["Multi-USRP"]["serial"].get<std::string>().empty() == false)
                     {
                         
-                        std::string args = config["USRPSettings"]["Multi-USRP"]["args"].get<std::string>();
-                        std::cout << "USRPHandler::create_USRP_device:Creating the usrp device with: " <<  args << std::endl;
-                        usrp = uhd::usrp::multi_usrp::make(args);
+                        std::string serial = config["USRPSettings"]["Multi-USRP"]["serial"].get<std::string>();
+                        std::cout << "USRPHandler::create_USRP_device:Creating the usrp device with serial: " <<  serial << std::endl;
+                        uhd::device_addr_t device = find_device_serial(serial);
+                        
+                        usrp = uhd::usrp::multi_usrp::make(device);
+                        
+                        uhd::dict<std::string, std::string> dev_info = usrp -> get_usrp_tx_info();
                     }
+                    else if (config["USRPSettings"]["Multi-USRP"]["use_addr"].is_null() == false &&
+                        config["USRPSettings"]["Multi-USRP"]["use_addr"].get<bool>() == true &&
+                        config["USRPSettings"]["Multi-USRP"]["addrs"].is_null() == false &&
+                        config["USRPSettings"]["Multi-USRP"]["addrs"].get<std::string>().empty() == false)
+                    {
+                        std::string addr = config["USRPSettings"]["Multi-USRP"]["addrs"].get<std::string>();
+                        std::cout << "USRPHandler::create_USRP_device:Creating the usrp device with addrs: " <<  addr << std::endl;
+                        uhd::device_addr_t device = find_device_serial(addr);
+                        
+                        usrp = uhd::usrp::multi_usrp::make(device);
+                        
+                        uhd::dict<std::string, std::string> dev_info = usrp -> get_usrp_tx_info();
+                    }
+                    
                     else //if no device was specified, search for and use the first USRP device
                     {
                         std::cout << std::endl;
@@ -470,6 +523,29 @@
                 }
 
                 /**
+                 * @brief Updates the tx_enabled and rx_enabled settings from the config file
+                 * 
+                 */
+                void update_tx_rx_enabled_status(void){
+                    
+                    //tx_enabled
+                    if(config["USRPSettings"]["TX"]["enabled"].is_null() == false){
+                        tx_enabled = config["USRPSettings"]["TX"]["enabled"].get<bool>();
+                    }
+                    else{
+                        std::cerr << "USRPHandler::update_tx_rx_enabled_status: couldn't find tx_enabled settingin JSON" <<std::endl;
+                    }
+
+                    //rx_enabled
+                    if(config["USRPSettings"]["RX"]["enabled"].is_null() == false){
+                        rx_enabled = config["USRPSettings"]["RX"]["enabled"].get<bool>();
+                    }
+                    else{
+                        std::cerr << "USRPHandler::update_tx_rx_enabled_status: couldn't find rx_enabled settingin JSON" <<std::endl;
+                    }
+                }
+                
+                /**
                  * @brief Initializes a multi-usrp device with Tx and Rx chains per the
                  * JSON configuration file
                  * 
@@ -505,53 +581,17 @@
                     //check to confirm that the LO is locked
                     check_lo_locked();
 
-                    //compute the frame start times
-                    init_frame_start_times();
+                    //initialize the rx timing offset
+                    init_Rx_timing_offset(); 
 
+                    //update the tx/rx enabled status
+                    update_tx_rx_enabled_status();
+                    
                     //initialize the stream arguments
                     init_stream_args();
-                }
+                }      
 
-                /**
-                 * @brief Computes the frame start times in advance, and applies an offset if one is necessary
-                 * 
-                 */
-                void init_frame_start_times(void){
-                    //set stream start time
-                    if(config["USRPSettings"]["Multi-USRP"]["stream_start_time"].is_null() == false){
-                        stream_start_time = config["USRPSettings"]["Multi-USRP"]["stream_start_time"].get<double>();
-                    }
-                    else{
-                        std::cerr << "USRPHandler::init_frame_start_times: couldn't find stream start time in JSON" <<std::endl;
-                    }
-
-                    //set num_frames
-                    if(config["FMCWSettings"]["num_frames"].is_null() == false){
-                        num_frames = config["FMCWSettings"]["num_frames"].get<size_t>();
-                    }
-                    else{
-                        std::cerr << "USRPHandler::init_frame_start_times: couldn't find num_frames in JSON" <<std::endl;
-                    }
-
-                    //set frame_periodicity
-                    if(config["FMCWSettings"]["frame_periodicity_ms"].is_null() == false){
-                        frame_periodicity = config["FMCWSettings"]["frame_periodicity_ms"].get<double>() * 1e-3;
-                    }
-                    else{
-                        std::cerr << "USRPHandler::init_frame_start_times: couldn't find frame_periodicity_ms in JSON" <<std::endl;
-                    }
-
-                    //initialize the frame start times vector
-                    frame_start_times = std::vector<uhd::time_spec_t>(num_frames);
-                    std::cout << "USRPHandler::init_frame_start_times: computed start times: " << std::endl;
-                    for (size_t i = 0; i < num_frames; i++)
-                    {
-                        frame_start_times[i] = uhd::time_spec_t(stream_start_time + 
-                                        (frame_periodicity * static_cast<double>(i)));
-                        std::cout << frame_start_times[i].get_real_secs() << ", ";
-                    }
-                    std::cout << std::endl;
-                    
+                void init_Rx_timing_offset(void){
                     //set the rx stream start offset
                         /*NOTE: this was added because on some USRP devices, there appears to
                         be a difference between when the receiver starts and the transmitter starts
@@ -562,13 +602,7 @@
                             config["USRPSettings"]["RX"]["offset_us"].get<double>() * 1e-6);
                     }
                     else{
-                        std::cerr << "USRPHandler::init_frame_start_times: couldn't find rx stream start time offset in JSON" <<std::endl;
-                    } //set frame_periodicity
-                    if(config["FMCWSettings"]["frame_periodicity_ms"].is_null() == false){
-                        frame_periodicity = config["FMCWSettings"]["frame_periodicity_ms"].get<double>() * 1e-3;
-                    }
-                    else{
-                        std::cerr << "USRPHandler::init_frame_start_times: couldn't find frame_periodicity_ms in JSON" <<std::endl;
+                        std::cerr << "USRPHandler::init_Rx_frame_offset: couldn't find rx stream start time offset in JSON" <<std::endl;
                     }
                 }
 
@@ -615,13 +649,13 @@
                 /**
                  * @brief 
                  * 
-                 * @param new_tx_buffer a pointer to a FMCW buffer object holding the Tx chirp samples
-                 * @param new_rx_buffer a pointer to a FMCW buffer object to store and save the RX
+                 * @param new_tx_buffer a pointer to a Radar buffer object holding the Tx chirp samples
+                 * @param new_rx_buffer a pointer to a Radar buffer object to store and save the RX
                  * samples to a file
                  */
                 void load_Buffers(
-                    FMCW_Buffer<data_type> * new_tx_buffer,
-                    FMCW_Buffer<data_type> * new_rx_buffer){
+                    Buffer_2D<data_type> * new_tx_buffer,
+                    Buffer_2D<data_type> * new_rx_buffer){
                             tx_buffer = new_tx_buffer;
                             rx_buffer = new_rx_buffer;
                         return;
@@ -633,12 +667,15 @@
                  * @brief 
                  * 
                  */
-                void stream_rx_frames(void){
+                void stream_rx_frames(std::vector<uhd::time_spec_t> frame_start_times){
                     //determine the number of samples to be streamed in the frame
                     size_t num_samps_per_buff = rx_buffer -> num_cols;
                     size_t num_rows = rx_buffer -> num_rows;
                     size_t total_samps = num_samps_per_buff * num_rows;
                     size_t num_samps_received;
+
+                    //determine the number of frames to be streamed
+                    size_t num_frames = frame_start_times.size();
 
                     //reset the overflow message
                     overflow_detected = false;
@@ -734,7 +771,7 @@
                  * @brief stream a series of tx frames
                  * 
                  */
-                void stream_tx_frames(void){
+                void stream_tx_frames(std::vector<uhd::time_spec_t> frame_start_times){
                     //create a unique lock for managing outputs using std::cout
                     std::unique_lock<std::mutex> cout_unique_lock(cout_mutex, std::defer_lock);
                     
@@ -743,6 +780,9 @@
                     size_t num_rows = tx_buffer -> num_rows;
                     size_t total_samps = num_samps_per_buff * num_rows;
                     size_t num_samps_sent;
+
+                    //determine the number of frames to stream
+                    size_t num_frames = frame_start_times.size();
 
                     cout_unique_lock.lock();
                     std::cout << "USRPHandler::stream_tx_frame: streaming frame starting at : " <<
@@ -853,33 +893,52 @@
                  * @brief configures threads to stream both the tx and rx frames
                  * 
                  */
-                void stream_frames(void){
+                void stream_frames(std::vector<uhd::time_spec_t> frame_start_times){
                     //set the start time
                     reset_usrp_clock();
 
-                    //create transmit thread
-                    tx_stream_complete = false;
-                    std::thread transmit_thread([&]() {
-                        stream_tx_frames();
-                    });
+                    if (tx_enabled && rx_enabled)
+                    {
+                        //create transmit thread
+                        tx_stream_complete = false;
+                        std::thread transmit_thread([&]() {
+                            stream_tx_frames(frame_start_times);
+                        });
 
-                    //create transmit async handler
-                    std::thread transmit_async_thread([&]() {
+                        //create transmit async handler
+                        std::thread transmit_async_thread([&]() {
+                            check_tx_async_messages();
+                        });
+
+                        //stream rx_frames
+                        stream_rx_frames(frame_start_times);
+
+                        //wait for transmit thread to finish
+                        transmit_thread.join();
+                        transmit_async_thread.join();
+                    }
+                    else if (tx_enabled)
+                    {
+                        //create transmit thread
+                        tx_stream_complete = false;
+                        std::thread transmit_thread([&]() {
+                            stream_tx_frames(frame_start_times);
+                        });
+
+                        //create transmit async handler
                         check_tx_async_messages();
-                    });
-
-                    //process receive frame
-                    stream_rx_frames();
+                        //wait for transmit thread to finish
+                        transmit_thread.join();
+                    }
+                    else
+                    {
+                        //stream rx_frames
+                        stream_rx_frames(frame_start_times);
+                    }
                     
 
-                    //wait for transmit thread to finish
-                    transmit_thread.join();
-                    transmit_async_thread.join();
                     std::cout << "USRPHandler::stream_frame: Complete" << std::endl << std::endl;
                 }
-                    
-                    //synchronization functions
-                void synchronize_rx_and_tx (void);
         };
     }
 #endif

@@ -2,7 +2,7 @@
     "USRPSettings":{
         "Multi-USRP":{
             "use_serial":true,
-            "serial": "3231EFC",
+            "serial": "3231EB8",
             "use_addr":false,
             "addrs": "109.222",
             "ref":"internal",
@@ -21,7 +21,7 @@
             "gain":50,
             "ant":"TX/RX",
             "subdev":"A:A A:B",
-            "channel":0
+            "channel":1
         },
         "RX":{
             "enabled":true,
@@ -30,7 +30,7 @@
             "gain":50,
             "ant":"RX2",
             "subdev":"A:A A:B",
-            "channel":0,
+            "channel":1,
             "offset_us": 5.7639
         },
         "AdditionalSettings":{
@@ -41,11 +41,8 @@
             "simplified_streamer_metadata":true
         }
     },
-    "RadarSettings":{
-        "tx_file_name":"/home/david/Documents/MATLAB_generated/chirp_full.bin",
-        "rx_file_name":"/home/david/Documents/MATLAB_generated/rx_data.bin",
-        "num_chirps": 256,
-        "num_frames": 30,
-        "frame_periodicity_ms": 33.34
+    "AttackSettings":{
+        "rx_file_name":"/home/david/Documents/MATLAB_generated/sensing_stream.bin",
+        "rx_time": 400
     }
 }
