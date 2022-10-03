@@ -31,7 +31,6 @@ namespace FMCWHandler_namespace {
             FMCWHandler(json victim_config,json attack_config, bool run = false)
                 :Victim(victim_config,run),
                 Attacker(attack_config,run){
-                
             }
 
     };

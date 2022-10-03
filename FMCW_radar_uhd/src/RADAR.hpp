@@ -263,14 +263,11 @@
                     //initialize the buffers
                     init_buffers_for_radar();
 
-                    //load the tx and rx buffers into the USRP handler
-                    usrp_handler.load_Buffers(& tx_buffer,& rx_buffer);
-
                     //compute the frame start times
                     init_frame_start_times();
 
                     //stream the frames
-                    usrp_handler.stream_frames(frame_start_times); 
+                    usrp_handler.stream_frames(frame_start_times,& tx_buffer,& rx_buffer); 
                 }
         };
     }

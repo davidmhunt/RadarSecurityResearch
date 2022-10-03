@@ -35,6 +35,7 @@
 
     using json = nlohmann::json;
     using Buffers::Buffer_2D;
+    using Buffers::Buffer_1D;
 
     namespace USRPHandler_namespace {
         
@@ -63,9 +64,6 @@
                 bool simplified_metadata;
 
             public:
-                //class variables
-                Buffer_2D<data_type> * tx_buffer;
-                Buffer_2D<data_type> * rx_buffer;
                 //usrp device
                 uhd::usrp::multi_usrp::sptr usrp;
                 
@@ -646,28 +644,17 @@
                     return;
                 }
 
-                /**
-                 * @brief 
-                 * 
-                 * @param new_tx_buffer a pointer to a Radar buffer object holding the Tx chirp samples
-                 * @param new_rx_buffer a pointer to a Radar buffer object to store and save the RX
-                 * samples to a file
-                 */
-                void load_Buffers(
-                    Buffer_2D<data_type> * new_tx_buffer,
-                    Buffer_2D<data_type> * new_rx_buffer){
-                            tx_buffer = new_tx_buffer;
-                            rx_buffer = new_rx_buffer;
-                        return;
-                    }
 
         //streaming functions
                 
                 /**
-                 * @brief 
+                 * @brief streams a series of rx frames
                  * 
+                 * @param frame_start_times a vector of uhd::time_spec_t with the start time of each frame
+                 * @param rx_buffer a pointer to a Buffer_2D data type
                  */
-                void stream_rx_frames(std::vector<uhd::time_spec_t> frame_start_times){
+                void stream_rx_frames(std::vector<uhd::time_spec_t> frame_start_times,
+                                    Buffer_2D<data_type> * rx_buffer){
                     //determine the number of samples to be streamed in the frame
                     size_t num_samps_per_buff = rx_buffer -> num_cols;
                     size_t num_rows = rx_buffer -> num_rows;
@@ -770,8 +757,11 @@
                 /**
                  * @brief stream a series of tx frames
                  * 
+                 * @param frame_start_times a vector of uhd::time_spec_t with the start time for each framne
+                 * @param tx_buffer a Buffer_2D that will be used to stream the chirps for each frame
                  */
-                void stream_tx_frames(std::vector<uhd::time_spec_t> frame_start_times){
+                void stream_tx_frames(std::vector<uhd::time_spec_t> frame_start_times,
+                                        Buffer_2D<data_type> * tx_buffer){
                     //create a unique lock for managing outputs using std::cout
                     std::unique_lock<std::mutex> cout_unique_lock(cout_mutex, std::defer_lock);
                     
@@ -890,10 +880,15 @@
                 }
 
                 /**
-                 * @brief configures threads to stream both the tx and rx frames
+                 * @brief Stream a series of rx and tx frames depending on the config
                  * 
+                 * @param frame_start_times a vector of start times for each frame
+                 * @param tx_buffer a pointer to a buffer holding the chirps to be transmitted for each frame
+                 * @param rx_buffer a pointer to a buffer to save the received signal for each frame and to save to a file
                  */
-                void stream_frames(std::vector<uhd::time_spec_t> frame_start_times){
+                void stream_frames(std::vector<uhd::time_spec_t> frame_start_times,
+                                    Buffer_2D<data_type> * tx_buffer,
+                                    Buffer_2D<data_type> * rx_buffer){
                     //set the start time
                     reset_usrp_clock();
 
@@ -902,7 +897,7 @@
                         //create transmit thread
                         tx_stream_complete = false;
                         std::thread transmit_thread([&]() {
-                            stream_tx_frames(frame_start_times);
+                            stream_tx_frames(frame_start_times,tx_buffer);
                         });
 
                         //create transmit async handler
@@ -911,7 +906,7 @@
                         });
 
                         //stream rx_frames
-                        stream_rx_frames(frame_start_times);
+                        stream_rx_frames(frame_start_times,rx_buffer);
 
                         //wait for transmit thread to finish
                         transmit_thread.join();
@@ -922,7 +917,7 @@
                         //create transmit thread
                         tx_stream_complete = false;
                         std::thread transmit_thread([&]() {
-                            stream_tx_frames(frame_start_times);
+                            stream_tx_frames(frame_start_times,tx_buffer);
                         });
 
                         //create transmit async handler
@@ -933,11 +928,14 @@
                     else
                     {
                         //stream rx_frames
-                        stream_rx_frames(frame_start_times);
+                        stream_rx_frames(frame_start_times,rx_buffer);
                     }
-                    
-
                     std::cout << "USRPHandler::stream_frame: Complete" << std::endl << std::endl;
+                }
+        
+                void stream_to_file(Buffer_1D<data_type> * rx_buffer,
+                                    double stream_time_s){
+
                 }
         };
     }
