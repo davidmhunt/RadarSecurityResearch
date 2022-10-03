@@ -29,8 +29,12 @@ namespace FMCWHandler_namespace {
              * @param run (default false) on true, runs the experiment
              */
             FMCWHandler(json victim_config,json attack_config, bool run = false)
-                :Victim(victim_config,run),
-                Attacker(attack_config,run){
+                :Victim(victim_config,false),
+                Attacker(attack_config,false){
+                    if (run)
+                    {
+                        Victim.run_RADAR();
+                    }
             }
 
     };

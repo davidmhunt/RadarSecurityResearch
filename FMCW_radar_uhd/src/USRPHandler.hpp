@@ -932,10 +932,75 @@
                     }
                     std::cout << "USRPHandler::stream_frame: Complete" << std::endl << std::endl;
                 }
-        
-                void stream_to_file(Buffer_1D<data_type> * rx_buffer,
-                                    double stream_time_s){
 
+                /**
+                 * @brief Saves a continuous stream of rx data to a given 1D rx_buffer
+                 * 
+                 * @param rx_buffer the 1D buffer to load rx samples into and save to a file
+                 * @param stream_time_s the length of time to stream samples for
+                 */
+                void rx_stream_to_file(Buffer_1D<data_type> * rx_buffer,
+                                    double stream_time_s){
+                    
+                    //compute the number of samples to stream
+                    double sample_rate = usrp -> get_rx_rate(rx_channel);
+                    size_t total_samps = static_cast<size_t>(ceil(
+                                            sample_rate * stream_time_s));
+                    
+                    //stream to the file
+                    //determine the number of samples per buffer
+                    size_t num_samps_per_buff = rx_buffer -> num_samples;
+                    
+
+                    //reset the overflow message
+                    overflow_detected = false;
+                    rx_first_buffer = true;
+
+                    //initialize the stream command
+                    uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+                    rx_stream_cmd.num_samps = total_samps;
+                    rx_stream_cmd.stream_now = true;;
+
+                    //initialize tracking for when done streaming
+                    size_t num_samps_received;
+                    size_t total_samps_received = 0;
+                    bool streaming_complete = false;
+                    
+                    //send the stream command
+                    rx_stream -> issue_stream_cmd(rx_stream_cmd);
+
+                    while(not streaming_complete)
+                    {                        
+                        //receive the data
+                        num_samps_received = rx_stream -> recv(
+                                        &(rx_buffer->buffer.front()),
+                                        num_samps_per_buff,rx_md,0.5,true);
+                        
+                        //check the metadata to confirm good receive
+                        if (num_samps_received != num_samps_per_buff){
+                            std::cerr << "USRPHandler::rx_stream_to_file: Tried receiving " << num_samps_per_buff <<
+                                        " samples, but only received " << num_samps_received << std::endl;
+                        }
+                        check_rx_metadata(rx_md);
+
+                        //if an overflow was detected, the frame is bad, save what we had and start a new frame
+                        if (overflow_detected){
+                            std::cout << "USRPHandler::rx_stream_to_file: Overflow detected " << std::endl;
+                            //reset the overflow tag
+                            overflow_detected = false;
+                            break;
+                        }
+                        //save the buffer to the file
+                        rx_buffer -> save_to_file();
+
+                        //update the tracking for the number of samples sent
+                        total_samps_received += num_samps_received;
+                        
+                        if(total_samps_received >= total_samps){
+                            streaming_complete = true;
+                        }
+                    } //end of while loop
+                    return;
                 }
         };
     }

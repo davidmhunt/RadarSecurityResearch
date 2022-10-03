@@ -16,7 +16,7 @@
             "stream_start_time":0.25
         },
         "TX":{
-            "enabled":false,
+            "enabled":true,
             "spb":0,
             "gain":50,
             "ant":"TX/RX",
