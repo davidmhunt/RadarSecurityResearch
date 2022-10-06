@@ -114,12 +114,18 @@ classdef Subsystem_attacking  < handle
             %{
                 Purpose: initializes the attack streaming parameters
             %}
-
+            
+            %for loading frame start times
             obj.attack_streaming_params.frame_start_times_ms = zeros(128,1); %initialize to holdup to 128 future frames
             obj.attack_streaming_params.frame_start_times_samples = zeros(128,1);
             obj.attack_streaming_params.current_frame = 1;
             obj.attack_streaming_params.next_frame_to_load = 1;
             obj.attack_streaming_params.frames_loaded = false;
+            
+            %for streaming the actual attack
+            obj.attack_streaming_params.current_chirp = 1;
+            obj.attack_streaming_params.next_sample_index = 1;
+
         end
 
         function compute_calculated_values(obj, chirp_cycle_time_us, frequency_slope_MHz_us,estimated_frame_periodicity_ms, num_chirps)
@@ -182,11 +188,16 @@ classdef Subsystem_attacking  < handle
             %}
             next_frame_to_load = obj.attack_streaming_params.next_frame_to_load;
 
+            %if this is the first frame loaded, compute the emulated chirps
+            if next_frame_to_load == 1
+                obj.compute_next_emulated_chirps();
+            end
+
             %save the time that the next frame will start at
             obj.attack_streaming_params.frame_start_times_ms(next_frame_to_load) = frame_start_time_ms;
 
             %compute the sample index that the next frame will start at
-            sample_index = frame_start_time_ms * 1e-3 * (obj.Attacker.FMCW_sample_rate_Msps * 1e6);
+            sample_index = round(frame_start_time_ms * 1e-3 * (obj.Attacker.FMCW_sample_rate_Msps * 1e6));
             obj.attack_streaming_params.frame_start_times_samples(next_frame_to_load) = sample_index;
             
             %%set the frames_loaded variable to be true
@@ -387,8 +398,38 @@ classdef Subsystem_attacking  < handle
                         %add the generated signal to the output
                         sig(current_signal_index:next_signal_index - 1) = generated_sig;
                         end
-                    case "Waiting for Attack Start" 
+                    case "Waiting for Attack Start"
+                        [generated_sig,sig_assembled,next_signal_index,frame_start_arrived] = ...
+                            obj.simulate_waiting_for_attack_start(...
+                            next_signal_index,num_samples);
+                        
+                        %add the generated signal to the output
+                        sig(current_signal_index:next_signal_index - 1) = generated_sig;
+                        
+                        if frame_start_arrived
+                            obj.state = "Attacking";
+
+                            %initialize attack streaming parameters
+                            obj.attack_streaming_params.current_chirp = 1;
+                            obj.attack_streaming_params.next_sample_index = 1;
+                        end
                     case "Attacking"
+                        [generated_sig,sig_assembled,next_signal_index,end_of_attack] = ...
+                            obj.simulate_attack_transmission(...
+                            next_signal_index,num_samples);
+                        
+                        if obj.attack_streaming_params.current_frame == 4 && ...
+                                obj.attack_streaming_params.current_chirp == 41
+                            A = sig(current_signal_index:next_signal_index - 1);
+                            B = generated_sig;
+                        end
+
+                        %add the generated signal to the output
+                        sig(current_signal_index:next_signal_index - 1) = generated_sig;
+                        
+                        if end_of_attack
+                            obj.state = "Waiting for Attack Start";
+                        end
                     otherwise
                 end
             end
@@ -426,7 +467,7 @@ classdef Subsystem_attacking  < handle
             next_signal_index = next_signal_index + unsent_samples + 1;
         end
 
-        function [sig,sig_assembled,next_signal_index] = simulate_waiting_for_attack_start(...
+        function [sig,sig_assembled,next_signal_index,frame_start_arrived] = simulate_waiting_for_attack_start(...
                 obj,next_signal_index,num_samples)
             %{
                 Purpose: simulates the attacker being in a state where is
@@ -442,8 +483,182 @@ classdef Subsystem_attacking  < handle
                     sig_assembled: indicator for if the signal to transmit
                         is now fully assembled
                     next_signal_index: the next index for a signal
+                    frame_start_arrived: set to true when the start of the
+                        next frame has arrived, false otherwise
+            %}
+
+            %determine how many samples have yet to be sent
+            unsent_samples = num_samples - next_signal_index;
+
+            %check to make sure that a future frame start time is available
+            frame_available = obj.check_for_next_frame();
+
+            %set default behavior of next frame start
+            frame_start_arrived = false;
+
+            if frame_available
+                %compute the number of samples until the next frame start.
+                %Subtract by 2 because we want the frame to start on that
+                %exact sample
+                samples_until_next_frame_start = ...
+                    obj.attack_streaming_params.frame_start_times_samples(...
+                    obj.attack_streaming_params.current_frame) - obj.num_samples_streamed - 2;
+
+                if samples_until_next_frame_start > unsent_samples
+                    %update the number of samples streamed variable
+                    obj.num_samples_streamed = obj.num_samples_streamed + unsent_samples + 1;
+        
+                    %create the output signal
+                    sig = zeros(unsent_samples + 1,1);
+        
+                    %specify that the signal is now assembled
+                    sig_assembled = true;
+                    next_signal_index = next_signal_index + unsent_samples + 1;
+                else
+                    %next frame start has arrived
+                    %update the number of samples streamed variable
+                    obj.num_samples_streamed = obj.num_samples_streamed + samples_until_next_frame_start + 1;
+        
+                    %create the output signal
+                    sig = zeros(samples_until_next_frame_start + 1,1);
+        
+                    %specify that the signal is now assembled
+                    sig_assembled = false;
+                    next_signal_index = next_signal_index + samples_until_next_frame_start + 1;
+                    
+                    %set the frame_start_arrived variable
+                    frame_start_arrived = true;
+                end
+
+            else
+                %update the number of samples streamed variable
+                obj.num_samples_streamed = obj.num_samples_streamed + unsent_samples + 1;
+    
+                %create the output signal
+                sig = zeros(unsent_samples + 1,1);
+    
+                %specify that the signal is now assembled
+                sig_assembled = true;
+                next_signal_index = next_signal_index + unsent_samples + 1;
+            end
+        end
+        
+        function frame_available = check_for_next_frame(obj)
+            %{
+                Purpose: checks to see if there is a future frame start
+                    time available in 
+                    obj.attack_streaming_params.frame_start_times_samples
+                    and updates the obj.attack_streaming_params.current
+                    frame if needed
+                Outputs: 
+                    frame_available: true if there is a frame available,
+                    false if not
+            %}
+
+            current_frame = obj.attack_streaming_params.current_frame;
+            frames_loaded = obj.attack_streaming_params.next_frame_to_load - 1;
+            next_frame_start = obj.attack_streaming_params.frame_start_times_samples(current_frame);
+            
+            %find the next future frame time (if one exists)
+            while obj.num_samples_streamed > next_frame_start && current_frame < frames_loaded
+                current_frame = current_frame + 1;
+                next_frame_start = obj.attack_streaming_params.frame_start_times_samples(current_frame);
+                
+                %update the class variables as well
+                obj.compute_next_emulated_chirps();
+                obj.attack_streaming_params.current_frame = current_frame;
+            end
+
+            if next_frame_start > obj.num_samples_streamed
+                frame_available = true;
+            else
+                frame_available = false;
+            end
+
+        end
+        
+        function [sig,sig_assembled,next_signal_index,end_of_attack] = simulate_attack_transmission(...
+                obj,next_signal_index,num_samples)
+            %{
+            Purpose: simulates the attacker being in the state where it is
+                transmitting the attacking signal
+            Inputs:
+                next_signal_index: the next signal index where the
+                    samples will be added
+                num_samples: the final number of samples that is
+                    desired for the transmit function
+            Outputs:
+                sig: the generated signal
+                sig_assembled: indicator for if the signal to transmit
+                    is now fully assembled
+                next_signal_index: the next index for a signal
+                end_of_attack: set to true when the attack has finished
+                    sending the current frame
             %}
             
+            if obj.attack_streaming_params.current_frame == 4 && ...
+                    obj.attack_streaming_params.current_chirp == 40
+                A = obj.attack_streaming_params.current_chirp;
+            end
+
+            %set the default for end_of_attack
+            end_of_attack = false;
+
+            %compute the number of unsent samples out of the number of
+            %requested samples
+            unsent_samples = num_samples - next_signal_index;
+
+            %determine the number of unsent samples from the current chirp
+            unsent_samples_chirp = size(obj.emulated_chirps,1) - ...
+                obj.attack_streaming_params.next_sample_index;
+            
+            %if there are more unsent samples from the current chirp
+            if unsent_samples_chirp > unsent_samples
+                
+                %set the start and end index for the samples in the chrip
+                start_index = obj.attack_streaming_params.next_sample_index;
+                end_index = start_index + unsent_samples;
+
+                %obtain the output sig
+                sig = obj.emulated_chirps(start_index:end_index,...
+                    obj.attack_streaming_params.current_chirp);
+
+                %update settings as needed
+                sig_assembled = true;
+                next_signal_index = next_signal_index + unsent_samples + 1;
+                obj.attack_streaming_params.next_sample_index = end_index + 1;
+                obj.num_samples_streamed = obj.num_samples_streamed + unsent_samples + 1;
+            else
+                %set the start and end index for the samples in the chrip
+                start_index = obj.attack_streaming_params.next_sample_index;
+                
+                %obtain the output sig
+                sig = obj.emulated_chirps(start_index:end,...
+                    obj.attack_streaming_params.current_chirp);
+
+                %update settings as needed
+                if unsent_samples_chirp == unsent_samples
+                    sig_assembled = true;
+                else
+                    sig_assembled = false;
+                end
+
+                obj.attack_streaming_params.next_sample_index = 1;
+                next_signal_index = next_signal_index + unsent_samples_chirp + 1;
+
+                if obj.attack_streaming_params.current_chirp == obj.chirps_to_compute
+                    %if the attack is now complete
+                    end_of_attack = true;
+                    obj.attack_streaming_params.current_chirp = 1;
+                else
+                    obj.attack_streaming_params.current_chirp = ...
+                        obj.attack_streaming_params.current_chirp + 1;
+                end
+
+                obj.num_samples_streamed = obj.num_samples_streamed + unsent_samples_chirp + 1;
+
+            end
+
         end
 
         function Tx_sig_attacker = get_transmitted_attacker_chirp(obj,chirp)

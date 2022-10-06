@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(FMCWRadar VERSION 0.1.0)
+project(FMCWImplementation VERSION 0.1.0)
 
 include(CTest)
 enable_testing()
@@ -38,19 +38,21 @@ add_subdirectory(src)
 find_package(nlohmann_json 3.10.5 REQUIRED)
 
 #addexecurable
-add_executable(FMCWRadar main.cpp)
+add_executable(FMCWImplementation main.cpp)
 
 #perform linking
-target_link_libraries(FMCWRadar PRIVATE JSONHandler)
-target_link_libraries(FMCWRadar PRIVATE USRPHandler)
-target_link_libraries(FMCWRadar PRIVATE nlohmann_json::nlohmann_json)
-target_link_libraries(FMCWRadar PRIVATE ${UHD_LIBRARIES} 
+target_link_libraries(FMCWImplementation PRIVATE JSONHandler)
+target_link_libraries(FMCWImplementation PRIVATE USRPHandler)
+target_link_libraries(FMCWImplementation PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(FMCWImplementation PRIVATE ${UHD_LIBRARIES} 
                                 PRIVATE ${BoostLIBRARIES})
-target_link_libraries(FMCWRadar PRIVATE BufferHandler)
-target_link_libraries(FMCWRadar PRIVATE FMCWHandler)
+target_link_libraries(FMCWImplementation PRIVATE BufferHandler)
+target_link_libraries(FMCWImplementation PRIVATE RADAR)
+target_link_libraries(FMCWImplementation PRIVATE ATTACKER)
+target_link_libraries(FMCWImplementation PRIVATE FMCWHandler)
 
 #include directories
-target_link_directories(FMCWRadar PRIVATE 
+target_link_directories(FMCWImplementation PRIVATE 
                         ${PROJECT_BINARY_DIR}
                         ${PROJECT_BINARY_DIR}/src
                         )

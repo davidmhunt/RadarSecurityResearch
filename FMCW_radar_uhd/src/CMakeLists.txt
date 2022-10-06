@@ -33,10 +33,12 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 #declare libraries
-add_library(FMCWHandler FMCWHandler.cpp)
+add_library(RADAR RADAR.cpp)
+add_library(ATTACKER Attacker.cpp)
 add_library(JSONHandler JSONHandler.cpp)
 add_library(USRPHandler USRPHandler.cpp)
 add_library(BufferHandler BufferHandler.cpp)
+add_library(FMCWHandler FMCWHandler.cpp)
 
 
 #link libraries as needed
@@ -47,8 +49,16 @@ target_link_libraries(USRPHandler PRIVATE ${UHD_LIBRARIES}
 target_link_libraries(USRPHandler PRIVATE BufferHandler)
 target_link_libraries(USRPHandler PRIVATE Threads::Threads)
 target_link_libraries(BufferHandler PRIVATE nlohmann_json::nlohmann_json)
-target_link_libraries(FMCWHandler PRIVATE nlohmann_json::nlohmann_json)
-target_link_libraries(FMCWHandler PRIVATE ${UHD_LIBRARIES} 
+target_link_libraries(RADAR PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(RADAR PRIVATE ${UHD_LIBRARIES} 
                                 PRIVATE ${BoostLIBRARIES})
-target_link_libraries(FMCWHandler PRIVATE BufferHandler)
-target_link_libraries(FMCWHandler PRIVATE USRPHandler)
+target_link_libraries(RADAR PRIVATE BufferHandler)
+target_link_libraries(RADAR PRIVATE USRPHandler)
+target_link_libraries(ATTACKER PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(ATTACKER PRIVATE ${UHD_LIBRARIES} 
+                                PRIVATE ${BoostLIBRARIES})
+target_link_libraries(ATTACKER PRIVATE BufferHandler)
+target_link_libraries(ATTACKER PRIVATE USRPHandler)
+target_link_libraries(FMCWHandler PRIVATE RADAR)
+target_link_libraries(FMCWHandler PRIVATE ATTACKER)
+target_link_libraries(FMCWHandler PRIVATE nlohmann_json::nlohmann_json)

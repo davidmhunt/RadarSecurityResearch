@@ -230,6 +230,22 @@ classdef Simulator_revB < handle
             obj.Attacker.velocity_m_per_s = [0;0;0];
             obj.Attacker.configure_platform();
         end
+
+        function load_usrp_attacker_and_victim_position_and_velocity(obj)
+            %{
+                Purpose: configures a default scenario for the attacker and
+                victim positions and velocities
+            %}
+            obj.Victim.position_m = [0;0;0];
+            obj.Victim.velocity_m_per_s = [0;0;0];
+            obj.Victim.platform = phased.Platform( ...
+                'InitialPosition',obj.Victim.position_m, ...
+                'Velocity',obj.Victim.velocity_m_per_s);
+
+            obj.Attacker.position_m = [0.25;0;0];
+            obj.Attacker.velocity_m_per_s = [0;0;0];
+            obj.Attacker.configure_platform();
+        end
     
 
 %% [2] Functions for running the FMCW Simulation on Matlab
@@ -481,7 +497,7 @@ classdef Simulator_revB < handle
                 sig = obj.Victim.get_radar_tx_signal();
                 
                 %compute the noise signal
-                noise_sig = wgn(size(sig_target,1),1,noise_power_dBm - 30,"complex");
+                noise_sig = wgn(size(sig,1),1,noise_power_dBm - 30,"complex");
                 
                 %update positions
                 [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = ...

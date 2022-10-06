@@ -1,6 +1,6 @@
   clear;
   values = zeros(0,0);
-  NUM_RUNS = 3;
+  NUM_RUNS = 1;
   FRAMES_PER_RUN = 15;
   MAX_BIN = 20;
   TOTAL_FRAMES = NUM_RUNS * FRAMES_PER_RUN;
