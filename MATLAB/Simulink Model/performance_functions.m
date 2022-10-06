@@ -3,7 +3,7 @@
 
 classdef performance_functions
     methods(Static)
-        % function to compute the range percent error (by frame)
+        % function to compute the range error (by frame)
         function [range_errors] = range_percent_error(range_actual, range_estimates)
            valid_range_column = range_estimates(:,1);
             range_errors = zeros(size(valid_range_column));
@@ -11,8 +11,7 @@ classdef performance_functions
             for idx = 1: size(valid_range_column)
                 if ~(isnan(valid_range_column(idx)))
                     error_position = abs(valid_range_column(idx) - range_actual(idx));
-                    frame_error = error_position / range_actual(idx) * 100;
-                    range_errors(idx) = frame_error;     
+                    range_errors(idx) = error_position;     
                 end
    
             end
@@ -31,7 +30,7 @@ classdef performance_functions
         % frame
         function [detected] = detection(frames_to_compute, range_estimates)
             valid_range_column = range_estimates(:,1);
-            detected = zeros(size(frames_to_compute));
+            detected = zeros(frames_to_compute);
              for idx = 1: height(valid_range_column)
                  if ~(isnan(valid_range_column(idx)))
                     detected(idx) = 1;
@@ -48,15 +47,14 @@ classdef performance_functions
              end
         end
 
-        % function to determine the velocity percent error (per frame)
+        % function to determine the velocity error (per frame)
         function [velocity_errors] = velocity_percent_error(velocity_estimates, velocity_actual)
             valid_velocity_column = velocity_estimates(:,1);
             velocity_errors = zeros(size(valid_velocity_column));
             for idx = 1: size(valid_velocity_column)
                 if ~(isnan(valid_velocity_column(idx)))
-                    error_velocity = abs(valid_velocity_column(idx) - velocity_actual(idx));
-                    frame_error =  error_velocity / abs(velocity_actual(idx)) * 100;
-                    velocity_errors(idx) = frame_error;     
+                    error_velocity = valid_velocity_column(idx) - velocity_actual(idx);
+                    velocity_errors(idx) = error_velocity;     
                 end
             end
         end

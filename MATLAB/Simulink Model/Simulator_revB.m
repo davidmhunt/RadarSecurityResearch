@@ -199,14 +199,16 @@ classdef Simulator_revB < handle
         end
 
 
-        function load_target_realistic(obj)
+        function load_target_realistic(obj, starting_m, starting_v)
             %{
                 Purpose: load a realistic target
             %}
 
             %configure the simulated target
-            position_m = [200;0;0];
-            velocity_meters_per_s = [25;0;0];
+          
+            position_m = [starting_m;0;0];
+            velocity_meters_per_s = [starting_v;0;0];
+            %try to modify to see if we can decrease power of object
             rcs_sq_meters = db2pow(min(10*log10(norm(position_m))+5,20));
             operating_frequency_Hz = obj.Victim.StartFrequency_GHz * 1e9;
 
@@ -424,6 +426,7 @@ classdef Simulator_revB < handle
                     frames_to_compute: the number of frames to simulate
             %}
                 
+            %adjust noise floor w/ this param
                 noise_power_dBm = -174 + 10 * log10(obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6);
 
                 status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
