@@ -977,7 +977,8 @@
                                         num_samps_per_buff,rx_md,0.5,true);
                         
                         //check the metadata to confirm good receive
-                        if (num_samps_received != num_samps_per_buff){
+                        if (num_samps_received != num_samps_per_buff &&
+                            (total_samps - total_samps_received) != num_samps_received){
                             std::cerr << "USRPHandler::rx_stream_to_file: Tried receiving " << num_samps_per_buff <<
                                         " samples, but only received " << num_samps_received << std::endl;
                         }

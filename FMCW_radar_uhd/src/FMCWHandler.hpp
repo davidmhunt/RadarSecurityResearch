@@ -33,8 +33,26 @@ namespace FMCWHandler_namespace {
                 Attacker(attack_config,false){
                     if (run)
                     {
-                        Victim.run_RADAR();
+                        run_FMCW();
                     }
+            }
+
+            /**
+             * @brief Run the FMCW simulation with the vicitm and attacker in separate threads
+             * 
+             */
+            void run_FMCW(void){
+                //create victim thread
+                std::thread victim_thread([&]() {
+                    Victim.run_RADAR();
+                });
+
+                //run the sensing subsystem
+                std::cout << "running attack" << std::endl;
+                Attacker.run_attacker();
+
+                //wait for victim thread to finish
+                victim_thread.join();
             }
 
     };

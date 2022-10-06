@@ -524,6 +524,16 @@
                         std::cerr << "Buffer_1D::save_to_file: write_file_stream not open" << std::endl;
                     }
                 }
+
+                /**
+                 * @brief Set size of the buffer and initialize a buffer of that size
+                 * 
+                 * @param num_samps the number of samples for the buffer to store
+                 */
+                void set_buffer_size(size_t num_samps){
+                    buffer = std::vector<data_type>(num_samps);
+                    num_samples = num_samps;
+                }
         }; // end Buffer_1D class
     
         template<typename data_type>

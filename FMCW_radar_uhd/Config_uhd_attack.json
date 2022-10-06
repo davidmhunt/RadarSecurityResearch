@@ -21,7 +21,7 @@
             "gain":50,
             "ant":"TX/RX",
             "subdev":"A:A A:B",
-            "channel":1
+            "channel":0
         },
         "RX":{
             "enabled":true,
@@ -30,7 +30,7 @@
             "gain":50,
             "ant":"RX2",
             "subdev":"A:A A:B",
-            "channel":1,
+            "channel":0,
             "offset_us": 5.7639
         },
         "AdditionalSettings":{
@@ -43,6 +43,6 @@
     },
     "AttackSettings":{
         "rx_file_name":"/home/david/Documents/MATLAB_generated/sensing_stream.bin",
-        "rx_time": 400
+        "rx_time_ms": 1000
     }
 }
