@@ -524,10 +524,20 @@
                         std::cerr << "Buffer_1D::save_to_file: write_file_stream not open" << std::endl;
                     }
                 }
+
+                /**
+                 * @brief Set size of the buffer and initialize a buffer of that size
+                 * 
+                 * @param num_samps the number of samples for the buffer to store
+                 */
+                void set_buffer_size(size_t num_samps){
+                    buffer = std::vector<data_type>(num_samps);
+                    num_samples = num_samps;
+                }
         }; // end Buffer_1D class
     
         template<typename data_type>
-        class FMCW_Buffer : public Buffer_2D<data_type>{
+        class RADAR_Buffer : public Buffer_2D<data_type>{
             public:
                 //variables
                 size_t num_chirps;
@@ -540,24 +550,24 @@
                      * @brief Construct a new fmcw buffer object
                      * 
                      */
-                    FMCW_Buffer(): Buffer_2D<data_type>(){}
+                    RADAR_Buffer(): Buffer_2D<data_type>(){}
                     
                     /**
                      * @brief Construct a new fmcw buffer object
                      * 
                      * @param debug the desired debug setting
                      */
-                    FMCW_Buffer(bool debug): Buffer_2D<data_type>(debug){}
+                    RADAR_Buffer(bool debug): Buffer_2D<data_type>(debug){}
                     
                     /**
-                     * @brief Construct a new FMCW buffer object (initialized)
+                     * @brief Construct a new RADAR buffer object (initialized)
                      * 
                      * @param desired_samples_per_buff the number of samples per buffer (for the USRP)
                      * @param required_samples_per_chirp the number of samples in a single chirp
                      * @param desired_num_chirps the number of chirps the buffer should contain
                      * @param debug the desired debug setting (optional)
                      */
-                    FMCW_Buffer(
+                    RADAR_Buffer(
                         size_t desired_samples_per_buff,
                         size_t required_samples_per_chirp,
                         size_t desired_num_chirps,
@@ -573,10 +583,10 @@
                      * @brief Destroy the fmcw buffer object
                      * 
                      */
-                    ~FMCW_Buffer() {}
+                    ~RADAR_Buffer() {}
 
                     /**
-                     * @brief configures a Buffer_2D to be able to operate as a buffer used by the FMCW radar,
+                     * @brief configures a Buffer_2D to be able to operate as a buffer used by the RADAR radar,
                      * and initializes a buffer (vector) of the correct dimensions
                      * 
                      * @param desired_samples_per_buff the number of samples in a buffer
@@ -611,7 +621,7 @@
                     }
 
                     /**
-                     * @brief loads data from a vector into the initizlized FMCW buffer, making copies of the 
+                     * @brief loads data from a vector into the initizlized RADAR buffer, making copies of the 
                      * vector as necessary until the buffer is full or the number of excess samples has been
                      * reached
                      * 
