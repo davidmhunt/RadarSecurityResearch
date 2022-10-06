@@ -220,7 +220,7 @@ classdef Radar_revB < handle
             
             obj.rx_gain_dB = 15+ obj.ant_gain_dB;                           % in dB
             obj.rx_nf_dB = 6;                                               % in dB
-
+            
             obj.transmitter = phased.Transmitter( ...
                 'PeakPower',obj.tx_power_W, ...
                 'Gain',obj.tx_gain_dB);
