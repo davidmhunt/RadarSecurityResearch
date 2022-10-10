@@ -392,11 +392,11 @@ classdef Subsystem_attacking  < handle
                             obj.state = "Waiting for Attack Start";
                         else
                             %simulate waiting for the configuration
-                        [generated_sig,sig_assembled,next_signal_index] = ...
-                            obj.simulate_waiting_for_config(next_signal_index,num_samples);
-                        
-                        %add the generated signal to the output
-                        sig(current_signal_index:next_signal_index - 1) = generated_sig;
+                            [generated_sig,sig_assembled,next_signal_index] = ...
+                                obj.simulate_waiting_for_config(next_signal_index,num_samples);
+                            
+                            %add the generated signal to the output
+                            sig(current_signal_index:next_signal_index - 1) = generated_sig;
                         end
                     case "Waiting for Attack Start"
                         [generated_sig,sig_assembled,next_signal_index,frame_start_arrived] = ...
@@ -417,12 +417,6 @@ classdef Subsystem_attacking  < handle
                         [generated_sig,sig_assembled,next_signal_index,end_of_attack] = ...
                             obj.simulate_attack_transmission(...
                             next_signal_index,num_samples);
-                        
-                        if obj.attack_streaming_params.current_frame == 4 && ...
-                                obj.attack_streaming_params.current_chirp == 41
-                            A = sig(current_signal_index:next_signal_index - 1);
-                            B = generated_sig;
-                        end
 
                         %add the generated signal to the output
                         sig(current_signal_index:next_signal_index - 1) = generated_sig;

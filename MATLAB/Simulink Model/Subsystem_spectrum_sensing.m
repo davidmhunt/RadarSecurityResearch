@@ -188,7 +188,7 @@ classdef Subsystem_spectrum_sensing < handle
 
             
             
-            obj.spectogram_params.freq_sampling_period_us = 2; %sample frequency every x us 
+            obj.spectogram_params.freq_sampling_period_us = 0.5; %sample frequency every x us, 2 for lower BW 
             obj.spectogram_params.num_samples_per_sampling_window = ...
                 ceil(obj.spectogram_params.freq_sampling_period_us * FMCW_sample_rate_Msps);
             
@@ -332,7 +332,7 @@ classdef Subsystem_spectrum_sensing < handle
                 algorithm
             %}
             obj.clustering_params.max_num_clusters = 10;
-            obj.clustering_params.min_num_points_per_cluster = 7;
+            obj.clustering_params.min_num_points_per_cluster = 5;
         end
 
         %functions for processing the received signal
@@ -858,6 +858,7 @@ classdef Subsystem_spectrum_sensing < handle
                     intercept = obj.detected_chirps(cluster_id,1);
                 end
             end
+            obj.remove_invalid_clusters();
 
 %             %option for a simplified linear model
 %                     %Now, we experiment with only taking 15 points to determine the slope and
@@ -881,6 +882,21 @@ classdef Subsystem_spectrum_sensing < handle
 %                     %point
         end
         
+        function remove_invalid_clusters(obj)
+            invalid_points = 0;
+            for i = 1:size(obj.detected_chirps,1)
+                index = i + invalid_points;
+                if index <= size(obj.detected_chirps,1)
+                    if obj.detected_chirps(index,1) == 0
+                        invalid_points = invalid_points + 1;
+                        obj.detected_chirps = ...
+                            [obj.detected_chirps(1:index - 1,:);...
+                                obj.detected_chirps(index + 1:end,:)];
+                    end
+                end
+            end
+        end
+
         function compute_victim_parameters(obj)
 
             %compute the actual time that the chirp intercept occured at
@@ -915,7 +931,7 @@ classdef Subsystem_spectrum_sensing < handle
                 %perform precise timing adjustment on the frame start time
                 if obj.Attacker.Subsystem_attacking.configuration_loaded
                     obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) =...
-                        obj.compute_precise_chirp_start_time(...
+                        obj.compute_precise_chirp_start_time_fft(...
                         obj.chirp_tracking.captured_chirps(1,1));
                 end
                 
@@ -927,7 +943,8 @@ classdef Subsystem_spectrum_sensing < handle
                         obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) - ...
                         obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames - 1,5);
                     %compute the average frame duration
-                    obj.frame_tracking.average_frame_duration = sum(obj.frame_tracking.captured_frames(:,1)) / (obj.frame_tracking.num_captured_frames - 1);
+                    obj.frame_tracking.average_frame_duration = (obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) -...
+                        obj.frame_tracking.captured_frames(1,5)) / (obj.frame_tracking.num_captured_frames - 1);
                     %predict next frame
                     obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,7) = ...
                                 obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5)...
@@ -1003,11 +1020,12 @@ classdef Subsystem_spectrum_sensing < handle
             %}
             
             %full window size to use for cross-correlation
+            max_lag = 100;
             observation_window_time_us = 10;
             observation_window_samples = 2 * ceil(0.5 * observation_window_time_us *...
                 obj.FMCW_sample_rate_Msps); %make sure it is an even number
             
-            time_before_start_us = 1;
+            time_before_start_us = min(1,estimated_start_time - obj.detection_start_time - 0.1);
             time_before_start_samples = ceil(time_before_start_us *...
                 obj.FMCW_sample_rate_Msps);
 
@@ -1030,9 +1048,8 @@ classdef Subsystem_spectrum_sensing < handle
             computed_chirp = [padded_zeros;...
                 obj.Attacker.Subsystem_attacking.emulated_chirps(1:end_index + 1,1)];
 
-
             %perform cross correlation and convert into a timing offset
-            [C,lag] = xcorr(estimated_chirp,computed_chirp,"normalized");
+            [C,lag] = xcorr(estimated_chirp,computed_chirp,"normalized",max_lag);
 %             clf;
 %             plot(lag,abs(C));
 %             xlabel("Delay in samples")
@@ -1042,6 +1059,73 @@ classdef Subsystem_spectrum_sensing < handle
             delay_samps = lag(I);
 
             delay_us = delay_samps / obj.FMCW_sample_rate_Msps;
+            
+            precise_start_time_samples = chirp_start_sample + delay_samps;
+            precise_start_time = precise_start_time_samples / ...
+                obj.FMCW_sample_rate_Msps + obj.detection_start_time - 0.085;
+            
+        end
+
+        function precise_start_time = compute_precise_chirp_start_time_fft(...
+                obj,estimated_start_time)
+            %{
+                Purpose: for the given set of detected chirps, computes a
+                    more precise chirp start time using a cross-correlation
+                    operation and returns a more precise start time for the
+                    chirp
+                Inputs:
+                    estimated_start_time: the estimated start time of the
+                        desired chirp
+                    chirp: the number of the chirp to obtain precise timing
+                        on
+                Outputs:
+                    precise_start_time: the more precise start time for the
+                    specified chirp in us
+                Note: Function requires the use of the chirp_tracking
+                object and so must be called while this is populated
+            %}
+            
+            %full window size to use for cross-correlation
+            observation_window_time_us = 10;
+            observation_window_samples = 2 * ceil(0.5 * observation_window_time_us *...
+                obj.FMCW_sample_rate_Msps); %make sure it is an even number
+            
+            fft_size = 2^(nextpow2(observation_window_samples) - 1);
+            %if assuming complex sampling
+            max_freq = obj.FMCW_sample_rate_Msps; %assuming complex sampling
+            freq_resolution = obj.FMCW_sample_rate_Msps/fft_size;
+
+            frequencies = -max_freq/2:freq_resolution:max_freq/2 - freq_resolution;
+
+            %obtain a specific sample for the start of the chirp that we
+            %seek to estimate
+            chirp_start_time = estimated_start_time;
+
+            chirp_start_sample = round((chirp_start_time - obj.detection_start_time) ...
+                * obj.FMCW_sample_rate_Msps);
+
+            start_index = int32(chirp_start_sample);
+            end_index = int32(chirp_start_sample + (fft_size) - 1);
+
+            estimated_chirp = obj.received_signal(start_index:end_index).';
+
+            %obtain the same-sized sample of the already computed estimated
+            %chirp
+            computed_chirp = obj.Attacker.Subsystem_attacking.emulated_chirps(1:fft_size,1);
+
+            %perform cross correlation and convert into a timing offset
+            y = fftshift(fft(dechirp(estimated_chirp,computed_chirp)));
+%             clf;
+%             plot(lag,abs(C));
+%             xlabel("Delay in samples")
+%             title("Cross Correlation")
+
+            [M,I] = max(abs(y));
+            if_freq = frequencies(I);
+
+            delay_us = if_freq / obj.frame_tracking.average_slope;
+
+            delay_samps = delay_us * obj.FMCW_sample_rate_Msps;
             
             precise_start_time_samples = chirp_start_sample + delay_samps;
             precise_start_time = precise_start_time_samples / ...
