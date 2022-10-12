@@ -22,7 +22,8 @@ classdef performance_functions
         function [range_actual] = actual_ranges(frames_to_compute, frame_duration, target_velocity, victim_velocity, target_start, victim_start)
             range_actual = zeros(size(frames_to_compute));
             for idx = 1: frames_to_compute
-                 range_actual(idx) = norm((victim_start-target_start) + frame_duration*(idx-1)*(victim_velocity(1)-target_velocity(1)));
+%                  range_actual(idx) = norm((victim_start-target_start) + frame_duration*(idx-1)*(victim_velocity(1)-target_velocity(1)));
+                 range_actual(idx) = abs(norm((target_start-victim_start)) + frame_duration*(idx-1)*(target_velocity(1)-victim_velocity(1)));
             end
         end
 
