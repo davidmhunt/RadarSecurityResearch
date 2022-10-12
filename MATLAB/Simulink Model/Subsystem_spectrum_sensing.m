@@ -931,7 +931,7 @@ classdef Subsystem_spectrum_sensing < handle
                 %perform precise timing adjustment on the frame start time
                 if obj.Attacker.Subsystem_attacking.configuration_loaded
                     obj.frame_tracking.captured_frames(obj.frame_tracking.num_captured_frames,5) =...
-                        obj.compute_precise_chirp_start_time_fft(...
+                        obj.compute_precise_chirp_start_time(...
                         obj.chirp_tracking.captured_chirps(1,1));
                 end
                 
@@ -1010,8 +1010,6 @@ classdef Subsystem_spectrum_sensing < handle
                 Inputs:
                     estimated_start_time: the estimated start time of the
                         desired chirp
-                    chirp: the number of the chirp to obtain precise timing
-                        on
                 Outputs:
                     precise_start_time: the more precise start time for the
                     specified chirp in us
@@ -1020,7 +1018,7 @@ classdef Subsystem_spectrum_sensing < handle
             %}
             
             %full window size to use for cross-correlation
-            max_lag = 100;
+            max_lag = 400;
             observation_window_time_us = 10;
             observation_window_samples = 2 * ceil(0.5 * observation_window_time_us *...
                 obj.FMCW_sample_rate_Msps); %make sure it is an even number
@@ -1046,7 +1044,7 @@ classdef Subsystem_spectrum_sensing < handle
             padded_zeros = zeros(time_before_start_samples,1);
             end_index = int32(observation_window_samples - time_before_start_samples);
             computed_chirp = [padded_zeros;...
-                obj.Attacker.Subsystem_attacking.emulated_chirps(1:end_index + 1,1)];
+                obj.Attacker.Subsystem_attacking.chirp_waveform(1:end_index + 1).'];
 
             %perform cross correlation and convert into a timing offset
             [C,lag] = xcorr(estimated_chirp,computed_chirp,"normalized",max_lag);
@@ -1062,7 +1060,7 @@ classdef Subsystem_spectrum_sensing < handle
             
             precise_start_time_samples = chirp_start_sample + delay_samps;
             precise_start_time = precise_start_time_samples / ...
-                obj.FMCW_sample_rate_Msps + obj.detection_start_time - 0.085;
+                obj.FMCW_sample_rate_Msps + obj.detection_start_time;
             
         end
 
@@ -1111,7 +1109,7 @@ classdef Subsystem_spectrum_sensing < handle
 
             %obtain the same-sized sample of the already computed estimated
             %chirp
-            computed_chirp = obj.Attacker.Subsystem_attacking.emulated_chirps(1:fft_size,1);
+            computed_chirp = obj.Attacker.Subsystem_attacking.chirp_waveform(1:fft_size).';
 
             %perform cross correlation and convert into a timing offset
             y = fftshift(fft(dechirp(estimated_chirp,computed_chirp)));
@@ -1129,7 +1127,7 @@ classdef Subsystem_spectrum_sensing < handle
             
             precise_start_time_samples = chirp_start_sample + delay_samps;
             precise_start_time = precise_start_time_samples / ...
-                obj.FMCW_sample_rate_Msps + obj.detection_start_time - 0.085;
+                obj.FMCW_sample_rate_Msps + obj.detection_start_time;
             
         end
         

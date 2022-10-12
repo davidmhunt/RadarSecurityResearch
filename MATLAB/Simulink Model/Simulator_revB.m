@@ -518,7 +518,9 @@ classdef Simulator_revB < handle
             
                     %attacker determines relative position and velocity of the victim
                     obj.Attacker.update_victim_pos_and_velocity(attacker_pos,victim_pos,attacker_vel, victim_vel);
-                
+                    obj.Attacker.update_target_pos_and_velocity(victim_pos, tgt_pos, victim_vel,tgt_vel)
+                    
+                    %assemble the noisy signal and the attacker signal
                     sig_attacker_sensing = noise_sig + sig;
                 
                     %propogate the signal

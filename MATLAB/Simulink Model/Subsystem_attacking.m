@@ -36,7 +36,10 @@ classdef Subsystem_attacking  < handle
 
         %variable to hold all of the emulated chirps for a specific frame
         emulated_chirps
-
+        
+        %variable to hold the waveform used by the sensing subsystem for
+        %precise timing alignment
+        chirp_waveform
         
         
         %parameters for the desired position and velocity of the added
@@ -54,6 +57,8 @@ classdef Subsystem_attacking  < handle
         % "range spoof - similar slope")
         attack_mode
         
+        attack_at_target_location
+
         %variables to support attacker streaming operations
         %variable to track the current state
         state % potential states: "Waiting for Configuration", "Waiting for Attack Start", "Attacking"
@@ -94,20 +99,33 @@ classdef Subsystem_attacking  < handle
             obj.init_attack_streaming_params();
         end
 
-        function set_attacker_parameters(obj, desired_range_m, desired_velocity_m_s, attack_mode)
+        function set_attack_mode(obj, attack_mode)
             %{
                 Purpose: initialize the attacker parameters for desired
-                    range, desired velocity, and the attack mode
+                    attack mode with a default to attack at a target
+                    location (unless initialized to a specific location)
+                Inputs:
+                    attack_mode: the mode of the attacker
+            %}
+            
+            obj.attack_mode = attack_mode;
+            obj.attack_at_target_location = true;
+        end
+
+        function set_desired_attack_location(obj,desired_range_m, desired_velocity_m_s)
+            %{
+                Purpose: initialize the attacker parameters for desired
+                    range, desired velocity to place the attack at a
+                    specific location
                 Inputs:
                     desired_target_range_m: the desired range of the
                         emulated target
                     desired_target_velocity_m_s: the desired velocity of
                         the emulated target
-                    attack_mode: the mode of the attacker
             %}
+            obj.attack_at_target_location = false;
             obj.desired_range_m = desired_range_m;
             obj.desired_velocity_m_s = desired_velocity_m_s;
-            obj.attack_mode = attack_mode;
         end
 
         function init_attack_streaming_params(obj)
@@ -144,7 +162,7 @@ classdef Subsystem_attacking  < handle
             
             %determine needed parameters
             fmcw_sampling_period_s = 1/(obj.Attacker.FMCW_sample_rate_Msps * 1e6);
-            attacker_lambda_m = physconst("LightSpeed") * obj.Attacker.StartFrequency_GHz * 1e9;
+            attacker_lambda_m = physconst("LightSpeed") / (obj.Attacker.StartFrequency_GHz * 1e9);
 
             %save estimated parameter values
             obj.chirps_to_compute = num_chirps;
@@ -158,7 +176,7 @@ classdef Subsystem_attacking  < handle
             
             obj.t = 0:fmcw_sampling_period_s:obj.sweep_time_s ...
                 - fmcw_sampling_period_s;
-            
+
             %compute range specific parameters
             if contains(obj.attack_mode,"range spoof")
                 obj.initialize_range_spoof();
@@ -168,7 +186,13 @@ classdef Subsystem_attacking  < handle
             end
             
             %compute velocity specific parameters
-            obj.phase_shift_per_chirp = 4 * pi * obj.desired_velocity_m_s ...
+            
+            if obj.attack_at_target_location
+                obj.desired_velocity_m_s = obj.Attacker.current_target_vel;
+            end
+
+            obj.phase_shift_per_chirp = 4 * pi * ...
+                (obj.desired_velocity_m_s  - obj.Attacker.current_victim_vel/2)...
                 * obj.estimated_chirp_cycle_time_us * 1e-6 / attacker_lambda_m;
 
             if contains(obj.attack_mode,"velocity spoof")
@@ -176,6 +200,19 @@ classdef Subsystem_attacking  < handle
             else
                 obj.additional_phase_variation = zeros(obj.chirps_to_compute,1);
             end
+
+            %compute the waveform so that the sensing subsystem can use it
+            %for precise timing
+            obj.compute_waveform_for_precise_sensing();
+        end
+
+        function compute_waveform_for_precise_sensing(obj)
+            %compute the waveform of a single chirp so that the sensing
+            %subsystem can use it
+            obj.chirp_waveform = cos(pi * obj.estimated_frequency_slope_MHz_us * 1e12 ...
+                * obj.t.^(2)) + ...
+                1i * sin(pi * obj.estimated_frequency_slope_MHz_us * 1e12...
+                * obj.t.^(2));
         end
 
         function load_frame_start_time(obj,frame_start_time_ms)
@@ -246,14 +283,14 @@ classdef Subsystem_attacking  < handle
             if contains(obj.attack_mode,"similar slope")
                 obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.007; %use 0.015 for low BW attacks
                 obj.additional_time_delay_us = ...
-                    0.5 * obj.Attacker.Bandwidth_MHz *...
+                    0.8 * obj.Attacker.Bandwidth_MHz *...
                     (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us); %use 0.4 for low BW attacks
             end
         end
 
         function initialize_velocity_spoof(obj)
 
-            attacker_lambda_m = physconst("LightSpeed") * obj.Attacker.StartFrequency_GHz * 1e9;
+            attacker_lambda_m = physconst("LightSpeed") / (obj.Attacker.StartFrequency_GHz * 1e9);
 
             if contains(obj.attack_mode,"noisy")
                 %compute any additional phase variation (mu = 0)
@@ -269,13 +306,15 @@ classdef Subsystem_attacking  < handle
                     obj.velocity_spoof_adjustment = -3.0;
                 end
                 obj.phase_shift_per_chirp = 4 * pi * ...
-                    (obj.desired_velocity_m_s + obj.velocity_spoof_adjustment) ...
+                    (obj.desired_velocity_m_s - obj.Attacker.current_victim_vel/2 ...
+                    + obj.velocity_spoof_adjustment) ...
                     * obj.estimated_chirp_cycle_time_us * 1e-6 / attacker_lambda_m;
             elseif contains(obj.attack_mode,"similar velocity")
                 %adjust the velocity by the desired amount
                 obj.velocity_spoof_adjustment = 0;
                 obj.phase_shift_per_chirp = 4 * pi * ...
-                    (obj.desired_velocity_m_s + obj.velocity_spoof_adjustment) ...
+                    (obj.desired_velocity_m_s - obj.Attacker.current_victim_vel/2 ...
+                    + obj.velocity_spoof_adjustment) ...
                     * obj.estimated_chirp_cycle_time_us * 1e-6 / attacker_lambda_m;
 
                 %compute what the phase shift values would actually be with
@@ -334,10 +373,14 @@ classdef Subsystem_attacking  < handle
             end
             
             %time delay for current emulation range
-            current_emulation_range = obj.desired_range_m - ...
-                obj.desired_velocity_m_s * ...
-                obj.estimated_frame_periodicity_ms * 1e-3 * ...
-                (double(obj.frame) - 1);
+            if obj.attack_at_target_location
+                current_emulation_range = obj.Attacker.current_target_pos;
+            else
+                current_emulation_range = obj.desired_range_m - ...
+                    obj.desired_velocity_m_s * ...
+                    obj.estimated_frame_periodicity_ms * 1e-3 * ...
+                    (double(obj.frame) - 1);
+            end
             desired_time_delay = range2time(current_emulation_range,physconst('lightspeed')) + ...
                 obj.additional_time_delay_us * 1e-6;
             propagation_delay = range2time(obj.Attacker.current_victim_pos ,physconst('lightspeed'))/2;
