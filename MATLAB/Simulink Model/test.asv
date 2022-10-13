@@ -1,23 +1,27 @@
-%   clear;
-%   values = zeros(0,0);
-  NUM_RUNS = 8;
+  clear;
+  values = zeros(0,0);
+  NUM_RUNS = 1;
   FRAMES_PER_RUN = 15;
   MAX_BIN = 20;
   TOTAL_FRAMES = NUM_RUNS * FRAMES_PER_RUN;
 
-%  for i = 1: NUM_RUNS
-%      % first plot -> range vs. P(detection)
-%      % range b/t 10-90 m (10 m bins)
-%      % -15 to 15 
-%      % one single frame
-%      % attack doesn't become operational until the fifth frame -> 10 frames
-%      % when we test attack -> last five frames are under attack
-%      % look at the attack
-%  
-%      [detected, actual_ranges, estimated_ranges, estimated_velocities, actual_velocities, percent_error_ranges, percent_error_velocities] = sim_wrap(randi(88)+12,randi(200));
-%     
-%      values = [values; actual_ranges', actual_velocities', detected(:,1), estimated_ranges(:,1), percent_error_ranges, estimated_velocities(:,1), percent_error_velocities]
-%  end
+ for i = 1: NUM_RUNS
+     % first plot -> range vs. P(detection)
+     % range b/t 10-90 m (10 m bins)
+     % -15 to 15 
+     % one single frame
+     % attack doesn't become operational until the fifth frame -> 10 frames
+     % when we test attack -> last five frames are under attack
+     % look at the attack
+
+     %%add ability to specify the configuration in test, make things edit
+     %%-> mess around w/ RCS
+     % noise floor varying ... see a difference
+ 
+     [detected, actual_ranges, estimated_ranges, estimated_velocities, actual_velocities, percent_error_ranges, percent_error_velocities] = sim_wrap(randi(88)+12,randi(20));
+    
+     values = [values; actual_ranges', actual_velocities', detected(:,1), estimated_ranges(:,1), percent_error_ranges, estimated_velocities(:,1), percent_error_velocities]
+ end
 
  bin_classification = cast(values(:,1)/10, "int16")';
  table_data = array2table(values,"VariableNames",["Range (m)","Velocity (m/s)","Detected","Estimated Range (m)", "Error Range (m)", "Estimated Velocity (m/s)", "Error Velocity (m)"]);
@@ -52,12 +56,12 @@ title("P(detection) at Various Target Ranges")
 %% Error vs Range
 range_error_plot = zeros(0,0);
   for frame = 1: TOTAL_FRAMES
-    if (values(3, frame) ~= 0)
-        range_error_plot = [range_error_plot; values()
+    if (values(frame, 3) ~= 0)
+        range_error_plot = [range_error_plot; [values(frame, 1), values(frame, 5)]];
     end
   end
 figure
-scatter(values(:,1), values(:,5))
+scatter(range_error_plot(:,1), range_error_plot(:,2))
 ylabel("Range Error (m)")
 xlabel("Range (m)")
 title("Range Error at Various Distances")

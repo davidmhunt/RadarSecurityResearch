@@ -1,6 +1,7 @@
 %% For use in SIMULINK Model
 
 %% Notes
+%adjust NF here
 %{
     - If the start frequency is higher than 77 GHz, there is a little bit
     of extra work that has to be done. When creating this simulation, I
@@ -219,7 +220,7 @@ classdef Radar_revB < handle
             obj.tx_gain_dB = 9+ obj.ant_gain_dB;                            % in dB
             
             obj.rx_gain_dB = 15+ obj.ant_gain_dB;                           % in dB
-            obj.rx_nf_dB = 6;                                               % in dB
+            obj.rx_nf_dB = 80;                                               % in dB
             
             obj.transmitter = phased.Transmitter( ...
                 'PeakPower',obj.tx_power_W, ...
