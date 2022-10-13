@@ -1,9 +1,13 @@
   clear;
   values = zeros(0,0);
-  NUM_RUNS = 1;
-  FRAMES_PER_RUN = 15;
+  NUM_RUNS = 100;
+  FRAMES_PER_RUN = 10;
   MAX_BIN = 20;
   TOTAL_FRAMES = NUM_RUNS * FRAMES_PER_RUN;
+
+  status = sprintf("Current run: %d of %d",1, NUM_RUNS);
+
+   progress_bar = waitbar(0,status,"Name","Running Simulation");
 
  for i = 1: NUM_RUNS
      % first plot -> range vs. P(detection)
@@ -13,8 +17,11 @@
      % attack doesn't become operational until the fifth frame -> 10 frames
      % when we test attack -> last five frames are under attack
      % look at the attack
- 
-     [detected, actual_ranges, estimated_ranges, estimated_velocities, actual_velocities, percent_error_ranges, percent_error_velocities] = sim_wrap(randi(88)+12,randi(20));
+    
+     status = sprintf("Current run: %d or %d",i, NUM_RUNS);
+     waitbar(i/NUM_RUNS,progress_bar,status);
+     
+     [detected, actual_ranges, estimated_ranges, estimated_velocities, actual_velocities, percent_error_ranges, percent_error_velocities] = sim_wrap(randi(138)+ 5,sign(randn) * randi(35));
     
      values = [values; actual_ranges', actual_velocities', detected(:,1), estimated_ranges(:,1), percent_error_ranges, estimated_velocities(:,1), percent_error_velocities]
  end

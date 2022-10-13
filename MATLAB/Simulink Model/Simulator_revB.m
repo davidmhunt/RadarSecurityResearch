@@ -209,7 +209,7 @@ classdef Simulator_revB < handle
             position_m = [starting_m;0;0];
             velocity_meters_per_s = [starting_v;0;0];
             %try to modify to see if we can decrease power of object
-            rcs_sq_meters = db2pow(min(10*log10(norm(position_m))+5,20));
+            rcs_sq_meters = max((5 * randn) + 15,0.5);
             operating_frequency_Hz = obj.Victim.StartFrequency_GHz * 1e9;
 
             obj.SimulatedTarget = Target_revA(position_m,velocity_meters_per_s,rcs_sq_meters,operating_frequency_Hz);
@@ -434,7 +434,7 @@ classdef Simulator_revB < handle
             end
         end
 
-        function run_simulation_no_attack(obj,frames_to_compute)
+        function run_simulation_no_attack(obj,frames_to_compute,wait_bar_enable)
             %{
                 Purpose: runs the simulation (with no attacker) for the
                     given number of frames
@@ -446,13 +446,19 @@ classdef Simulator_revB < handle
                 noise_power_dBm = -174 + 10 * log10(obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6);
 
                 status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
-                progress_bar = waitbar(0,status,"Name","Running Simulation");
+                if wait_bar_enable
+                    progress_bar = waitbar(0,status,"Name","Running Simulation");
+                end
+                
 
                 while obj.Victim.current_frame <= frames_to_compute
                     
                     %update the progress_bar
-                    status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
-                    waitbar(obj.Victim.current_frame/frames_to_compute,progress_bar,status);
+                    if wait_bar_enable
+                        status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
+                        waitbar(obj.Victim.current_frame/frames_to_compute,progress_bar,status);
+                    end
+                    
 
                     %get the transmitted signal from the radar
                     sig = obj.Victim.get_radar_tx_signal();
@@ -512,7 +518,9 @@ classdef Simulator_revB < handle
             
                     %attacker determines relative position and velocity of the victim
                     obj.Attacker.update_victim_pos_and_velocity(attacker_pos,victim_pos,attacker_vel, victim_vel);
-                
+                    obj.Attacker.update_target_pos_and_velocity(victim_pos, tgt_pos, victim_vel,tgt_vel)
+                    
+                    %assemble the noisy signal and the attacker signal
                     sig_attacker_sensing = noise_sig + sig;
                 
                     %propogate the signal

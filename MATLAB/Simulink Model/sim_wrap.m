@@ -2,14 +2,17 @@ function [detected, actual_ranges, estimated_ranges, estimated_velocities, actua
 v = target_velocity;
 m = target_start;
 simulator = Simulator_revB();
-% file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/B210_params.json";
-% file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/B210_params_highBW.json";
-% file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/B210_params_highvres.json";
-% file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/B210_params_lowBW.json";
-% file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/B210_params_sensing_system.json";
-% file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/X310_params_100MHzBW.json";
-file_path = "C:\Users\krist\OneDrive\Documents\2022-2023 School Year\Radar Security Project\RadarSecurityResearch\MATLAB\Simulink Model\config_files\realistic_params.json";
-simulator.load_params_from_JSON(file_path);
+kristen_path = "C:\Users\krist\OneDrive\Documents\2022-2023 School Year\Radar Security Project\RadarSecurityResearch\MATLAB\Simulink Model\config_files\";
+david_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/";
+% file_path = "B210_params.json";
+% file_path = "B210_params_highBW.json";
+% file_path = "B210_params_highvres.json";
+% file_path = "B210_params_lowBW.json";
+% file_path = "B210_params_sensing_system.json";
+% file_path = "X310_params_100MHzBW.json";
+% file_path = "realistic_params.json";
+file_path = "realistic_long_range.json";
+simulator.load_params_from_JSON(david_path + file_path);
 
 %apply timing offsets as desired
 simulator.Victim.timing_offset_us = 0;
@@ -33,7 +36,7 @@ simulator.Victim.print_FMCW_specs;
 simulator.load_target_realistic(target_start, target_velocity);
 
 %specify the number of frames and chirps to compute
-frames_to_compute = 15;
+frames_to_compute = 10;
 
 %specify whether or not to record a move of the range-doppler plot
 record_movie = true;
@@ -43,7 +46,7 @@ simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_comput
 simulator.Victim.precompute_radar_chirps();
 
 %run the simulation (without an attacker for now)
-simulator.run_simulation_no_attack(frames_to_compute);
+simulator.run_simulation_no_attack(frames_to_compute,false);
 
 % determine if an object has been detected in each frame
 detected = performance_functions.detection(frames_to_compute, simulator.Victim.Radar_Signal_Processor.range_estimates)

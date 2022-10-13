@@ -183,7 +183,8 @@ classdef Radar_revB < handle
             %number of samples, but is longer than 6.3us (chosen to allow
             %sufficient time for the signal to propogate)
             obj.ADC_ValidStartTime_us           = ceil(6.3 * obj.ADC_SampleRate_MSps) / obj.ADC_SampleRate_MSps;
-            obj.RampEndTime_us                  = obj.ADC_SamlingPeriod_us + obj.ADC_ValidStartTime_us;
+            obj.RampEndTime_us                  = ceil((obj.ADC_SamlingPeriod_us + obj.ADC_ValidStartTime_us) *...
+                                                    obj.ADC_SampleRate_MSps) / obj.ADC_SampleRate_MSps;
             obj.IdleTime_us                     = obj.ChirpCycleTime_us - obj.RampEndTime_us;
             obj.Chirp_Tx_Bandwidth_MHz          = obj.FrequencySlope_MHz_us * obj.RampEndTime_us;
             obj.Chirp_Sampling_Bandwidth_MHz    = obj.FrequencySlope_MHz_us * obj.ADC_SamlingPeriod_us;
@@ -240,6 +241,8 @@ classdef Radar_revB < handle
             obj.num_samples_idle_time = int32(obj.IdleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz);
             obj.num_samples_per_frame = int32(obj.FramePeriodicity_ms * 1e-3 * obj.FMCW_sampling_rate_Hz);
             obj.num_samples_active_frame_time = int32(obj.NumChirps * obj.ChirpCycleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz);
+            
+            
             
             obj.waveform = phased.FMCWWaveform( ...
                 'SampleRate', obj.FMCW_sampling_rate_Hz, ...
