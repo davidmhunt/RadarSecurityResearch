@@ -28,12 +28,18 @@ classdef performance_functions
 
         % function to determine if an object has been detected in each
         % frame
-        function [detected] = detection(frames_to_compute, range_estimates)
+        function [detected, false_positives] = detection(frames_to_compute, range_estimates, actual_ranges, velocity_estimates, actual_velocities)
             valid_range_column = range_estimates(:,1);
+            valid_velocity_column = velocity_estimates(:,1);
             detected = zeros(frames_to_compute);
+            false_positives = zeros(frames_to_compute);
              for idx = 1: height(valid_range_column)
-                 if ~(isnan(valid_range_column(idx)))
-                    detected(idx) = 1;
+                 if (~isnan(valid_range_column(idx)))
+                     if ((abs(valid_range_column(idx) - actual_ranges(idx))< 5) && (abs(valid_velocity_column(idx) - actual_velocities(idx))< 5))
+                            detected(idx) = 1;
+                    else
+                     false_positives(idx) = 1;
+                     end
                  end
              end
         end

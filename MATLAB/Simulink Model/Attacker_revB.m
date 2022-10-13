@@ -127,7 +127,7 @@ classdef Attacker_revB < handle
             obj.tx_gain_dB = 9+ obj.ant_gain_dB;                            % in dB
             
             obj.rx_gain_dB = 15+ obj.ant_gain_dB;                           % in dB
-            obj.rx_nf_dB = 4.5;                                             % in dB
+            obj.rx_nf_dB = 20;                                             % in dB
 
             obj.transmitter = phased.Transmitter( ...
                 'PeakPower',obj.tx_power_W, ...

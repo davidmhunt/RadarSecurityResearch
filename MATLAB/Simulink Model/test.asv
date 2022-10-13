@@ -1,6 +1,6 @@
   clear;
   values = zeros(0,0);
-  NUM_RUNS = 4;
+  NUM_RUNS = 1;
   FRAMES_PER_RUN = 15;
 
   MAX_BIN = 20;
@@ -64,7 +64,7 @@ for bin_num = 1:MAX_BIN
 end
 figure
 % line plots -> connect the dots
-plot(histogram_vals(:,1)*10, histogram_vals(:,2), '--.b')
+bar(histogram_vals(:,1)*10, histogram_vals(:,2))
 ylabel("P(detection)")
 xlabel("Range Bin (m)")
 title("P(detection) at Various Target Ranges")
