@@ -4,7 +4,7 @@
   FRAMES_PER_RUN = 15;
 
   MAX_BIN = 20;
-  USER = "kristen";
+  USER = "david";
   JSON_CONFIG_FILE = "realistic_long_range.json";
 
   TOTAL_FRAMES = NUM_RUNS * FRAMES_PER_RUN;
