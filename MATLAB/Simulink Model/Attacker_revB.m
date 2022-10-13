@@ -49,6 +49,9 @@ classdef Attacker_revB < handle
         current_victim_pos
         current_victim_vel
 
+        current_target_pos
+        current_target_vel
+
     end
 
     methods (Access = public)
@@ -124,7 +127,7 @@ classdef Attacker_revB < handle
             obj.tx_gain_dB = 9+ obj.ant_gain_dB;                            % in dB
             
             obj.rx_gain_dB = 15+ obj.ant_gain_dB;                           % in dB
-            obj.rx_nf_dB = 40;                                             % in dB
+            obj.rx_nf_dB = 20;                                             % in dB
 
             obj.transmitter = phased.Transmitter( ...
                 'PeakPower',obj.tx_power_W, ...
@@ -173,6 +176,20 @@ classdef Attacker_revB < handle
             %}
             obj.current_victim_pos = norm(attacker_pos - victim_pos);
             obj.current_victim_vel = norm(attacker_vel - victim_vel);
+        end
+
+        function update_target_pos_and_velocity(obj, victim_pos, target_pos, victim_vel,target_vel)
+            %{
+                Purpose: updates the attacker's knowledge of the target
+                location
+                Inputs:
+                    attacker_pos: the position of an attacker
+                    victim_pos: the position of an victim
+                    attacker_vel: the velocity of the attacker
+                    victim_vel: the velocity of the victim
+            %}
+            obj.current_target_pos = norm(victim_pos - target_pos);
+            obj.current_target_vel = norm(victim_vel - target_vel);
         end
 
         function receive_signal(obj,sig)
