@@ -442,7 +442,8 @@ classdef Simulator_revB < handle
                     frames_to_compute: the number of frames to simulate
             %}
                 
-            %adjust noise floor w/ this param
+            %adjust noise floor w/ this param !
+            
                 noise_power_dBm = -174 + 10 * log10(obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6);
 
                 status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);

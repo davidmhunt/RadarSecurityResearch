@@ -1,4 +1,4 @@
-function [detected, actual_ranges, estimated_ranges, estimated_velocities, actual_velocities, percent_error_ranges, percent_error_velocities, false_positives] = sim_wrap(user, json_config_file, frames_per_sim, target_start, target_velocity)
+function [detected, actual_ranges, estimated_ranges, estimated_velocities, actual_velocities, percent_error_ranges, percent_error_velocities, false_positives] = sim_wrap_attack(user, json_config_file, frames_per_sim, target_start, target_velocity)
 
 simulator = Simulator_revB();
 
@@ -48,15 +48,32 @@ simulator.load_target_realistic(target_start, target_velocity);
 
 frames_to_compute = frames_per_sim;
 
-%specify whether or not to record a move of the range-doppler plot
-record_movie = false;
-simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_compute,record_movie);
-
 %pre-compute the victim's chirps
 simulator.Victim.precompute_radar_chirps();
 
+%initialize the attacker parameters
+simulator.Attacker.initialize_attacker(...
+                        simulator.Victim.FMCW_sampling_rate_Hz * 1e-6,...
+                        simulator.Victim.StartFrequency_GHz,...
+                        simulator.Victim.Chirp_Tx_Bandwidth_MHz);
+
+%initialize the sensing subsystem's debugger
+simulator.Attacker.Subsystem_spectrum_sensing.initialize_debugger(1,simulator.Victim,frames_to_compute);
+
+%specify the type of emulation ("target", 
+        % "velocity spoof - noisy", 
+        % "velocity spoof - similar velocity",
+        % "range spoof - similar slope")
+
+attack_type = "target";
+%initialize the attacker
+simulator.Attacker.Subsystem_attacking.set_attack_mode(attack_type);
+
+%if it is desired to specify a specific attack location
+simulator.Attacker.Subsystem_attacking.set_desired_attack_location(75,7);
+
 %run the simulation (without an attacker for now)
-simulator.run_simulation_no_attack(frames_to_compute);
+simulator.run_simulation_with_attack(frames_to_compute);
 
 % report the range estimates
 estimated_ranges = simulator.Victim.Radar_Signal_Processor.range_estimates
