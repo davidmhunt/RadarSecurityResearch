@@ -29,10 +29,11 @@ classdef performance_functions
         % function to determine if an object has been detected in each
         % frame
         function [detected, false_positives] = detection(frames_to_compute, range_estimates, actual_ranges, velocity_estimates, actual_velocities)
-            valid_range_column = range_estimates(:,1);
-            valid_velocity_column = velocity_estimates(:,1);
             detected = zeros(frames_to_compute);
             false_positives = zeros(frames_to_compute);
+            for col = 1:size(range_estimates, 2)
+               valid_range_column = range_estimates(:,col);
+               valid_velocity_column = velocity_estimates(:,col);
              for idx = 1: height(valid_range_column)
                  if (~isnan(valid_range_column(idx)))
                      if ((abs(valid_range_column(idx) - actual_ranges(idx))< 5) && (abs(valid_velocity_column(idx) - actual_velocities(idx))< 5))
@@ -42,6 +43,7 @@ classdef performance_functions
                      end
                  end
              end
+            end
         end
         
         % function to determine the actual relative velocity of the target 
