@@ -481,7 +481,7 @@ classdef Simulator_revB < handle
                 end
         end
     
-        function run_simulation_with_attack(obj,frames_to_compute)
+        function run_simulation_with_attack(obj,frames_to_compute,wait_bar_enable)
             %{
                 Purpose: runs the simulation (with an attacker) for the
                     given number of frames
@@ -491,15 +491,20 @@ classdef Simulator_revB < handle
             
             noise_power_dBm = -174 + 10 * log10(obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6);
             
-            status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
-            progress_bar = waitbar(0,status,"Name","Running Simulation");
+            if wait_bar_enable
+                status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
+                progress_bar = waitbar(0,status,"Name","Running Simulation");
+            end
+            
             
             while obj.Victim.current_frame <= frames_to_compute
                 
                 %update the progress_bar
-                status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
-                waitbar(obj.Victim.current_frame/frames_to_compute,progress_bar,status);
-            
+                if wait_bar_enable
+                    status = sprintf("Current frame: %d or %d",obj.Victim.current_frame, frames_to_compute);
+                    waitbar(obj.Victim.current_frame/frames_to_compute,progress_bar,status);
+                end
+
                 %get the transmitted signal from the radar
                 sig = obj.Victim.get_radar_tx_signal();
                 
