@@ -31,9 +31,9 @@ classdef performance_functions
         function [detected, false_positives] = detection(frames_to_compute, range_estimates, actual_ranges, velocity_estimates, actual_velocities)
             detected = zeros(frames_to_compute);
             false_positives = zeros(frames_to_compute);
-            for col = 1:size(range_estimates, 2)
-               valid_range_column = range_estimates(:,col);
-               valid_velocity_column = velocity_estimates(:,col);
+            for col = 1:2
+               valid_range_column = range_estimates(:,1);
+               valid_velocity_column = velocity_estimates(:,1);
              for idx = 1: height(valid_range_column)
                  if (~isnan(valid_range_column(idx)))
                      if ((abs(valid_range_column(idx) - actual_ranges(idx))< 5) && (abs(valid_velocity_column(idx) - actual_velocities(idx))< 5))
