@@ -94,9 +94,9 @@ classdef Simulation_reconfigurable < handle
                 obj.simulator.Attacker.Subsystem_attacking.set_desired_attack_location(attack_position,attack_velocity);
 
                 %run the simulation (without an attacker for now)
-                obj.simulator.run_simulation_with_attack(obj.frames_to_compute);
+                obj.simulator.run_simulation_with_attack(obj.frames_to_compute, false);
             else
-                obj.simulator.run_simulation_no_attack(obj.frames_to_compute);
+                obj.simulator.run_simulation_no_attack(obj.frames_to_compute, false);
             end
 
         end
