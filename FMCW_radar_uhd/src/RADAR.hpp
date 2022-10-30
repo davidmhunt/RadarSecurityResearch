@@ -48,6 +48,9 @@
                 size_t num_frames;
                 double frame_periodicity;
 
+                //status flags
+                bool radar_initialized;
+
             //functions
             public:
                 
@@ -56,10 +59,26 @@
                  * loads the configuration, and initializes the usrp_handler 
                  * 
                  * @param config_data a json config object
+                 * @param initialize on true (default) automatically initializes the 
+                 * buffers and computes the frame times for radar operation.
                  * @param run on false (default) does not run radar implementation,
                  * on true runs the radar implementation
                  */
-                RADAR(json config_data, bool run = false): config(config_data),usrp_handler(config_data){
+                RADAR(json config_data, bool initialize = true, bool run = false):
+                    config(config_data),
+                    usrp_handler(config_data),
+                    radar_initialized(initialize){
+                    
+                    //initialize the radar (if specified)
+                    if (radar_initialized)
+                    {
+                        //initialize the buffers
+                        init_buffers_for_radar();
+
+                        //compute the frame start times
+                        init_frame_start_times();
+                    }
+                    
                     
                     //run if specified
                     if (run){
@@ -79,9 +98,9 @@
                  * 
                  * @return std::vector<data_type> a single tx chirp as a vector
                  */
-                std::vector<data_type> get_tx_chirp(void){
+                std::vector<std::complex<data_type>> get_tx_chirp(void){
                     //initialize a vector to store the chirp data
-                    Buffer_1D<data_type> tx_chirp_buffer;
+                    Buffer_1D<std::complex<data_type>> tx_chirp_buffer;
 
                     if (config["RadarSettings"]["tx_file_name"].is_null()){
                         std::cerr << "Radar::get_tx_chirp: tx_file_name not specified in JSON";
@@ -113,7 +132,7 @@
                     size_t desired_samples_per_buffer = 0){
 
                     //get the tx chirp buffer
-                    std::vector<data_type> tx_chirp = get_tx_chirp();
+                    std::vector<std::complex<data_type>> tx_chirp = get_tx_chirp();
 
                     //specify samples per buffer behavior
                     size_t samples_per_buffer;
@@ -199,7 +218,7 @@
                     
                     init_tx_buffer(num_chirps);
                     init_rx_buffer(num_chirps);
-                    //std::vector<data_type> tx_chirp = get_tx_chirp();
+                    //std::vector<std::complex<data_type>> tx_chirp = get_tx_chirp();
                 }          
                 
 
@@ -260,11 +279,15 @@
                  * 
                  */
                 void run_RADAR(void){
-                    //initialize the buffers
-                    init_buffers_for_radar();
 
-                    //compute the frame start times
-                    init_frame_start_times();
+                    if (! radar_initialized)
+                    {
+                        //initialize the buffers
+                        init_buffers_for_radar();
+
+                        //compute the frame start times
+                        init_frame_start_times();
+                    }
 
                     //stream the frames
                     usrp_handler.stream_frames(frame_start_times,& tx_buffer,& rx_buffer); 

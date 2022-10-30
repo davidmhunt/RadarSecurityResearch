@@ -8,6 +8,9 @@
     #include <string>
     #include <vector>
     #include <tuple>
+    #include <memory>
+    #include <cmath>
+    #include <typeinfo>
 
     //includes for JSON editing
     #include <nlohmann/json.hpp>
@@ -29,10 +32,13 @@
             public:
                 std::string read_file;
                 std::string write_file;
+
             //file streams
-                std::ifstream read_file_stream;
-                std::ofstream write_file_stream;
-            //debug status
+                std::shared_ptr<std::ifstream> read_file_stream;
+                std::shared_ptr<std::ofstream> write_file_stream;
+
+            //status
+                bool buffer_init_status;
                 bool debug_status;
 
             //functions
@@ -41,26 +47,38 @@
                  * @brief Default constructor a new Buffer object
                  * 
                  */
-                Buffer(): debug_status(false) {}
+                Buffer(): debug_status(false),buffer_init_status(false) {}
 
                 /**
                  * @brief Construct a new Buffer object, alternative constructor to specify debug status
                  * 
                  * @param debug the desired debug status
+                 * @param debug the initialization status of the buffer
                  */
-                Buffer(bool debug) : debug_status(debug) {}
+                Buffer(bool init, bool debug) 
+                    : debug_status(debug),buffer_init_status(init) {}
 
                 /**
                  * @brief Destroy the Buffer object
                  * 
                  */
                 virtual ~Buffer(){
-                    if (read_file_stream.is_open()){
-                        read_file_stream.close();
+                    //only close the read file stream if it is the 
+                    //final pointer pointing to the streaming object
+                    if (read_file_stream.use_count() == 1)
+                    {
+                        if (read_file_stream -> is_open()){
+                            read_file_stream -> close();
+                        }
                     }
-                    if (write_file_stream.is_open()){
-                        write_file_stream.close();
+                    
+                    
+                    if (write_file_stream.use_count() == 1){
+                        if (write_file_stream -> is_open()){
+                            write_file_stream -> close();
+                        }
                     }
+                    
                 }
 
                 //managing and initializing file streams
@@ -98,12 +116,14 @@
                  * 
                  */
                 void init_read_file_stream(void){
+                    
                     if(read_file.empty()){
                         std::cerr << "Buffer::init_read_file_stream: no read_file name" <<std::endl;
                     }
                     else{
-                        read_file_stream.open(read_file.c_str(), std::ios::in | std::ios::binary);
-                        if(read_file_stream.is_open()){
+                        read_file_stream = std::make_shared<std::ifstream>(std::ifstream());
+                        read_file_stream -> open(read_file.c_str(), std::ios::in | std::ios::binary);
+                        if(read_file_stream -> is_open()){
                             std::cout << "Buffer::init_read_file_stream: read file opened successfully" <<std::endl;
                         }
                         else{
@@ -122,8 +142,9 @@
                         std::cerr << "Buffer::init_write_file_stream: no write_file name" <<std::endl;
                     }
                     else{
-                        write_file_stream.open(write_file.c_str(), std::ios::out | std::ios::binary);
-                        if(write_file_stream.is_open()){
+                        write_file_stream = std::make_shared<std::ofstream>(std::ofstream());
+                        write_file_stream -> open(write_file.c_str(), std::ios::out | std::ios::binary);
+                        if(write_file_stream -> is_open()){
                             std::cout << "Buffer::init_write_file_stream: write file opened successfully" <<std::endl;
                         }
                         else{
@@ -137,8 +158,8 @@
                  * 
                  */
                 void close_read_file_stream(void){
-                    if(read_file_stream.is_open()){
-                        read_file_stream.close();
+                    if(read_file_stream -> is_open()){
+                        read_file_stream -> close();
                         std::cout << "Buffer::close_read_file_stream: read file stream closed" << std::endl;
                     }
                     else{
@@ -152,8 +173,8 @@
                  * 
                  */
                 void close_write_file_stream(void){
-                    if(write_file_stream.is_open()){
-                        write_file_stream.close();
+                    if(write_file_stream -> is_open()){
+                        write_file_stream -> close();
                         std::cout << "Buffer::close_write_file_stream: write file stream closed" << std::endl;
                     }
                     else{
@@ -174,12 +195,12 @@
                     std::vector<data_type> data_vector;
                     
                     //if the read file is open, read it into the data_vector
-                    if (read_file_stream.is_open()){
+                    if (read_file_stream -> is_open()){
 
                         //get the size of the file to be read
                         std::streampos size;
-                        read_file_stream.seekg (0,std::ios::end);
-                        size = read_file_stream.tellg();
+                        read_file_stream -> seekg (0,std::ios::end);
+                        size = read_file_stream -> tellg();
 
                         //determine the number of samples in the file
                         size_t detected_samples = size / sizeof(data_type);
@@ -189,9 +210,9 @@
                         data_vector = std::vector<data_type>(detected_samples);
 
                         //read the file
-                        read_file_stream.seekg(0,std::ios::beg);
-                        read_file_stream.read((char*) &data_vector.front(), data_vector.size() * sizeof(data_type));
-                        read_file_stream.close();  
+                        read_file_stream -> seekg(0,std::ios::beg);
+                        read_file_stream -> read((char*) &data_vector.front(), data_vector.size() * sizeof(data_type));
+                        read_file_stream -> close();  
                     }
                     else{
                         std::cerr << "Buffer::load_data_from_read_file: read_file_stream is not open\n";
@@ -236,7 +257,9 @@
                  * 
                  * @param debug the specified debug setting
                  */
-                Buffer_2D(bool debug): Buffer<data_type>(debug){}
+                Buffer_2D(bool debug)
+                : Buffer<data_type>(false,debug)
+                {}
 
                 /**
                  * @brief Construct a new Buffer_2D object
@@ -247,8 +270,11 @@
                  * @param debug the specified debug setting
                  */
                 Buffer_2D(size_t rows, size_t cols,size_t excess = 0, bool debug = false)
-                        : Buffer<data_type>(debug),buffer(rows,std::vector<data_type>(cols)),
-                                        num_rows(rows),num_cols(cols){}
+                        : Buffer<data_type>(true,debug),
+                        buffer(rows,std::vector<data_type>(cols)),
+                        num_rows(rows),
+                        num_cols(cols),
+                        excess_samples(excess){}
 
                 /**
                  * @brief Destructor for Buffer_2D object
@@ -280,24 +306,24 @@
                     //print out the first five samples
                     for (size_t i = 0; i < samples_to_print; i++)
                     {
-                        std::cout << buffer_to_print[i].real() << " + " << buffer_to_print[i].imag() << "j, ";
+                       std::cout << buffer_to_print[i] << ", ";
                     }
 
                     //if there are more than 5 samples, print out the last sample from the vector as well
                     if(buffer_to_print.size() > 5){
-                        std::cout << "\t...\t" << buffer_to_print.back().real() << " + " <<
-                                buffer_to_print.back().imag() << "j" <<std::endl;
+                        std::cout << buffer_to_print.back() << std::endl;
                     }
                     else{
                         std::cout << std::endl;
                     }
+                    
                     return;
                 }
 
                 /**
-                 * @brief load data from a vector into the buffer
+                 * @brief load data from a 1D vector into the buffer
                  * 
-                 * @param data_to_load the data to load into the buffer
+                 * @param data_to_load (1D vector) the data to load into the buffer
                  * @param copy_until_buffer_full (on true) continuously copies data from the vector into the buffer until
                  * the buffer is full or until the excess samples is reached, even if multiple copies of the data are made
                  * (on false) inserts up to only 1 copy of the data into the buffer
@@ -342,7 +368,71 @@
                         }
                     }
                 }
-                
+
+                /**
+                 * @brief load data from a 2D vector into the buffer
+                 * 
+                 * @param data_to_load (2D vector) the data to load into the buffer
+                 * @param copy_until_buffer_full (on true) continuously copies data from the vector into the buffer until
+                 * the buffer is full or until the excess samples is reached, even if multiple copies of the data are made
+                 * (on false) inserts up to only 1 copy of the data into the buffer
+                 */
+                void load_data_into_buffer(std::vector<std::vector<data_type>> & data_to_load, bool copy_until_buffer_full = true){
+                    //setup bool to stop copying if copy_until_buffer_full is false
+                    bool stop_signal = false;
+                    //setup iterators
+
+                    //data iterators
+                    typename std::vector<data_type>::iterator data_iterator = data_to_load[0].begin();
+                    size_t data_row = 0;
+                    size_t num_data_rows = data_to_load.size();
+
+                    //buffer iterators
+                    size_t buffer_row = 0;
+                    typename std::vector<data_type>::iterator buffer_iterator = buffer[0].begin();
+                    while (buffer_iterator != (buffer[num_rows - 1].end() - excess_samples) && stop_signal == false)
+                    {
+                        *buffer_iterator = *data_iterator;
+
+                        //increment data iterator
+                        if(data_iterator == data_to_load[data_row].end() - 1){
+                            //if it is the last row in the vector
+                            if (data_row == num_data_rows - 1)
+                            {
+                                if(copy_until_buffer_full){
+                                    data_row = 0;
+                                    data_iterator = data_to_load[0].begin();
+                                }
+                                else{
+                                    stop_signal = true;
+                                }
+                            }
+                            else {
+                                data_row = data_row + 1;
+                                data_iterator = data_to_load[data_row].begin();
+                            }
+                        }
+                        else{
+                            ++data_iterator;
+                        }
+
+                        //increment buffer iterator
+                        if(buffer_iterator == buffer[buffer_row].end() - 1){
+                            if(buffer_row == (num_rows - 1) && excess_samples == 0){
+                                buffer_iterator = buffer[buffer_row].end();
+                            }
+                            else{
+                                buffer_row = buffer_row + 1;
+                                buffer_iterator = buffer[buffer_row].begin();
+                            }
+                        }
+                        else{
+                            ++buffer_iterator;
+                        }
+                    }
+                }
+                             
+
                 /**
                  * @brief print a prevew of the buffer (1st 3 rows, 1st 5 columns, last row, last column)
                  * 
@@ -380,15 +470,49 @@
 
                 /**
                  * @brief Function to load data from a file into the current buffer
-                 * (assumes that the current buffer is already initialized and that the read file stream is 
-                 * already open)
+                 * (assumes that the buffer has already been initialized and the read
+                 * file stream is already initialized.)
                  * 
                  */
                 virtual void import_from_file(){
-                    //save the data from the file into a vector
-                    std::vector<data_type> data = Buffer<data_type>::load_data_from_read_file();
+                    
+                    if (Buffer<data_type>::buffer_init_status == true){
+                        //save the data from the file into a vector
+                        std::vector<data_type> data = Buffer<data_type>::load_data_from_read_file();
+                        
+                        //load it into the file
+                        load_data_into_buffer(data,false);
+                    }
+                    else {
+                        std::cout << "Buffer_2D::import_from_file: attempted to import from file when buffer wasn't initialized" <<std::endl;
+                    }
+                    
+                }
 
-                    load_data_into_buffer(data,false);
+                /**
+                 * @brief gets data from the file, initializes the 
+                 * buffer for a given number of columns, and loads the data into the buffer
+                 * (note: assumes read file stream has already been initialized)
+                 * 
+                 * @param desired_num_cols the number of columns in the buffer (automatically 
+                 * computes the number of rows))
+                 */
+                void import_from_file(double desired_num_cols){
+                        //save the data from the file into a vector
+                        std::vector<data_type> data = Buffer<data_type>::load_data_from_read_file();
+                        
+                        double num_samples = static_cast<double>(data.size());
+
+                        num_cols = static_cast<int>(desired_num_cols);
+                        num_rows = static_cast<int>(std::ceil(num_samples/desired_num_cols));
+                        excess_samples = static_cast<int>(num_samples) % num_cols;
+
+                        buffer = std::vector<std::vector<data_type>>(num_rows,std::vector<data_type>(num_cols));
+                        
+                        //load it into the file
+                        load_data_into_buffer(data,false);
+
+                        return;
                 }
 
                 /**
@@ -397,14 +521,14 @@
                  */
                 virtual void save_to_file(){
                     //the out file stream must already be open when the function is called
-                    if(Buffer<data_type>::write_file_stream.is_open()){
+                    if(Buffer<data_type>::write_file_stream -> is_open()){
                         //save all of the rows except for the last one
                         for (size_t i = 0; i < num_rows - 1; i++)
                         {
-                            Buffer<data_type>::write_file_stream.write((char*) &buffer[i].front(), buffer[i].size() * sizeof(data_type));
+                            Buffer<data_type>::write_file_stream -> write((char*) &buffer[i].front(), buffer[i].size() * sizeof(data_type));
                         }
                         //for the last row, since there may be excess samples in the buffer, only save those pertaining to a chirp
-                        Buffer<data_type>::write_file_stream.write((char*) &buffer.back().front(), (num_cols - excess_samples) * sizeof(data_type));
+                        Buffer<data_type>::write_file_stream -> write((char*) &buffer.back().front(), (num_cols - excess_samples) * sizeof(data_type));
 
                     }
                     else{
@@ -443,7 +567,7 @@
                  * 
                  * @param debug the desired debug setting
                  */
-                Buffer_1D(bool debug) : Buffer<data_type>(debug) {}
+                Buffer_1D(bool debug) : Buffer<data_type>(false,debug) {}
 
                 /**
                  * @brief Construct a new Buffer_1D object
@@ -452,7 +576,7 @@
                  * @param debug the desired debug setting
                  */
                 Buffer_1D(size_t samples, bool debug = false) 
-                    : Buffer<data_type>(debug),buffer(samples),
+                    : Buffer<data_type>(true,debug),buffer(samples),
                     num_samples(samples) {}
 
                 /**
@@ -516,9 +640,9 @@
                  * 
                  */
                 virtual void save_to_file(){
-                    if(Buffer<data_type>::write_file_stream.is_open()){
+                    if(Buffer<data_type>::write_file_stream -> is_open()){
                         //save all of the rows except for the last one
-                        Buffer<data_type>::write_file_stream.write((char*) &buffer.front(), buffer.size() * sizeof(data_type));
+                        Buffer<data_type>::write_file_stream -> write((char*) &buffer.front(), buffer.size() * sizeof(data_type));
                     }
                     else{
                         std::cerr << "Buffer_1D::save_to_file: write_file_stream not open" << std::endl;
@@ -536,8 +660,13 @@
                 }
         }; // end Buffer_1D class
     
+        /**
+         * @brief A data 2D buffer, specifically designed for radar on the USRP 
+         * 
+         * @tparam data_type creates a RADAR Buffer of type std::complex<data_type>
+         */
         template<typename data_type>
-        class RADAR_Buffer : public Buffer_2D<data_type>{
+        class RADAR_Buffer : public Buffer_2D<std::complex<data_type>>{
             public:
                 //variables
                 size_t num_chirps;
@@ -550,7 +679,7 @@
                      * @brief Construct a new fmcw buffer object
                      * 
                      */
-                    RADAR_Buffer(): Buffer_2D<data_type>(){}
+                    RADAR_Buffer(): Buffer_2D<std::complex<data_type>>(){}
                     
                     /**
                      * @brief Construct a new fmcw buffer object
@@ -572,7 +701,7 @@
                         size_t required_samples_per_chirp,
                         size_t desired_num_chirps,
                         bool debug = false) 
-                        : Buffer_2D<data_type>(debug){
+                        : Buffer_2D<std::complex<data_type>>(debug){
                             configure_fmcw_buffer(
                                 desired_samples_per_buff,
                                 required_samples_per_chirp,
@@ -601,23 +730,24 @@
                         //start of code for function
                         num_chirps = desired_num_chirps;
                         samples_per_chirp = required_samples_per_chirp;
-                        Buffer_2D<data_type>::num_cols = desired_samples_per_buff;
+                        Buffer_2D<std::complex<data_type>>::num_cols = desired_samples_per_buff;
 
                         if (desired_samples_per_buff == required_samples_per_chirp){
-                            Buffer_2D<data_type>::num_rows = desired_num_chirps;
-                            Buffer_2D<data_type>::excess_samples = 0;
+                            Buffer_2D<std::complex<data_type>>::num_rows = desired_num_chirps;
+                            Buffer_2D<std::complex<data_type>>::excess_samples = 0;
                         }
                         else if (((desired_num_chirps * required_samples_per_chirp) % desired_samples_per_buff) == 0){
-                            Buffer_2D<data_type>::num_rows = (desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff;
-                            Buffer_2D<data_type>::excess_samples = 0;   
+                            Buffer_2D<std::complex<data_type>>::num_rows = (desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff;
+                            Buffer_2D<std::complex<data_type>>::excess_samples = 0;   
                         }
                         else
                         {
-                            Buffer_2D<data_type>::num_rows = ((desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff) + 1;
-                            Buffer_2D<data_type>::excess_samples = (Buffer_2D<data_type>::num_rows * desired_samples_per_buff) - (desired_num_chirps * required_samples_per_chirp);
+                            Buffer_2D<std::complex<data_type>>::num_rows = ((desired_num_chirps * required_samples_per_chirp) / desired_samples_per_buff) + 1;
+                            Buffer_2D<std::complex<data_type>>::excess_samples = (Buffer_2D<std::complex<data_type>>::num_rows * desired_samples_per_buff) - (desired_num_chirps * required_samples_per_chirp);
                         }
 
-                        Buffer_2D<data_type>::buffer = std::vector<std::vector<data_type>>(Buffer_2D<data_type>::num_rows,std::vector<data_type>(Buffer_2D<data_type>::num_cols));
+                        Buffer_2D<std::complex<data_type>>::buffer = std::vector<std::vector<std::complex<data_type>>>(Buffer_2D<std::complex<data_type>>::num_rows,std::vector<std::complex<data_type>>(Buffer_2D<std::complex<data_type>>::num_cols));
+                        Buffer<std::complex<data_type>>::buffer_init_status = true;
                     }
 
                     /**
@@ -627,8 +757,8 @@
                      * 
                      * @param chirp a vector containing the samples for a signle chirp
                      */
-                    void load_chirp_into_buffer(std::vector<data_type> & chirp){
-                        Buffer_2D<data_type>::load_data_into_buffer(chirp,true);
+                    void load_chirp_into_buffer(std::vector<std::complex<data_type>> & chirp){
+                        Buffer_2D<std::complex<data_type>>::load_data_into_buffer(chirp,true);
                     }
         };
 

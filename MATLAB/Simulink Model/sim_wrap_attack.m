@@ -65,12 +65,12 @@ simulator.Attacker.Subsystem_spectrum_sensing.initialize_debugger(1,simulator.Vi
         % "velocity spoof - similar velocity",
         % "range spoof - similar slope")
 
-attack_type = "range spoof - similar slope, velocity spoof - similar velocity";
+attack_type = "velocity spoof - similar velocity, range spoof - similar slope";
 %initialize the attacker
 simulator.Attacker.Subsystem_attacking.set_attack_mode(attack_type);
 
 %if it is desired to specify a specific attack location
-% simulator.Attacker.Subsystem_attacking.set_desired_attack_location(75,7);
+%simulator.Attacker.Subsystem_attacking.set_desired_attack_location(75,7);
 
 %run the simulation (without an attacker for now)
 simulator.run_simulation_with_attack(frames_to_compute,false);

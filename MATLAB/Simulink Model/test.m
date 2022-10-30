@@ -1,6 +1,6 @@
 %   clear;
 %   values = zeros(0,0);
-  NUM_RUNS = 100;
+  NUM_RUNS = 200;
   FRAMES_PER_RUN = 20;
 
   MAX_BIN = 20;

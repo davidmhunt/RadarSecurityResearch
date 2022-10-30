@@ -334,7 +334,6 @@ classdef Radar_revB < handle
                 %signal
                 if obj.current_chirp == obj.NumChirps
                     obj.Radar_Signal_Processor.process_radar_cube();
-                    obj.Radar_Signal_Processor.reset_radar_cube();
                 end
 
                 obj.current_chirp = obj.current_chirp + 1;
@@ -343,6 +342,7 @@ classdef Radar_revB < handle
                 %over
                 if obj.num_samples_sent == 0
                     %this means that the end of the frame has arrived
+                    obj.Radar_Signal_Processor.reset_radar_cube();
                     obj.current_chirp = 1;
                     obj.current_frame = obj.current_frame + 1;
                 end
