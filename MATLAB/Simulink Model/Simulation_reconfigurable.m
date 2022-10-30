@@ -1,0 +1,124 @@
+classdef Simulation_reconfigurable < handle
+    properties
+        frames_to_compute;
+        simulator;
+        sim_config;
+    end
+    methods (Access = public)
+        function obj = Simulation_reconfigurable()
+            
+        end
+
+        function initialize_simulation(obj, sim_config, target_start, target_velocity)
+            obj.sim_config = sim_config;
+            obj.simulator = Simulator_revB();
+            user = sim_config.TestSettings.Configurations.user;
+            json_config_file = sim_config.TestSettings.Configurations.json_config;
+            obj.frames_to_compute = sim_config.TestSettings.Configurations.frames_per_sim;
+
+            david_file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/";
+            kristen_file_path = "C:\Users\krist\OneDrive\Documents\2022-2023 School Year\Radar Security Project\RadarSecurityResearch\MATLAB\Simulink Model\config_files\";
+
+            % file_path = "B210_params.json";
+            % file_path = "B210_params_highBW.json";
+            % file_path = "B210_params_highvres.json";
+            % file_path = "B210_params_lowBW.json";
+            % file_path = "B210_params_sensing_system.json";
+            % file_path = "X310_params_100MHzBW.json";
+            % file_path = "realistic_params.json";
+
+
+            if (user == "kristen")
+                user_path = kristen_file_path;
+            else
+                user_path = david_file_path;
+            end
+
+            obj.simulator.load_params_from_JSON(user_path + json_config_file);
+
+            %apply timing offsets as desired
+            obj.simulator.Victim.timing_offset_us = 0;
+            obj.simulator.Attacker.Subsystem_tracking.timing_offset_us = 0;
+
+            %configure the FMCW parameters
+            obj.simulator.configure_FMCW_Radar_parameters();
+
+            %load default attacker, and victim positions and velocities
+            obj.simulator.load_realistic_attacker_and_victim_position_and_velocity();
+
+            %print out key parameters
+            obj.simulator.Victim.print_chirp_parameters;
+
+            obj.simulator.Victim.print_frame_parameters;
+            %log detection first, then log all the data about it
+            obj.simulator.Victim.print_performance_specs;
+            obj.simulator.Victim.print_FMCW_specs;
+
+            obj.simulator.load_target_realistic(target_start, target_velocity);
+
+            %specify whether or not to record a move of the range-doppler plot
+            record_movie = false;
+            obj.simulator.Victim.Radar_Signal_Processor.configure_movie_capture(obj.frames_to_compute,record_movie);
+
+            %pre-compute the victim's chirps
+            obj.simulator.Victim.precompute_radar_chirps();
+        end
+
+        function run_simulation(obj)
+
+            %run the simulation (without an attacker for now)
+            if(obj.sim_config.TestSettings.Configurations.attack_enable)
+                %initialize the attacker parameters
+                obj.simulator.Attacker.initialize_attacker(...
+                    obj.simulator.Victim.FMCW_sampling_rate_Hz * 1e-6,...
+                    obj.simulator.Victim.StartFrequency_GHz,...
+                    obj.simulator.Victim.Chirp_Tx_Bandwidth_MHz);
+
+                %initialize the sensing subsystem's debugger
+                obj.simulator.Attacker.Subsystem_spectrum_sensing.initialize_debugger(1,obj.simulator.Victim,obj.frames_to_compute);
+
+                %specify the type of emulation ("target",
+                % "velocity spoof - noisy",
+                % "velocity spoof - similar velocity",
+                % "range spoof - similar slope")
+
+                attack_type = obj.sim_config.TestSettings.Configurations.attack_type;
+                
+                %initialize the attacker
+                obj.simulator.Attacker.Subsystem_attacking.set_attack_mode(attack_type);
+
+                %if it is desired to specify a specific attack location
+                attack_position = obj.sim_config.TestSettings.Configurations.attack_pos;
+                attack_velocity = obj.sim_config.TestSettings.Configurations.attack_velocity;
+
+                obj.simulator.Attacker.Subsystem_attacking.set_desired_attack_location(attack_position,attack_velocity);
+
+                %run the simulation (without an attacker for now)
+                obj.simulator.run_simulation_with_attack(obj.frames_to_compute, false);
+            else
+                obj.simulator.run_simulation_no_attack(obj.frames_to_compute, false);
+            end
+
+        end
+
+        function [detected, actual_ranges, estimated_ranges, estimated_velocities, actual_velocities, percent_error_ranges, percent_error_velocities, false_positives] = simulation_results(obj)
+            % report the range estimates
+            estimated_ranges = obj.simulator.Victim.Radar_Signal_Processor.range_estimates
+            % compute the actual range per frame
+            actual_ranges = performance_functions.actual_ranges(obj.frames_to_compute, obj.simulator.Victim.FramePeriodicity_ms*.001, obj.simulator.SimulatedTarget.velocity_meters_per_s, obj.simulator.Victim.velocity_m_per_s, obj.simulator.SimulatedTarget.position_m, obj.simulator.Victim.position_m)
+            % compute the percent error of the range estimate for each frame
+            percent_error_ranges = performance_functions.range_percent_error(actual_ranges, estimated_ranges)
+            % report the velocity estimates
+            estimated_velocities = obj.simulator.Victim.Radar_Signal_Processor.velocity_estimates
+            % compute the actual velocity per frame
+            actual_velocities = performance_functions.actual_velocities(obj.frames_to_compute, obj.simulator.SimulatedTarget.velocity_meters_per_s, obj.simulator.Victim.velocity_m_per_s)
+            % compute the velocity percent error per frame
+            percent_error_velocities = performance_functions.velocity_percent_error(estimated_velocities, actual_velocities)
+
+            % determine if an object has been detected in each frame, and determine
+            % false positives
+            [detected, false_positives] = performance_functions.detection(obj.frames_to_compute, estimated_ranges, actual_ranges, estimated_velocities, actual_velocities)
+
+        end
+    end
+end
