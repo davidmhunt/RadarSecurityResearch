@@ -42,7 +42,7 @@
         /**
          * @brief A USRP Handler class to handle streaming with USRP Devises
          * 
-         * @tparam data_type the cpu_format used for the USRP device
+         * @tparam data_type the cpu_format used for the USRP device, will be std::complex<data_type>
          */
         template<typename data_type>
         class USRPHandler {
@@ -654,7 +654,7 @@
                  * @param rx_buffer a pointer to a Buffer_2D data type
                  */
                 void stream_rx_frames(std::vector<uhd::time_spec_t> frame_start_times,
-                                    Buffer_2D<data_type> * rx_buffer){
+                                    Buffer_2D<std::complex<data_type>> * rx_buffer){
                     //determine the number of samples to be streamed in the frame
                     size_t num_samps_per_buff = rx_buffer -> num_cols;
                     size_t num_rows = rx_buffer -> num_rows;
@@ -761,7 +761,7 @@
                  * @param tx_buffer a Buffer_2D that will be used to stream the chirps for each frame
                  */
                 void stream_tx_frames(std::vector<uhd::time_spec_t> frame_start_times,
-                                        Buffer_2D<data_type> * tx_buffer){
+                                        Buffer_2D<std::complex<data_type>> * tx_buffer){
                     //create a unique lock for managing outputs using std::cout
                     std::unique_lock<std::mutex> cout_unique_lock(cout_mutex, std::defer_lock);
                     
@@ -887,8 +887,8 @@
                  * @param rx_buffer a pointer to a buffer to save the received signal for each frame and to save to a file
                  */
                 void stream_frames(std::vector<uhd::time_spec_t> frame_start_times,
-                                    Buffer_2D<data_type> * tx_buffer,
-                                    Buffer_2D<data_type> * rx_buffer){
+                                    Buffer_2D<std::complex<data_type>> * tx_buffer,
+                                    Buffer_2D<std::complex<data_type>> * rx_buffer){
                     //set the start time
                     reset_usrp_clock();
 
@@ -939,17 +939,17 @@
                  * @param rx_buffer the 1D buffer to load rx samples into and save to a file
                  * @param stream_time_s the length of time to stream samples for
                  */
-                void rx_stream_to_file(Buffer_1D<data_type> * rx_buffer,
+                void rx_stream_to_file(Buffer_1D<std::complex<data_type>> * rx_buffer,
                                     double stream_time_s){
+                    
+                    
+                    //determine the number of samples per buffer
+                    size_t num_samps_per_buff = rx_buffer -> num_samples;
                     
                     //compute the number of samples to stream
                     double sample_rate = usrp -> get_rx_rate(rx_channel);
                     size_t total_samps = static_cast<size_t>(ceil(
                                             sample_rate * stream_time_s));
-                    
-                    //stream to the file
-                    //determine the number of samples per buffer
-                    size_t num_samps_per_buff = rx_buffer -> num_samples;
                     
 
                     //reset the overflow message
@@ -959,10 +959,11 @@
                     //initialize the stream command
                     uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
                     rx_stream_cmd.num_samps = total_samps;
-                    rx_stream_cmd.stream_now = true;;
+                    rx_stream_cmd.stream_now = true;
 
                     //initialize tracking for when done streaming
                     size_t num_samps_received;
+                    size_t expected_samps_to_receive;
                     size_t total_samps_received = 0;
                     bool streaming_complete = false;
                     
@@ -971,15 +972,22 @@
 
                     while(not streaming_complete)
                     {                        
+                        //determine the number of samples we are expecting to receive
+                        if((total_samps - total_samps_received)>= num_samps_per_buff){
+                            expected_samps_to_receive = num_samps_per_buff;
+                        }
+                        else{
+                            expected_samps_to_receive = total_samps - total_samps_received;
+                        }
+                        
                         //receive the data
                         num_samps_received = rx_stream -> recv(
                                         &(rx_buffer->buffer.front()),
                                         num_samps_per_buff,rx_md,0.5,true);
                         
                         //check the metadata to confirm good receive
-                        if (num_samps_received != num_samps_per_buff &&
-                            (total_samps - total_samps_received) != num_samps_received){
-                            std::cerr << "USRPHandler::rx_stream_to_file: Tried receiving " << num_samps_per_buff <<
+                        if (num_samps_received != expected_samps_to_receive){
+                            std::cerr << "USRPHandler::rx_stream_to_file: Tried receiving " << expected_samps_to_receive <<
                                         " samples, but only received " << num_samps_received << std::endl;
                         }
                         check_rx_metadata(rx_md);

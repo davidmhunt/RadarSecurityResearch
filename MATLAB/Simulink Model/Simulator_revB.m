@@ -496,8 +496,8 @@ classdef Simulator_revB < handle
                 progress_bar = waitbar(0,status,"Name","Running Simulation");
             end
             
-            
-            while obj.Victim.current_frame <= frames_to_compute
+            sim_complete = false;
+            while ~sim_complete
                 
                 %update the progress_bar
                 if wait_bar_enable
@@ -543,8 +543,34 @@ classdef Simulator_revB < handle
                 %have the radar receive the signal
 
                 obj.Victim.receive_signal(sig_target + sig_attacker_attacking + noise_sig);
+
+                if obj.Victim.current_frame == frames_to_compute
+                    if obj.Victim.current_chirp > obj.Victim.NumChirps
+                        sim_complete = true;
+                    end
+                end
             end
         end
+    
+%% [3] Functions to support reading and writing data to a file for c++ script checking
+        function save_to_file(obj,data_to_save,path)
+            fileID = fopen(path,'w');
+            data = double(data_to_save);
+            fwrite(fileID,reshape([real(data),imag(data)].',[],1), 'float32');
+            fclose(fileID);
+        end
+
+        function read_data = read_from_file(obj,path, complex_data)
+            fileID = fopen(path,'r');
+            read_data = fread(fileID,'float');
+            
+            %convert to complex values
+            if complex_data
+                read_data = reshape(read_data,2,[]).';
+                read_data = read_data(:,1) + 1j * read_data(:,2);
+            end
+        end
+
     end
 
 end

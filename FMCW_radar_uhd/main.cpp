@@ -80,19 +80,19 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
     
     if (type == "double" && cpufmt == "fc64"){
-        FMCWHandler<std::complex<double>> fmcw_handler(radar_config,attack_config,false);
+        FMCWHandler<double> fmcw_handler(radar_config,attack_config,false);
     }
     else if (type == "float" && cpufmt == "fc32")
     {
-        FMCWHandler<std::complex<float>> fmcw_handler(radar_config,attack_config,true);
+        FMCWHandler<float> fmcw_handler(radar_config,attack_config,true);
     }
     else if (type == "int16_t" && cpufmt == "sc16")
     {
-        FMCWHandler<std::complex<int16_t>> fmcw_handler(radar_config,attack_config,false);
+        FMCWHandler<int16_t> fmcw_handler(radar_config,attack_config,false);
     }
     else if (type == "int8_t" && cpufmt == "sc8")
     {
-        FMCWHandler<std::complex<int8_t>> fmcw_handler(radar_config,attack_config,false);
+        FMCWHandler<int8_t> fmcw_handler(radar_config,attack_config,false);
     }
     else{
         std::cerr << "MAIN: type and cpufmt don't match valid combination" << std::endl;

@@ -33,11 +33,39 @@
             private:
                 json config;
                 USRPHandler<data_type> usrp_handler;
-                Buffer_1D<data_type> rx_buffer;
+                Buffer_1D<std::complex<data_type>> rx_buffer;
+
+                //timing variables
+                double stream_duration_s;
+
+                //status flags
+                bool attacker_initialized;
 
             public:
 
-                ATTACKER(json config_data, bool run = false): config(config_data),usrp_handler(config_data){
+                /**
+                 * @brief Construct a new ATTACKER object,
+                 * loads the configuration, and initializes the usrp_handler 
+                 * 
+                 * @param config_data a json config object
+                 * @param initialize on true (default) automatically initializes the 
+                 * buffers and rx stream duration.
+                 * @param run on false (default) does not run attacker implementation,
+                 * on true runs the attacker implementation
+                 */
+                ATTACKER(json config_data, bool initialize = true, bool run = false):
+                    config(config_data),
+                    usrp_handler(config_data),
+                    attacker_initialized(initialize){
+                    
+                    if (attacker_initialized)
+                    {
+                        //initialize the rx buffer to stream to a file
+                        init_rx_buffer();
+
+                        //compute the stream duration in seconds
+                        stream_duration_s = get_rx_stream_duration();
+                    }
                     
                     //run if specified
                     if (run){
@@ -95,9 +123,16 @@
                 }
 
                 void run_attacker(void){
-                    init_rx_buffer();
-                    double stream_time_s = get_rx_stream_duration();
-                    usrp_handler.rx_stream_to_file(& rx_buffer,stream_time_s);
+                    if (! attacker_initialized)
+                    {
+                        //initialize the rx buffer to stream to a file
+                        init_rx_buffer();
+
+                        //compute the stream duration in seconds
+                        stream_duration_s = get_rx_stream_duration();
+                    }
+                    
+                    usrp_handler.rx_stream_to_file(& rx_buffer,stream_duration_s);
                 }
         };
     }

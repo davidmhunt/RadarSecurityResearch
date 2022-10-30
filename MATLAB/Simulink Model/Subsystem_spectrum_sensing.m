@@ -188,7 +188,7 @@ classdef Subsystem_spectrum_sensing < handle
 
             
             
-            obj.spectogram_params.freq_sampling_period_us = 0.5; %sample frequency every x us, 2 for lower BW 
+            obj.spectogram_params.freq_sampling_period_us = 0.5; %sample frequency every x us, 2 for lower BW, 0.5 for high BW (1GHz) 
             obj.spectogram_params.num_samples_per_sampling_window = ...
                 ceil(obj.spectogram_params.freq_sampling_period_us * FMCW_sample_rate_Msps);
             
