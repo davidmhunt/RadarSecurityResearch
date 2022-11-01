@@ -4,7 +4,7 @@
             "user":"david",
             "json_config": "realistic_long_range.json",
             "frames_per_sim": 10,
-            "attack_type": "velocity spoof - similar velocity, range spoof - similar slope",
+            "attack_type": "range spoof - similar slope",
             "num_runs": 200,
             "pre_attack_frames": 5,
             "max_bin": 20,
