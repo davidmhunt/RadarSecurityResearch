@@ -41,8 +41,13 @@
             "simplified_streamer_metadata":true
         }
     },
-    "AttackSettings":{
+    "SensingSubsystemSettings":{
         "rx_file_name":"/home/david/Documents/MATLAB_generated/sensing_stream.bin",
         "rx_time_ms": 1000
+    },
+    "AttackSubsystemSettings":{
+        "tx_file_name": "/home/david/Documents/MATLAB_generated/attacking_chirps_full.bin",
+        "num_frames": 30,
+        "frame_periodicity_ms": 33.34
     }
 }

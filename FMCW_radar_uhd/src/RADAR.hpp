@@ -261,14 +261,6 @@
                         std::cout << frame_start_times[i].get_real_secs() << ", ";
                     }
                     std::cout << std::endl;
-                    
-                     //set frame_periodicity
-                    if(config["RadarSettings"]["frame_periodicity_ms"].is_null() == false){
-                        frame_periodicity = config["RadarSettings"]["frame_periodicity_ms"].get<double>() * 1e-3;
-                    }
-                    else{
-                        std::cerr << "RADAR::init_frame_start_times: couldn't find frame_periodicity_ms in JSON" <<std::endl;
-                    }
                 }
 
                 
