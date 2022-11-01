@@ -88,10 +88,14 @@ classdef Simulation_reconfigurable < handle
                 obj.simulator.Attacker.Subsystem_attacking.set_attack_mode(attack_type);
 
                 %if it is desired to specify a specific attack location
-                attack_position = obj.sim_config.TestSettings.Configurations.attack_pos;
-                attack_velocity = obj.sim_config.TestSettings.Configurations.attack_velocity;
+                if obj.sim_config.TestSettings.Configurations.set_attack_location
+                    attack_position = obj.sim_config.TestSettings.Configurations.attack_pos;
+                    attack_velocity = obj.sim_config.TestSettings.Configurations.attack_velocity;
 
-                obj.simulator.Attacker.Subsystem_attacking.set_desired_attack_location(attack_position,attack_velocity);
+                    obj.simulator.Attacker.Subsystem_attacking.set_desired_attack_location(attack_position,attack_velocity);
+                end
+                
+
 
                 %run the simulation (without an attacker for now)
                 obj.simulator.run_simulation_with_attack(obj.frames_to_compute, false);
