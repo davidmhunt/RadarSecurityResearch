@@ -551,6 +551,83 @@ classdef Simulator_revB < handle
                 end
             end
         end
+
+        function run_sensing_subsystem_with_USRP_data(obj,USRP_data,wait_bar_enable)
+            %{
+                Purpose: runs the simulation (with an attacker) for the
+                    given number of frames
+                Inputs:
+                    USRP Data: the recorded data from the USRP
+                    wait_bar_enable: whether or not to use a wait bar for
+                    the simulation
+            %}
+            
+            buffers_received = size(USRP_data,1);
+            current_buffer_idx = 1;
+
+            %hardcode victim to remain at the first frame (assuming
+            %stationary victim and attacker at this point
+            victim_frame = 1;
+            victim_num_samples_sent = 1;
+
+            if wait_bar_enable
+                status = sprintf("Current buffer: %d of %d",current_buffer_idx, buffers_received);
+                progress_bar = waitbar(0,status,"Name","Running Simulation");
+            end
+            
+            for current_buffer_idx = 1:buffers_received
+                
+                %update the progress_bar
+                if wait_bar_enable
+                    status = sprintf("Current buffer: %d of %d",current_buffer_idx, buffers_received);
+                    waitbar(current_buffer_idx/buffers_received,progress_bar,status);
+                end
+
+                %get the transmitted signal from the radar
+                sig = USRP_data(current_buffer_idx,:).';
+                
+                %update positions
+                [victim_pos, victim_vel,attacker_pos, attacker_vel, tgt_pos,tgt_vel] = ...
+                    obj.FMCW_determine_positions_and_velocities(...
+                    victim_frame,victim_num_samples_sent);
+                
+%                 %propagate the signal and reflect it off of the target
+%                 sig_target = obj.channel_target(sig,victim_pos,tgt_pos,victim_vel,tgt_vel);
+%                 sig_target = obj.SimulatedTarget.radar_target(sig_target);
+                
+                %simulate attacker behavior
+            
+                    %attacker determines relative position and velocity of the victim
+                    obj.Attacker.update_victim_pos_and_velocity(attacker_pos,victim_pos,attacker_vel, victim_vel);
+                    obj.Attacker.update_target_pos_and_velocity(victim_pos, tgt_pos, victim_vel,tgt_vel)
+                    
+                    %assemble the noisy signal and the attacker signal
+%                     sig_attacker_sensing = noise_sig + sig;
+                    sig_attacker_sensing = sig;
+                
+                    %propogate the signal
+%                     sig_attacker_sensing = obj.channel_attacker(sig_attacker_sensing,victim_pos,attacker_pos,victim_vel,attacker_vel);
+            
+                    %receive the signal in the attacker
+                    obj.Attacker.receive_signal(sig_attacker_sensing.');
+            
+                %get the transmitted signal from the attacker - done only
+                %to maintain proper operation
+                sig_attacker_attacking = obj.Attacker.transmit_attack(size(sig,1));
+            
+%                 sig_attacker_attacking = obj.channel_attacker(sig_attacker_attacking,victim_pos,attacker_pos,victim_vel,attacker_vel);
+            
+%                 %have the radar receive the signal
+% 
+%                 obj.Victim.receive_signal(sig_target + sig_attacker_attacking + noise_sig);
+% 
+%                 if obj.Victim.current_frame == frames_to_compute
+%                     if obj.Victim.current_chirp > obj.Victim.NumChirps
+%                         sim_complete = true;
+%                     end
+%                 end
+            end
+        end
     
 %% [3] Functions to support reading and writing data to a file for c++ script checking
         function save_to_file(obj,data_to_save,path)

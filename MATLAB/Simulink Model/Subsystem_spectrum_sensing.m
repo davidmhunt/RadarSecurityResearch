@@ -96,7 +96,7 @@ classdef Subsystem_spectrum_sensing < handle
 
             %initialize the remaining parameters
             obj.initialize_detection_params();
-            obj.initialize_timing_params(10); %specify 10 ms of processing delay
+            obj.initialize_timing_params(15); %specify 10 ms of processing delay
             obj.initialize_spectogram_params(FMCW_sample_rate_Msps);
             obj.initialize_chirp_and_frame_tracking();
             obj.initialize_plot_params(FMCW_sample_rate_Msps);
@@ -186,9 +186,12 @@ classdef Subsystem_spectrum_sensing < handle
                         spectrum sensing module in MSPS
             %}
 
-            
-            
-            obj.spectogram_params.freq_sampling_period_us = 0.5; %sample frequency every x us, 2 for lower BW, 0.5 for high BW (1GHz) 
+            %sample frequency every x us, 2 for lower BW, 0.5 for high BW (1GHz) 
+            if obj.FMCW_sample_rate_Msps > 500
+                obj.spectogram_params.freq_sampling_period_us = 0.5;
+            else
+                obj.spectogram_params.freq_sampling_period_us = 2;
+            end 
             obj.spectogram_params.num_samples_per_sampling_window = ...
                 ceil(obj.spectogram_params.freq_sampling_period_us * FMCW_sample_rate_Msps);
             
