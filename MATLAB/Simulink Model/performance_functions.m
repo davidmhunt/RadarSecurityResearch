@@ -4,16 +4,16 @@
 classdef performance_functions
     methods(Static)
         % function to compute the range error (by frame)
-        function [range_errors] = range_percent_error(range_actual, range_estimates)
-           valid_range_column = range_estimates(:,1);
-            range_errors = zeros(size(valid_range_column));
-                
-            for idx = 1: size(valid_range_column)
-                if ~(isnan(valid_range_column(idx)))
-                    error_position = abs(valid_range_column(idx) - range_actual(idx));
-                    range_errors(idx) = error_position;     
+        function [range_errors] = range_error(range_actual, range_estimates, col_detection)
+            range_errors = zeros(size(range_estimates(:,1)));
+            for idx = 1: size(range_estimates(:,1))
+                if (col_detection(idx) ~= 0)
+                    valid_range_column = range_estimates(:,col_detection(idx));
+                    if ~(isnan(valid_range_column(idx)))
+                        error_position = abs(valid_range_column(idx) - range_actual(idx));
+                        range_errors(idx) = error_position;
+                    end
                 end
-   
             end
         end
 
@@ -28,9 +28,10 @@ classdef performance_functions
 
         % function to determine if an object has been detected in each
         % frame
-        function [detected, false_positives] = detection(frames_to_compute, range_estimates, actual_ranges, velocity_estimates, actual_velocities)
+        function [detected, col_detection, false_positives] = detection(frames_to_compute, range_estimates, actual_ranges, velocity_estimates, actual_velocities)
             detected = zeros(frames_to_compute);
             false_positives = zeros(frames_to_compute);
+            col_detection = zeros(frames_to_compute);
             for col = 1:size(range_estimates, 2)
                valid_range_column = range_estimates(:,col);
                valid_velocity_column = velocity_estimates(:,col);
@@ -38,6 +39,7 @@ classdef performance_functions
                  if (~isnan(valid_range_column(idx)))
                      if ((abs(valid_range_column(idx) - actual_ranges(idx))< 5) && (abs(valid_velocity_column(idx) - actual_velocities(idx))< 5))
                             detected(idx) = 1;
+                            col_detection(idx) = col;
                     else
                      false_positives(idx) = 1;
                      end
@@ -56,13 +58,15 @@ classdef performance_functions
         end
 
         % function to determine the velocity error (per frame)
-        function [velocity_errors] = velocity_percent_error(velocity_estimates, velocity_actual)
-            valid_velocity_column = velocity_estimates(:,1);
-            velocity_errors = zeros(size(valid_velocity_column));
-            for idx = 1: size(valid_velocity_column)
-                if ~(isnan(valid_velocity_column(idx)))
-                    error_velocity = valid_velocity_column(idx) - velocity_actual(idx);
-                    velocity_errors(idx) = error_velocity;     
+        function [velocity_errors] = velocity_error(velocity_estimates, velocity_actual, col_detection)
+            velocity_errors = zeros(size(velocity_estimates(:,1)));
+            for idx = 1: size(velocity_estimates(:,1))
+                if (col_detection(idx) ~= 0)
+                    valid_velocity_column = velocity_estimates(:,col_detection(idx));
+                    if ~(isnan(valid_velocity_column(idx)))
+                        error_position = abs(valid_velocity_column(idx) - velocity_actual(idx));
+                        velocity_errors(idx) = error_position;
+                    end
                 end
             end
         end

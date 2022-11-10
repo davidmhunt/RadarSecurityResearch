@@ -17,7 +17,7 @@ classdef Simulation_reconfigurable < handle
             obj.frames_to_compute = sim_config.TestSettings.Configurations.frames_per_sim;
 
             david_file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/";
-            kristen_file_path = "C:\Users\krist\OneDrive\Documents\2022-2023 School Year\Radar Security Project\RadarSecurityResearch\MATLAB\Simulink Model\config_files\";
+            kristen_file_path = "/home/kristenangell/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/";
 
             % file_path = "B210_params.json";
             % file_path = "B210_params_highBW.json";
@@ -110,19 +110,22 @@ classdef Simulation_reconfigurable < handle
             estimated_ranges = obj.simulator.Victim.Radar_Signal_Processor.range_estimates
             % compute the actual range per frame
             actual_ranges = performance_functions.actual_ranges(obj.frames_to_compute, obj.simulator.Victim.FramePeriodicity_ms*.001, obj.simulator.SimulatedTarget.velocity_meters_per_s, obj.simulator.Victim.velocity_m_per_s, obj.simulator.SimulatedTarget.position_m, obj.simulator.Victim.position_m)
-            % compute the percent error of the range estimate for each frame
-            percent_error_ranges = performance_functions.range_percent_error(actual_ranges, estimated_ranges)
             % report the velocity estimates
             estimated_velocities = obj.simulator.Victim.Radar_Signal_Processor.velocity_estimates
             % compute the actual velocity per frame
             actual_velocities = performance_functions.actual_velocities(obj.frames_to_compute, obj.simulator.SimulatedTarget.velocity_meters_per_s, obj.simulator.Victim.velocity_m_per_s)
-            % compute the velocity percent error per frame
-            percent_error_velocities = performance_functions.velocity_percent_error(estimated_velocities, actual_velocities)
-
+            
+           
             % determine if an object has been detected in each frame, and determine
             % false positives
-            [detected, false_positives] = performance_functions.detection(obj.frames_to_compute, estimated_ranges, actual_ranges, estimated_velocities, actual_velocities)
+            [detected, col_detection, false_positives] = performance_functions.detection(obj.frames_to_compute, estimated_ranges, actual_ranges, estimated_velocities, actual_velocities)
 
+            % compute the velocity and range error per frame
+
+            percent_error_ranges = performance_functions.range_error(actual_ranges, estimated_ranges, col_detection)
+            percent_error_velocities = performance_functions.velocity_error(estimated_velocities, actual_velocities, col_detection)
+
+           
         end
     end
 end
