@@ -176,11 +176,11 @@ classdef Attacker_revB < handle
             %}
             obj.current_victim_pos = norm(attacker_pos - victim_pos);
             
-            %using the projection to determine the veloctiy perceived by
-            %the victim
             relative_pos_normalized = (attacker_pos - victim_pos)/norm(attacker_pos -victim_pos);
             relative_vel = attacker_vel - victim_vel;
-            obj.current_victim_vel = -1 * dot(relative_pos_normalized,relative_vel);
+            perceived_victim_vel = dot(relative_pos_normalized,relative_vel);
+
+            obj.current_victim_vel = dot()
         end
 
         function update_target_pos_and_velocity(obj, victim_pos, target_pos, victim_vel,target_vel)
@@ -194,10 +194,7 @@ classdef Attacker_revB < handle
                     victim_vel: the velocity of the victim
             %}
             obj.current_target_pos = norm(victim_pos - target_pos);
-
-            relative_pos_normalized = (victim_pos - target_pos)/norm(victim_pos - target_pos);
-            relative_vel = victim_vel - target_vel;
-            obj.current_target_vel = -1 * dot(relative_pos_normalized,relative_vel);
+            obj.current_target_vel = norm(victim_vel - target_vel);
         end
 
         function receive_signal(obj,sig)
