@@ -24,7 +24,7 @@
             "channel":0
         },
         "RX":{
-            "enabled":true,
+            "enabled":false,
             "spb":0,
             "spp":0,
             "gain":50,

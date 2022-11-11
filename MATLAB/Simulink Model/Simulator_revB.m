@@ -637,9 +637,10 @@ classdef Simulator_revB < handle
             fclose(fileID);
         end
 
-        function read_data = read_from_file(obj,path, complex_data)
+        function read_data = read_from_file(obj,path, complex_data, dtype)
             fileID = fopen(path,'r');
-            read_data = fread(fileID,'float');
+            read_data = fread(fileID,dtype);
+            %read_data = fread(fileID,'float');
             
             %convert to complex values
             if complex_data
