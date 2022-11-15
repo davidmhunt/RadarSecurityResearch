@@ -6,7 +6,7 @@
             "use_addr":false,
             "addrs": "109.222",
             "ref":"internal",
-            "sampling_rate":28.8e6,
+            "sampling_rate":58.52e6,
             "center_freq":1e9,
             "lo-offset":0.0,
             "IF_filter_bw":28.8e6,
@@ -25,7 +25,7 @@
         },
         "RX":{
             "enabled":false,
-            "spb":0,
+            "spb":1020,
             "spp":0,
             "gain":50,
             "ant":"RX2",
@@ -43,7 +43,12 @@
     },
     "SensingSubsystemSettings":{
         "rx_file_name":"/home/david/Documents/MATLAB_generated/sensing_stream.bin",
-        "rx_time_ms": 1000
+        "rx_time_ms": 1000,
+        "energy_detection_threshold_dB":3,
+        "min_recording_time_ms": 2,
+        "spectogram_peak_detection_threshold_dB": 7,
+        "min_points_per_chirp": 5,
+        "num_victim_frames_to_capture": 128
     },
     "AttackSubsystemSettings":{
         "tx_file_name": "/home/david/Documents/MATLAB_generated/attacking_chirps_full.bin",
