@@ -1,13 +1,13 @@
 { "TestSettings":
     {
         "Configurations": {
-            "user":"david",
-            "json_config": "B210_params_lowBW.json",
+            "user":"windows",
+            "json_config": "X310_params_100MHzBW.json",
             "frames_per_sim": 10,
             "attack_type": "target",
             "num_runs": 200,
             "pre_attack_frames": 5,
-            "k" : 7,
+            "k" : 3,
             "max_bin": 20,
             "attack_enable": 0,
             "set_attack_location": 0,
