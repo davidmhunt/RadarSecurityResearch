@@ -78,7 +78,58 @@
                             write_file_stream -> close();
                         }
                     }
-                    
+                }
+
+                /**
+                 * @brief Copy Constructor
+                 * 
+                 * @param rhs reference to an existing Buffer Object
+                 */
+                Buffer(const Buffer<data_type> & rhs) : read_file(rhs.read_file),
+                                                        write_file(rhs.write_file),
+                                                        read_file_stream(rhs.read_file_stream),
+                                                        write_file_stream(rhs.write_file_stream),
+                                                        debug_status(rhs.debug_status),
+                                                        buffer_init_status(rhs.buffer_init_status)
+                                                        {}
+
+                /**
+                 * @brief Assignment operator support
+                 * 
+                 * @param rhs 
+                 * @return Buffer& 
+                 */
+                Buffer & operator=(const Buffer<data_type> & rhs){
+                    if (this != &rhs){
+                        //update the read and write file names
+                        read_file = rhs.read_file;
+                        write_file = rhs.write_file;
+
+                        //update the debug and buffer init status variables
+                        debug_status = rhs.debug_status;
+                        buffer_init_status = rhs.buffer_init_status;
+
+                        //close the existing read/write file streams if needed
+                        if (read_file_stream.use_count() == 1)
+                        {
+                            if (read_file_stream -> is_open()){
+                                read_file_stream -> close();
+                            }
+                        }
+                        
+                        
+                        if (write_file_stream.use_count() == 1){
+                            if (write_file_stream -> is_open()){
+                                write_file_stream -> close();
+                            }
+                        }
+
+                        //set the new read and write file streams
+                        read_file_stream = rhs.read_file_stream;
+                        write_file_stream = rhs.write_file_stream;
+                    }
+
+                    return *this;
                 }
 
                 //managing and initializing file streams
@@ -311,7 +362,7 @@
 
                     //if there are more than 5 samples, print out the last sample from the vector as well
                     if(buffer_to_print.size() > 5){
-                        std::cout << buffer_to_print.back() << std::endl;
+                        std::cout << "...., " << buffer_to_print.back() << std::endl;
                     }
                     else{
                         std::cout << std::endl;
@@ -432,6 +483,86 @@
                     }
                 }
                              
+                void load_data_into_buffer_efficient(std::vector<data_type> & data_to_load, bool copy_until_buffer_full = true){
+
+                    //get the number of samples in the data_to_load
+                    size_t m = data_to_load.size(); //rows
+                    
+                    
+                    //determine the maximum sample number for the initialized array
+                    size_t samples_to_load = num_rows * num_cols;
+
+                    //initialize variables for reshaping
+                    size_t from_idx;
+                    size_t to_r;
+                    size_t to_c;
+
+                    for (size_t i = 0; i < samples_to_load; i++)
+                    {
+                        //index in data_to_load
+                        from_idx = i % m;
+
+                        //indicies in current array
+                        to_r = i/num_cols;
+                        to_c = i % num_cols;
+
+                        if (i >= m)
+                        {
+                            if (copy_until_buffer_full)
+                            {
+                                buffer[to_r][to_c] = data_to_load[from_idx];
+                            }
+                            else{
+                                buffer[to_r][to_c] = 0;
+                            }
+                        }
+                        else{
+                            buffer[to_r][to_c] = data_to_load[from_idx];
+                        }
+                    }
+                }
+                
+                void load_data_into_buffer_efficient(std::vector<std::vector<data_type>> & data_to_load, bool copy_until_buffer_full = true){
+
+                    //get dimmensions of data_to_load array
+                    size_t m = data_to_load.size(); //rows
+                    size_t n = data_to_load[0].size(); //cols
+                    
+                    
+                    //determine the maximum sample number depending on copy behavior
+                    size_t samples_to_load = num_rows * num_cols;
+
+                    //initialize variables for reshaping
+                    size_t from_r;
+                    size_t from_c;
+                    size_t to_r;
+                    size_t to_c;
+
+                    for (size_t i = 0; i < samples_to_load; i++)
+                    {
+                        //indicies in data_to_load
+                        from_r = i/n;
+                        from_c = i % n;
+
+                        //indicies in current array
+                        to_r = i/num_cols;
+                        to_c = i % num_cols;
+
+                        if (from_r >= m)
+                        {
+                            if (copy_until_buffer_full)
+                            {
+                                buffer[to_r][to_c] = data_to_load[from_r % m][from_c];
+                            }
+                            else{
+                                buffer[to_r][to_c] = 0;
+                            }
+                        }
+                        else{
+                            buffer[to_r][to_c] = data_to_load[from_r][from_c];
+                        }
+                    }
+                }
 
                 /**
                  * @brief print a prevew of the buffer (1st 3 rows, 1st 5 columns, last row, last column)
@@ -481,7 +612,7 @@
                         std::vector<data_type> data = Buffer<data_type>::load_data_from_read_file();
                         
                         //load it into the file
-                        load_data_into_buffer(data,false);
+                        load_data_into_buffer_efficient(data,false);
                     }
                     else {
                         std::cout << "Buffer_2D::import_from_file: attempted to import from file when buffer wasn't initialized" <<std::endl;
@@ -510,7 +641,7 @@
                         buffer = std::vector<std::vector<data_type>>(num_rows,std::vector<data_type>(num_cols));
                         
                         //load it into the file
-                        load_data_into_buffer(data,false);
+                        load_data_into_buffer_efficient(data,false);
 
                         return;
                 }
@@ -590,7 +721,8 @@
                  * 
                  */
                 virtual void print_preview() {
-                    //determine whether or not to print the full buffer or a preview of the buffer
+                    
+                    //declare variable to keep track of how many samples to print out (limited to the first 5 and the last sample)
                     size_t samples_to_print;
                     if (buffer.size() > 5){
                         samples_to_print = 5;
@@ -601,25 +733,23 @@
                     }
                     
                     else{
-                        std::cerr << "Buffer_1D::print_preview: buffer to print is empty" << std::endl;
+                        std::cerr << "Buffer_1D::print_1d_buffer_preview: buffer to print is empty" << std::endl;
                         return;
                     }
 
                     //print out the first five samples
                     for (size_t i = 0; i < samples_to_print; i++)
                     {
-                        std::cout << buffer[i].real() << " + " << buffer[i].imag() << "j, ";
+                       std::cout << buffer[i] << ", ";
                     }
 
-                    //if there are more than 5 samples, print out the last sample from the buffer as well
+                    //if there are more than 5 samples, print out the last sample from the vector as well
                     if(buffer.size() > 5){
-                        std::cout << "\t...\t" << buffer.back().real() << " + " <<
-                                buffer.back().imag() << "j" <<std::endl;
+                        std::cout << "...., " << buffer.back() << std::endl;
                     }
                     else{
                         std::cout << std::endl;
                     }
-                    return;
                 }
 
                 /**
@@ -658,6 +788,76 @@
                     buffer = std::vector<data_type>(num_samps);
                     num_samples = num_samps;
                 }
+
+                /**
+                 * @brief Add an element to the end of the buffer and increment the number of samples
+                 * 
+                 * @param element the element to add
+                 */
+                void push_back(data_type element){
+                    num_samples += 1;
+                    buffer.push_back(element);
+                }
+
+                /**
+                 * @brief Clear the buffer and reset the size to zero
+                 * 
+                 */
+                void clear(){
+                    num_samples = 0;
+                    buffer.clear();
+                }
+
+                /**
+                 * @brief Set the provided indicies in the buffer to the specified value
+                 * 
+                 * @param value the value to set
+                 * @param start_idx start index
+                 * @param end_idx end index
+                 */
+                void set_val_at_indicies(data_type value,size_t start_idx, size_t end_idx){
+                    for (size_t i = start_idx; i < end_idx; i++)
+                    {
+                        buffer[i] = value;
+                    }
+                    
+                }
+
+                /**
+                 * @brief find the indicies that have the specific value
+                 * 
+                 * @param value the value to search for
+                 * @param start_idx the index to start the search at (default to zero)
+                 * @param data_sorted boolean, true if data is sorted
+                 * @return std::vector<size_t> vector of indicies that the value is found at
+                 */
+                std::vector<size_t> find_indicies_with_value(data_type value, size_t start_idx = 0, bool data_sorted = true){
+                    
+                    //vector to store the indicies that have the desired value
+                    std::vector<size_t> index_list;
+
+                    //status variables
+                    bool value_found = false;
+                    bool end_search = false;
+
+                    //perform the search
+                    for (size_t i = start_idx; i < num_samples && !end_search; i++)
+                    {   
+                        //start searching until an index with the desired value is found
+                        if (buffer[i] == value)
+                        {
+                            index_list.push_back(i);
+                            value_found = true;
+                        }
+                        //if an index with the value has already been found
+                        else if (value_found && data_sorted)
+                        {
+                            end_search = true;
+                        }
+                    }
+                    return index_list;
+                }
+
         }; // end Buffer_1D class
     
         /**

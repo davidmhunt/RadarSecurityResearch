@@ -280,11 +280,23 @@ classdef Subsystem_attacking  < handle
             %{
                 Purpose: initializes unique range spoofing attacks
             %}
-            if contains(obj.attack_mode,"similar slope")
-                obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.007; %use 0.015 for low BW attacks
-                obj.additional_time_delay_us = ...
-                    0.8 * obj.Attacker.Bandwidth_MHz *...
-                    (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us); %use 0.4 for low BW attacks
+            if contains(obj.attack_mode,"similar slope") 
+                if obj.Attacker.FMCW_sample_rate_Msps >= 500 %high BW attacks
+                    obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.007;
+                    obj.additional_time_delay_us = ...
+                        0.8 * obj.Attacker.Bandwidth_MHz *...
+                        (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us);
+                elseif obj.Attacker.FMCW_sample_rate_Msps >= 50 % mid BW attacks
+                    obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.015;
+                    obj.additional_time_delay_us = ...
+                        0.4 * obj.Attacker.Bandwidth_MHz *...
+                        (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us);
+                else % low BW attacks
+                    obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.030;
+                    obj.additional_time_delay_us = ...
+                        0.4 * obj.Attacker.Bandwidth_MHz *...
+                        (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us);
+                end
             end
         end
 

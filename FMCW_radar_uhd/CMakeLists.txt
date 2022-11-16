@@ -41,20 +41,25 @@ find_package(nlohmann_json 3.10.5 REQUIRED)
 add_executable(FMCWImplementation main.cpp)
 
 #perform linking
-target_link_libraries(FMCWImplementation PRIVATE JSONHandler)
-target_link_libraries(FMCWImplementation PRIVATE USRPHandler)
-target_link_libraries(FMCWImplementation PRIVATE nlohmann_json::nlohmann_json)
-target_link_libraries(FMCWImplementation PRIVATE ${UHD_LIBRARIES} 
-                                PRIVATE ${BoostLIBRARIES})
-target_link_libraries(FMCWImplementation PRIVATE BufferHandler)
-target_link_libraries(FMCWImplementation PRIVATE RADAR)
-target_link_libraries(FMCWImplementation PRIVATE ATTACKER)
-target_link_libraries(FMCWImplementation PRIVATE FMCWHandler)
+target_link_libraries(FMCWImplementation    PRIVATE JSONHandler
+                                            PRIVATE USRPHandler
+                                            PRIVATE nlohmann_json::nlohmann_json
+                                            PRIVATE ${UHD_LIBRARIES} 
+                                            PRIVATE ${BoostLIBRARIES}
+                                            PRIVATE BufferHandler
+                                            PRIVATE RADAR
+                                            PRIVATE ATTACKER
+                                            PRIVATE SpectrogramHandler
+                                            PRIVATE EnergyDetector
+                                            PRIVATE FMCWHandler)
 
 #include directories
 target_link_directories(FMCWImplementation PRIVATE 
                         ${PROJECT_BINARY_DIR}
                         ${PROJECT_BINARY_DIR}/src
+                        ${PROJECT_BINARY_DIR}/src/sensing_subsystem
+                        ${PROJECT_BINARY_DIR}/src/sensing_subsystem/pocketfft
+                        ${PROJECT_BINARY_DIR}/src/sensing_subsystem/Eigen
                         )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
