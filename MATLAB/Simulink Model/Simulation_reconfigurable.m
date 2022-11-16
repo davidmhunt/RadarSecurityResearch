@@ -18,6 +18,7 @@ classdef Simulation_reconfigurable < handle
 
             david_file_path = "/home/david/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/";
             kristen_file_path = "/home/kristenangell/Documents/RadarSecurityResearch/MATLAB/Simulink Model/config_files/";
+            windows_file_path = "C:\Users\Operator\Documents\RadarSecurityResearch\MATLAB\Simulink Model\config_files\";
 
             % file_path = "B210_params.json";
             % file_path = "B210_params_highBW.json";
@@ -30,6 +31,8 @@ classdef Simulation_reconfigurable < handle
 
             if (user == "kristen")
                 user_path = kristen_file_path;
+            elseif(user == "windows")
+                user_path = windows_file_path;
             else
                 user_path = david_file_path;
             end
