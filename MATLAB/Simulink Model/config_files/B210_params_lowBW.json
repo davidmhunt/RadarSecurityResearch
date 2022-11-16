@@ -1,7 +1,7 @@
 { "RadarSettings":
     {
         "Victim": {
-            "StartFrequency_GHz":1.5,
+            "StartFrequency_GHz":77.0,
             "FrequencySlope_MHz_us": 1,
             "TxStartTime_us": 0,
             "ADC_Samples": 64,
@@ -16,7 +16,7 @@
             "timing_offset_us":0
         },        
         "Attacker": {
-            "StartFrequency_GHz":2.0,
+            "StartFrequency_GHz":77.0,
             "FrequencySlope_MHz_us": 1,
             "TxStartTime_us": 0,
             "ADC_Samples": 64,
