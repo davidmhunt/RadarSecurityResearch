@@ -2,11 +2,12 @@
     {
         "Configurations": {
             "user":"kristen",
-            "json_config": "B210_params.json",
+            "json_config": "B210_params_highBW.json",
             "frames_per_sim": 10,
             "attack_type": "velocity spoof - noisy",
-            "num_runs": 200,
+            "num_runs": 1,
             "pre_attack_frames": 5,
+            "k" : 3,
             "max_bin": 20,
             "attack_enable": 1,
             "set_attack_location": 0,
