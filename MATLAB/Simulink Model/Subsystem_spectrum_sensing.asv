@@ -1044,17 +1044,12 @@ classdef Subsystem_spectrum_sensing < handle
 
             %obtain the same-sized sample of the already computed estimated
             %chirp
-            if time_before_start_samples >= 0
-                padded_zeros = zeros(time_before_start_samples,1);
-                end_index = int32(observation_window_samples - time_before_start_samples);
-                computed_chirp = [padded_zeros;...
-                    obj.Attacker.Subsystem_attacking.chirp_waveform(1:end_index + 1).'];
-            else
-                start_index = int32(1 - time_before_start_samples);
-                end_index = int32(observation_window_samples - time_before_start_samples);
-                computed_chirp = obj.Attacker.Subsystem_attacking.chirp_waveform(start_index:end_index +1).';
+            if
             end
-            
+            padded_zeros = zeros(time_before_start_samples,1);
+            end_index = int32(observation_window_samples - time_before_start_samples);
+            computed_chirp = [padded_zeros;...
+                obj.Attacker.Subsystem_attacking.chirp_waveform(1:end_index + 1).'];
 
             %perform cross correlation and convert into a timing offset
             [C,lag] = xcorr(estimated_chirp,computed_chirp,"normalized",max_lag);
