@@ -1,2 +1,6 @@
 FMCW_radar_uhd/build/*
 FMCW_radar/FMCW_out.bin
+MATLAB/Simulink Model/error_plot.png
+MATLAB/Simulink Model/histogram_plot.png
+.gitignore
+.gitignore
