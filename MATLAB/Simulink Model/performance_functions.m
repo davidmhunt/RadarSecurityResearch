@@ -4,16 +4,16 @@
 classdef performance_functions
     methods(Static)
         % function to compute the range error (by frame)
-        function [range_errors] = range_percent_error(range_actual, range_estimates)
-           valid_range_column = range_estimates(:,1);
-            range_errors = zeros(size(valid_range_column));
-                
-            for idx = 1: size(valid_range_column)
-                if ~(isnan(valid_range_column(idx)))
-                    error_position = abs(valid_range_column(idx) - range_actual(idx));
-                    range_errors(idx) = error_position;     
+        function [range_errors] = range_error(range_actual, range_estimates, col_detection)
+            range_errors = zeros(size(range_estimates(:,1)));
+            for idx = 1: size(range_estimates(:,1))
+                if (col_detection(idx) ~= 0)
+                    valid_range_column = range_estimates(:,col_detection(idx));
+                    if ~(isnan(valid_range_column(idx)))
+                        error_position = abs(valid_range_column(idx) - range_actual(idx));
+                        range_errors(idx) = error_position;
+                    end
                 end
-   
             end
         end
 
@@ -28,41 +28,51 @@ classdef performance_functions
 
         % function to determine if an object has been detected in each
         % frame
-        function [detected, false_positives] = detection(frames_to_compute, range_estimates, actual_ranges, velocity_estimates, actual_velocities)
-            detected = zeros(frames_to_compute);
-            false_positives = zeros(frames_to_compute);
-            for col = 1:size(range_estimates, 2)
-               valid_range_column = range_estimates(:,col);
-               valid_velocity_column = velocity_estimates(:,col);
-             for idx = 1: height(valid_range_column)
-                 if (~isnan(valid_range_column(idx)))
-                     if ((abs(valid_range_column(idx) - actual_ranges(idx))< 5) && (abs(valid_velocity_column(idx) - actual_velocities(idx))< 5))
+        function [detected, col_detection, false_positives] = detection(frames_to_compute, range_estimates, actual_ranges, velocity_estimates, actual_velocities, k)
+            detected = zeros(1,frames_to_compute);
+            false_positives = zeros(frames_to_compute, 1);
+            col_detection = zeros(frames_to_compute, 1);
+            for idx = 1: frames_to_compute
+                valid_range_row = range_estimates(idx,:);
+                valid_velocity_row = velocity_estimates(idx,:);
+                min = abs(valid_range_row(1) - actual_ranges(idx));
+                for col = 1:5
+                    if (~isnan(valid_range_row(1, col)))
+                        range_difference = abs(valid_range_row(col) - actual_ranges(idx));
+                        velocity_difference = abs(valid_velocity_row(1,col) - actual_velocities(idx));
+                        if ((range_difference < k) && (velocity_difference < k))
                             detected(idx) = 1;
-                    else
-                     false_positives(idx) = 1;
-                     end
-                 end
-             end
+                            if (range_difference <= min)
+                                col_detection(idx) = col;
+                                min = range_difference;
+                            end
+                        else
+                            false_positives(idx) = 1;
+                        end
+                    end
+                end
             end
         end
-        
-        % function to determine the actual relative velocity of the target 
+
+        % function to determine the actual relative velocity of the target
         % for each frame
         function [velocity_actual] = actual_velocities(frames_to_compute, target_velocity, victim_velocity)
             velocity_actual = zeros(size(frames_to_compute));
             for idx = 1: frames_to_compute
-                 velocity_actual(idx) = victim_velocity(1) - target_velocity(1);
-             end
+                velocity_actual(idx) = victim_velocity(1) - target_velocity(1);
+            end
         end
 
         % function to determine the velocity error (per frame)
-        function [velocity_errors] = velocity_percent_error(velocity_estimates, velocity_actual)
-            valid_velocity_column = velocity_estimates(:,1);
-            velocity_errors = zeros(size(valid_velocity_column));
-            for idx = 1: size(valid_velocity_column)
-                if ~(isnan(valid_velocity_column(idx)))
-                    error_velocity = valid_velocity_column(idx) - velocity_actual(idx);
-                    velocity_errors(idx) = error_velocity;     
+        function [velocity_errors] = velocity_error(velocity_estimates, velocity_actual, col_detection)
+            velocity_errors = zeros(size(velocity_estimates(:,1)));
+            for idx = 1: size(velocity_estimates(:,1))
+                if (col_detection(idx) ~= 0)
+                    valid_velocity_column = velocity_estimates(:,col_detection(idx));
+                    if ~(isnan(valid_velocity_column(idx)))
+                        error_position = abs(valid_velocity_column(idx) - velocity_actual(idx));
+                        velocity_errors(idx) = error_position;
+                    end
                 end
             end
         end
