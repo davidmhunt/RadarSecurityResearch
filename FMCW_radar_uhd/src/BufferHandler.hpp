@@ -947,7 +947,7 @@
                         }
 
                         Buffer_2D<std::complex<data_type>>::buffer = std::vector<std::vector<std::complex<data_type>>>(Buffer_2D<std::complex<data_type>>::num_rows,std::vector<std::complex<data_type>>(Buffer_2D<std::complex<data_type>>::num_cols));
-                        Buffer<data_type>::buffer_init_status = true;
+                        Buffer<std::complex<data_type>>::buffer_init_status = true;
                     }
 
                     /**
