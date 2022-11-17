@@ -84,7 +84,7 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     }
     else if (type == "float" && cpufmt == "fc32")
     {
-        FMCWHandler<float> fmcw_handler(radar_config,attack_config,true);
+        FMCWHandler<float> fmcw_handler(radar_config,attack_config,false);
     }
     else if (type == "int16_t" && cpufmt == "sc16")
     {
