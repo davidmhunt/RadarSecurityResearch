@@ -4,3 +4,6 @@ MATLAB/Simulink Model/error_plot.png
 MATLAB/Simulink Model/histogram_plot.png
 .gitignore
 .gitignore
+MATLAB/Simulink Model/run_table_data.csv
+.gitignore
+MATLAB/Simulink Model/raw_data.csv
