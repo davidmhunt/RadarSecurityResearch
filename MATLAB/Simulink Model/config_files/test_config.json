@@ -1,15 +1,15 @@
 { "TestSettings":
     {
         "Configurations": {
-            "user":"windows",
-            "json_config": "X310_params_100MHzBW.json",
+            "user":"david",
+            "json_config": "20MHz.json",
             "frames_per_sim": 10,
-            "attack_type": "target",
+            "attack_type": "range spoof - similar slope,velocity spoof - noisy",
             "num_runs": 200,
             "pre_attack_frames": 5,
-            "k" : 3,
+            "k" : 11,
             "max_bin": 20,
-            "attack_enable": 0,
+            "attack_enable": 1,
             "set_attack_location": 0,
             "attack_pos": 75,
             "attack_velocity": 7
