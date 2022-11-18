@@ -1,4 +1,5 @@
 {
+    "Radar_enabled":true,
     "USRPSettings":{
         "Multi-USRP":{
             "use_serial":true,
@@ -31,7 +32,7 @@
             "ant":"RX2",
             "subdev":"A:A A:B",
             "channel": 1,
-            "offset_us": 5.7639
+            "offset_us": 6.039
         },
         "AdditionalSettings":{
             "setup_time":1.0,

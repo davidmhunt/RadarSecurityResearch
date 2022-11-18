@@ -1011,6 +1011,62 @@
                     } //end of while loop
                     return;
                 }
+
+                /**
+                 * @brief Saves a continuous stream of samples until a given 2D buffer has been filled
+                 * 
+                 * @param rx_buffer the 2D buffer to load rx samples into and save to a file
+                 */
+                void rx_stream_to_buffer(Buffer_2D<std::complex<data_type>> * rx_buffer){
+                    
+                    
+                    //determine the number of samples per buffer
+                    size_t num_samps_per_buff = rx_buffer -> num_cols;
+                    
+                    //compute the number of samples to stream
+                    size_t total_samps = num_samps_per_buff * rx_buffer -> num_rows;
+                    
+
+                    //reset the overflow message
+                    overflow_detected = false;
+                    rx_first_buffer = true;
+
+                    //initialize the stream command
+                    uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+                    rx_stream_cmd.num_samps = total_samps;
+                    rx_stream_cmd.stream_now = true;
+
+                    //initialize tracking for when done streaming
+                    size_t num_samps_received;
+                    size_t expected_samps_to_receive = num_samps_per_buff;
+                    
+                    //send the stream command
+                    rx_stream -> issue_stream_cmd(rx_stream_cmd);
+
+                    for (size_t i = 0; i < rx_buffer -> num_rows; i++)
+                    {
+                        //receive the data
+                        num_samps_received = rx_stream -> recv(
+                                        &(rx_buffer->buffer[i].front()),
+                                        num_samps_per_buff,rx_md,0.5,true);
+                        
+                        //check the metadata to confirm good receive
+                        if (num_samps_received != expected_samps_to_receive){
+                            std::cerr << "USRPHandler::rx_stream_to_file: Tried receiving " << expected_samps_to_receive <<
+                                        " samples, but only received " << num_samps_received << std::endl;
+                        }
+                        check_rx_metadata(rx_md);
+
+                        //if an overflow was detected, the frame is bad, save what we had and start a new frame
+                        if (overflow_detected){
+                            std::cout << "USRPHandler::rx_stream_to_file: Overflow detected " << std::endl;
+                            //reset the overflow tag
+                            overflow_detected = false;
+                            break;
+                        }
+                    }
+                    return;
+                }
         };
     }
 #endif

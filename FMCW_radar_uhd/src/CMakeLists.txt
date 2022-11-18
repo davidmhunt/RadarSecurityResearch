@@ -62,8 +62,7 @@ target_link_libraries(ATTACKER  PRIVATE nlohmann_json::nlohmann_json
                                 PRIVATE ${BoostLIBRARIES}
                                 PRIVATE BufferHandler
                                 PRIVATE USRPHandler
-                                PRIVATE SpectrogramHandler
-                                PRIVATE EnergyDetector)
+                                PRIVATE SensingSubsystem)
 target_link_libraries(FMCWHandler   PRIVATE RADAR
                                     PRIVATE ATTACKER
                                     PRIVATE nlohmann_json::nlohmann_json)

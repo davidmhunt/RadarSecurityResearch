@@ -15,8 +15,10 @@
 
     //include the JSON handling capability
     #include <nlohmann/json.hpp>
+    #include "../BufferHandler.hpp"
 
     using json = nlohmann::json;
+    using namespace Buffers;
 
     namespace EnergyDetector_namespace{
         template<typename data_type>
@@ -24,11 +26,20 @@
             private:
                 //config object
                 json config;
-
+            public:
                 //other configuration information
                 data_type relative_noise_power; //dB
                 data_type threshold_level; //dB
+            private:
                 data_type sampling_frequency; //Hz
+
+                // parameters for initial 
+                size_t num_samples_noise_power_measurement_signal;
+                size_t num_rows_noise_power_measurement_signal;
+                size_t samples_per_buffer;
+            public:
+                Buffers::Buffer_2D<std::complex<data_type>> noise_power_measureent_signal;
+
             public:
 
             /**
@@ -63,9 +74,21 @@
                     std::cerr << "EnergyDetector::check_config: no sampling_rate in JSON" <<std::endl;
                     config_good = false;
                 }
-
+                // check for energy detection threshold
                 if(config["SensingSubsystemSettings"]["energy_detection_threshold_dB"].is_null()){
                     std::cerr << "EnergyDetector::check_config: energy_detection_threshold_dB not specified" <<std::endl;
+                    config_good = false;
+                }
+
+                //check for noise power measurement time
+                if(config["SensingSubsystemSettings"]["noise_power_measurement_time_ms"].is_null()){
+                    std::cerr << "EnergyDetector::check_config: noise_power_measurement_time_ms not specified" <<std::endl;
+                    config_good = false;
+                }
+
+                //check for samples per buffer
+                if(config["USRPSettings"]["RX"]["spb"].is_null()){
+                    std::cerr << "EnergyDetector::check_config: spb for Rx not specified" <<std::endl;
                     config_good = false;
                 }
 
@@ -77,12 +100,35 @@
              * 
              */
             void initialize_energy_detector_params(){
+                //relative noise power
                 relative_noise_power = 0;
+
+                //threshold for detecting new chirps
                 threshold_level = 
                     config["SensingSubsystemSettings"]["energy_detection_threshold_dB"].get<data_type>();
+
+                //sampling frequency
                 sampling_frequency = config["USRPSettings"]["Multi-USRP"]["sampling_rate"].get<data_type>();
+
+                //samples per buffer
+                samples_per_buffer = config["USRPSettings"]["RX"]["spb"].get<size_t>();
+
+                //determine number of rows and samples in noise power measurement signal
+                data_type row_period = static_cast<data_type>(samples_per_buffer)/sampling_frequency;
+                data_type noise_power_measurement_time = config["SensingSubsystemSettings"]["noise_power_measurement_time_ms"].get<data_type>();
+                num_rows_noise_power_measurement_signal = 
+                    static_cast<size_t>(std::ceil((noise_power_measurement_time * 1e-3)/row_period));
+
+                //determine the number of samples per rx signal
+                num_samples_noise_power_measurement_signal = 
+                    num_rows_noise_power_measurement_signal * samples_per_buffer;
+                
+                // initialize the noise sampling buffer
+                noise_power_measureent_signal = 
+                    Buffer_2D<std::complex<data_type>>(num_rows_noise_power_measurement_signal,samples_per_buffer);
+
             }
-            
+
             /**
              * @brief Compute the power of a given rx signal
              * 
@@ -110,12 +156,24 @@
             /**
              * @brief Set the relative noise power level which will be used to detect chirps
              * 
-             * @param rx_signal the rx signal to sample the noise power level over
              */
-            void compute_relative_noise_power(std::vector<std::complex<data_type>> & rx_signal){
-                
+            void compute_relative_noise_power(){
+
+                //flatten the noise power measurement signal
+                std::vector<std::complex<data_type>> sampled_signal(num_samples_noise_power_measurement_signal);
+                size_t to_idx = 0;
+                for (size_t i = 0; i < num_rows_noise_power_measurement_signal; i++)
+                {
+                    for (size_t j = 0; j < samples_per_buffer; j++)
+                    {
+                        to_idx = (samples_per_buffer * i) + j;
+                        sampled_signal[to_idx] = noise_power_measureent_signal.buffer[i][j];
+                    }
+                }
+
+
                 //set the relative noise power
-                relative_noise_power = compute_signal_power(rx_signal);
+                relative_noise_power = compute_signal_power(sampled_signal);
                 return;
             }
 

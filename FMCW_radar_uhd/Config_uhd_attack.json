@@ -1,4 +1,5 @@
 {
+    "Attacker_enabled":false,
     "USRPSettings":{
         "Multi-USRP":{
             "use_serial":true,
@@ -17,7 +18,7 @@
         },
         "TX":{
             "enabled":false,
-            "spb":0,
+            "spb":2040,
             "gain":50,
             "ant":"TX/RX",
             "subdev":"A:A A:B",
@@ -25,7 +26,7 @@
         },
         "RX":{
             "enabled":false,
-            "spb":1020,
+            "spb":2040,
             "spp":0,
             "gain":50,
             "ant":"RX2",
@@ -45,6 +46,7 @@
         "rx_file_name":"/home/david/Documents/MATLAB_generated/cpp_sensing_stream.bin",
         "rx_time_ms": 1000,
         "energy_detection_threshold_dB":3,
+        "noise_power_measurement_time_ms":5,
         "min_recording_time_ms": 2,
         "spectogram_peak_detection_threshold_dB": 7,
         "min_points_per_chirp": 5,
