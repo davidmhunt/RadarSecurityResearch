@@ -7,10 +7,10 @@
             "use_addr":false,
             "addrs": "109.222",
             "ref":"internal",
-            "sampling_rate":27.81e6,
+            "sampling_rate":29.54e6,
             "center_freq":1.5e9,
             "lo-offset":0.0,
-            "IF_filter_bw":27.81e6,
+            "IF_filter_bw":29.54e6,
             "wirefmt":"sc16",
             "type":"float",
             "cpufmt":"fc32",
@@ -46,7 +46,7 @@
         "tx_file_name":"/home/david/Documents/MATLAB_generated/MATLAB_chirp_full.bin",
         "rx_file_name":"/home/david/Documents/MATLAB_generated/cpp_rx_data.bin",
         "num_chirps": 128,
-        "num_frames": 30,
-        "frame_periodicity_ms": 33.34
+        "num_frames": 50,
+        "frame_periodicity_ms": 33.33
     }
 }

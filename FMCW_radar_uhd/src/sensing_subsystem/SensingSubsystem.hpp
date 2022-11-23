@@ -60,6 +60,10 @@
 
                 ~SensingSubsystem(){};
 
+                /**
+                 * @brief measure the relative noise power and configure the energy detector
+                 * 
+                 */
                 void mesaure_relative_noise_power(void){
                     std::cout << "SensingSubsystem::measure_relative_noise_power: measurig relative noise power" << std::endl;
 
@@ -70,6 +74,91 @@
 
                     std::cout << "relative noise power: " << energy_detector.relative_noise_power << "dB" << std::endl;
                     return;
+                }
+
+                /**
+                 * @brief Run the sensing subsystem
+                 * 
+                 */
+                void run(void){
+                    
+                    data_type detection_start_time_us;
+                    double next_rx_sense_start_time = 0.0;
+                    //process the detected chirp
+                    for (size_t i = 0; i < spectrogram_handler.max_frames_to_capture; i++)
+                    {
+                        //have USRP sample until it detects a chirp
+                        attacker_usrp_handler -> rx_record_next_frame(& spectrogram_handler, 
+                            & energy_detector,
+                            next_rx_sense_start_time);
+                        detection_start_time_us = energy_detector.get_detection_start_time_us();
+                        spectrogram_handler.set_detection_start_time_us(detection_start_time_us);
+                        energy_detector.save_chirp_detection_signal_to_buffer(& (spectrogram_handler.rx_buffer));
+                        spectrogram_handler.process_received_signal();
+                        energy_detector.reset_chirp_detector();
+
+                        next_rx_sense_start_time = spectrogram_handler.get_last_frame_start_time_s() * 1e-6
+                            + spectrogram_handler.min_frame_periodicity_s;
+                    }
+
+                    save_sensing_subsystem_state();
+                    std::cout << "SensingSubsystem::run: completed frame tracking" << std::endl;
+                    spectrogram_handler.print_summary_of_estimated_parameters();
+                    spectrogram_handler.save_estimated_parameters_to_file();
+                }
+
+                /**
+                 * @brief Save key sensing subsystem buffers to a file
+                 * 
+                 */
+                void save_sensing_subsystem_state(void){
+                    //save the hanning window to a file to confirm correctness
+                    std::string path;
+                    path = "/home/david/Documents/MATLAB_generated/cpp_hanning_window.bin";
+                    spectrogram_handler.hanning_window.set_write_file(path);
+                    spectrogram_handler.hanning_window.save_to_file();
+                    
+                    //load and reshape the received signal to confirm correctness
+                    path = "/home/david/Documents/MATLAB_generated/cpp_reshaped_and_windowed_for_fft.bin";
+                    spectrogram_handler.reshaped__and_windowed_signal_for_fft.set_write_file(path,true);
+                    spectrogram_handler.reshaped__and_windowed_signal_for_fft.save_to_file();
+
+                    //compute the fft to confirm correctness
+                    path = "/home/david/Documents/MATLAB_generated/cpp_generated_spectrogram.bin";
+                    spectrogram_handler.generated_spectrogram.set_write_file(path,true);
+                    spectrogram_handler.generated_spectrogram.save_to_file();
+
+                    //detect the points in the spectrogram
+                    path = "/home/david/Documents/MATLAB_generated/cpp_spectrogram_point_vals.bin";
+                    spectrogram_handler.spectrogram_points_values.set_write_file(path,true);
+                    spectrogram_handler.spectrogram_points_values.save_to_file();
+
+                    //detect the times and frequencies
+                    path = "/home/david/Documents/MATLAB_generated/cpp_detected_times.bin";
+                    spectrogram_handler.detected_times.set_write_file(path,true);
+                    spectrogram_handler.detected_times.save_to_file();
+                    path = "/home/david/Documents/MATLAB_generated/cpp_detected_frequencies.bin";
+                    spectrogram_handler.detected_frequencies.set_write_file(path,true);
+                    spectrogram_handler.detected_frequencies.save_to_file();
+
+                    //compute the clusters
+                    path = "/home/david/Documents/MATLAB_generated/cpp_computed_clusters.bin";
+                    spectrogram_handler.cluster_indicies.set_write_file(path,true);
+                    spectrogram_handler.cluster_indicies.save_to_file();
+
+                    //fit linear models
+                    path = "/home/david/Documents/MATLAB_generated/cpp_detected_slopes.bin";
+                    spectrogram_handler.detected_slopes.set_write_file(path,true);
+                    spectrogram_handler.detected_slopes.save_to_file();
+                    path = "/home/david/Documents/MATLAB_generated/cpp_detected_intercepts.bin";
+                    spectrogram_handler.detected_intercepts.set_write_file(path,true);
+                    spectrogram_handler.detected_intercepts.save_to_file();
+
+                    //compute victim parameters
+                    path = "/home/david/Documents/MATLAB_generated/cpp_captured_frames.bin";
+                    spectrogram_handler.captured_frames.set_write_file(path,true);
+                    spectrogram_handler.captured_frames.save_to_file();
+
                 }
 
         };

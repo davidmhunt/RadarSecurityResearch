@@ -47,8 +47,11 @@ namespace FMCWHandler_namespace {
                         if (run)
                         {
                             run_FMCW();
-                        }
-                        
+                            //save the detected chrips to a file
+                            //std::string path = "/home/david/Documents/MATLAB_generated/cpp_captured_frames.bin";
+                            //Attacker.sensing_subsystem.spectrogram_handler.captured_frames.set_write_file(path,true);
+                            //Attacker.sensing_subsystem.spectrogram_handler.captured_frames.save_to_file();
+                        } 
                     }
             }
             

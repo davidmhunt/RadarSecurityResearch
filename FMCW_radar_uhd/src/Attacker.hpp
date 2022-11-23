@@ -77,21 +77,18 @@
                     
                     if (attacker_initialized)
                     {
-                        //initialize the rx buffer to stream to a file
-                        init_rx_buffer();
-
-                        //compute the stream duration in seconds
-                        stream_duration_s = get_rx_stream_duration();
+                        //not implemented
                     }
                     
                     //run if specified
                     if (run){
-                        std::cout << "Run Attack not yet enabled" <<std::endl;
+                        //run the sensing subsystem
+                        sensing_subsystem.run();
                     }
                 }
 
                                 /**
-                 * @brief initializes the rx buffer for USRP operation
+                 * @brief NO LONGER USED initializes the rx buffer for USRP operation
                  * 
                  * @param desired_samples_per_buffer desired number of samples per buffer (defaults 
                  * to max for USRP device)
@@ -129,7 +126,7 @@
                 }
 
                 /**
-                 * @brief Get the duration of the rx stream (i.e: how long to listen to the victim) from the JSON config file
+                 * @brief NO LONGER USED Get the duration of the rx stream (i.e: how long to listen to the victim) from the JSON config file
                  * 
                  * @return double the stream time in ms
                  */
@@ -186,25 +183,15 @@
                     std::cout << std::endl;
                 }
 
-                /**
-                 * @brief To be implemented
-                 * 
-                 */
-                void init_attack_signal_buffer(void){
-
-                }
 
                 void run_attacker(void){
+                    usrp_handler.reset_usrp_clock();
                     if (! attacker_initialized)
                     {
-                        //initialize the rx buffer to stream to a file
-                        init_rx_buffer();
-
-                        //compute the stream duration in seconds
-                        stream_duration_s = get_rx_stream_duration();
+                        //not implemented
                     }
                     
-                    usrp_handler.rx_stream_to_file(& rx_buffer,stream_duration_s);
+                    sensing_subsystem.run();
                 }
         };
     }

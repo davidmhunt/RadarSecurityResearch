@@ -33,12 +33,20 @@
             private:
                 data_type sampling_frequency; //Hz
 
-                // parameters for initial 
+                // parameters for initial noise power measurement
                 size_t num_samples_noise_power_measurement_signal;
                 size_t num_rows_noise_power_measurement_signal;
                 size_t samples_per_buffer;
+
+                //parameters for chirp energy detection
+                size_t current_chirp_detector_index;
+                Buffers::Buffer_1D<data_type> chirp_detection_times;
             public:
+                size_t num_rows_chirp_detector;
                 Buffers::Buffer_2D<std::complex<data_type>> noise_power_measureent_signal;
+                Buffers::Buffer_2D<std::complex<data_type>> chirp_detector_signal;
+                
+
 
             public:
 
@@ -50,7 +58,7 @@
             EnergyDetector(json json_config):config(json_config){
                 if (check_config())
                 {
-                    initialize_energy_detector_params();
+                    initialize_energy_detector();
                 }
                 
             }
@@ -91,8 +99,25 @@
                     std::cerr << "EnergyDetector::check_config: spb for Rx not specified" <<std::endl;
                     config_good = false;
                 }
+                
+                //check the number of rows for the chirp detector
+                if(config["SensingSubsystemSettings"]["energy_detector_num_rows_chirp_detector"].is_null()){
+                    std::cerr << "EnergyDetector::check_config: energy_detector_num_rows_chirp_detector not specified" <<std::endl;
+                    config_good = false;
+                }
+
 
                 return config_good;
+            }
+
+            /**
+             * @brief initializes the energy detector
+             * 
+             */
+            void initialize_energy_detector(){
+                initialize_energy_detector_params();
+                initialize_noise_power_detection();
+                initialize_chirp_detection_params();
             }
 
             /**
@@ -100,18 +125,26 @@
              * 
              */
             void initialize_energy_detector_params(){
-                //relative noise power
-                relative_noise_power = 0;
-
-                //threshold for detecting new chirps
-                threshold_level = 
-                    config["SensingSubsystemSettings"]["energy_detection_threshold_dB"].get<data_type>();
 
                 //sampling frequency
                 sampling_frequency = config["USRPSettings"]["Multi-USRP"]["sampling_rate"].get<data_type>();
 
                 //samples per buffer
                 samples_per_buffer = config["USRPSettings"]["RX"]["spb"].get<size_t>();
+            }
+
+
+            /**
+             * @brief initialize parameters to measure the relative noise power level
+             * 
+             */
+            void initialize_noise_power_detection(){
+                //relative noise power
+                relative_noise_power = 0;
+
+                //threshold for detecting new chirps
+                threshold_level = 
+                    config["SensingSubsystemSettings"]["energy_detection_threshold_dB"].get<data_type>();
 
                 //determine number of rows and samples in noise power measurement signal
                 data_type row_period = static_cast<data_type>(samples_per_buffer)/sampling_frequency;
@@ -125,8 +158,21 @@
                 
                 // initialize the noise sampling buffer
                 noise_power_measureent_signal = 
-                    Buffer_2D<std::complex<data_type>>(num_rows_noise_power_measurement_signal,samples_per_buffer);
+                    Buffer_2D<std::complex<data_type>>(num_rows_noise_power_measurement_signal,samples_per_buffer);   
+            }
 
+            /**
+             * @brief initialize the parameters used to detect chirps
+             * 
+             */
+            void initialize_chirp_detection_params(){
+               num_rows_chirp_detector = config["SensingSubsystemSettings"]["energy_detector_num_rows_chirp_detector"].get<size_t>();
+                
+                //initialize the chirp detector index to 0
+                current_chirp_detector_index = 0;
+
+                chirp_detector_signal = Buffer_2D<std::complex<data_type>>(num_rows_chirp_detector,samples_per_buffer);
+                chirp_detection_times = Buffer_1D<data_type>(num_rows_chirp_detector);
             }
 
             /**
@@ -196,6 +242,95 @@
                 }
                 
             }
+
+            /**
+             * @brief Check to see if a chirp was detected in the current chirp detection signal buffer
+             * 
+             * @param signal_start_time the time that the current chirp detection signal started at
+             * @return true - chirp detected
+             * @return false - chirp not detected
+             */
+            bool check_for_chirp(double signal_start_time){
+
+                chirp_detection_times.buffer[current_chirp_detector_index] = static_cast<data_type>(signal_start_time);
+
+                bool chirp_detected = false;
+                data_type signal_power = compute_signal_power(chirp_detector_signal.buffer[current_chirp_detector_index]);
+                if ((signal_power
+                     - relative_noise_power) >= threshold_level )
+                {
+                    chirp_detected = true;
+                }
+                else{
+                    chirp_detected = false;
+                }
+                //update the current chirp_detector index if no chirp was detected
+                if (! chirp_detected)
+                {
+                    current_chirp_detector_index += 1;
+                    current_chirp_detector_index = current_chirp_detector_index % num_rows_chirp_detector;
+                }
+
+                return chirp_detected;
+            }
+
+            /**
+             * @brief Get the current chirp detector index object
+             * 
+             * @return size_t the current chirp detector index
+             */
+            size_t get_current_chirp_detector_index(){
+                return current_chirp_detector_index;
+            }
+
+
+            /**
+             * @brief Get the detection start time in us
+             * 
+             * @return data_type 
+             */
+            data_type get_detection_start_time_us(){
+                return chirp_detection_times.buffer[current_chirp_detector_index] * 1e6;
+            }
+            
+            /**
+             * @brief reset the chirp detector
+             * 
+             */
+            void reset_chirp_detector(){
+                //reset the detected times
+                for (size_t i = 0; i < num_rows_chirp_detector; i++)
+                {
+                    for (size_t j = 0; j < samples_per_buffer; j++)
+                    {
+                        chirp_detector_signal.buffer[i][j] = 0;
+                    }
+                    chirp_detection_times.buffer[i] = 0;   
+                }
+                current_chirp_detector_index = 0;
+            }
+        
+            
+            void save_chirp_detection_signal_to_buffer(Buffer_2D<std::complex<data_type>> * rx_buffer){
+
+                size_t detection_idx = current_chirp_detector_index;
+
+                for (size_t i = 0; i < num_rows_chirp_detector; i++)
+                {
+                    //incremeent the index 
+                    detection_idx += 1;
+                    detection_idx = detection_idx % num_rows_chirp_detector;
+
+                    for (size_t j = 0; j < samples_per_buffer; j++)
+                    {
+                        rx_buffer -> buffer[i][j] = chirp_detector_signal.buffer[detection_idx][j];
+                    }
+                    
+
+                }
+                
+            }
+
         };
     }
 

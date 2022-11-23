@@ -80,9 +80,12 @@
             data_type frame_tracking_average_chirp_duration;
             data_type frame_tracking_average_chirp_slope;
 
-
         
         public:
+
+            //public variable for frame tracking
+            size_t max_frames_to_capture;
+            double min_frame_periodicity_s;
 
             //buffers used
 
@@ -181,6 +184,11 @@
 
                 if(config["SensingSubsystemSettings"]["num_victim_frames_to_capture"].is_null()){
                     std::cerr << "SpectrogramHandler::check_config: num_victim_frames_to_capture not specified" <<std::endl;
+                    config_good = false;
+                }
+
+                if(config["SensingSubsystemSettings"]["min_frame_periodicity_ms"].is_null()){
+                    std::cerr << "SpectrogramHandler::check_config: min_frame_periodicity_ms not specified" <<std::endl;
                     config_good = false;
                 }
 
@@ -283,7 +291,7 @@
                 detected_intercepts = Buffer_1D<data_type>(num_rows_spectrogram);
 
                 //captured frames
-                size_t max_frames_to_capture = 
+                max_frames_to_capture = 
                     config["SensingSubsystemSettings"]["num_victim_frames_to_capture"].get<size_t>();
                 captured_frames = Buffer_2D<data_type>(max_frames_to_capture,6);
             }
@@ -368,6 +376,9 @@
                 frame_tracking_average_frame_duration = 0;
                 frame_tracking_average_chirp_duration = 0;
                 frame_tracking_average_chirp_slope = 0;
+
+                //min frame periodicity
+                min_frame_periodicity_s = config["SensingSubsystemSettings"]["min_frame_periodicity_ms"].get<double>() * 1e-3;
             }
 
             /**
@@ -622,13 +633,17 @@
                 if (num_points_in_chirp >= min_points_per_chirp)
                 {
                     cluster_indicies.set_val_at_indicies(chirp,chirp_start_idx,num_detected_points);
+
+                    //set the maximum cluster index
+                    max_cluster_index = chirp;
                 }
                 else{
                     cluster_indicies.set_val_at_indicies(-1,chirp_start_idx,num_detected_points);
+                    //set the maximum cluster index
+                    max_cluster_index = chirp - 1;
                 }
 
-                //set the maximum cluster index
-                max_cluster_index = chirp;
+                
                 
 
                 //set the remaining samples in the cluster array to zero
@@ -757,6 +772,47 @@
                     sum_count += captured_frames.buffer[i][1] - 1;
                 }
                 frame_tracking_average_chirp_duration = sum_durations/sum_count;
+            }
+
+            /**
+             * @brief get the frame start time of the most recently recorded frame
+             * 
+             * @return double the start time of the most recent frame in seconds
+             */
+            double get_last_frame_start_time_s(){
+                return static_cast<double>(captured_frames.buffer[frame_tracking_num_captured_frames - 1][4]);
+            }
+
+            /**
+             * @brief Print a summary of the estimated parameters (slope, and timing)
+             * 
+             */
+            void print_summary_of_estimated_parameters(){
+                std::cout << "SensingSubsystem::run: average frame duration: " <<
+                    frame_tracking_average_frame_duration * 1e-3 << "ms" <<std::endl;
+                std::cout << "SensingSubsystem::run: average chirp duration: " <<
+                    frame_tracking_average_chirp_duration << "us" <<std::endl;
+                std::cout << "SensingSubsystem::run: average chirp slope: " <<
+                    frame_tracking_average_chirp_slope << "MHz/us" <<std::endl;
+            }
+
+            /**
+             * @brief saves the estimated frame duration (ms), chirp duration (us), and chirp slope (MHz/us)
+             * to a file called cpp_estimated_parameters.bin
+             * 
+             */
+            void save_estimated_parameters_to_file(){
+                Buffer_1D<data_type> estimated_parameters(3,false);
+                 
+                // save the frame duration, chirp duration, and chirp slope
+                estimated_parameters.buffer[0] = frame_tracking_average_frame_duration * 1e-3; // ms
+                estimated_parameters.buffer[1] = frame_tracking_average_chirp_duration; // us
+                estimated_parameters.buffer[2] = frame_tracking_average_chirp_slope; // MHz/us
+
+                //save the results to a file
+                std::string path = "/home/david/Documents/MATLAB_generated/cpp_estimated_parameters.bin";
+                estimated_parameters.set_write_file(path,true);
+                estimated_parameters.save_to_file();
             }
         };
     }
