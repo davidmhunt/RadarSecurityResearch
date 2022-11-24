@@ -483,6 +483,15 @@
                     }
                 }
                              
+                
+                /**
+                 * @brief load data from a 1D vector into the buffer
+                 * 
+                 * @param data_to_load (1D vector) the data to load into the buffer
+                 * @param copy_until_buffer_full (on true) continuously copies data from the vector into the buffer until
+                 * the buffer is full or until the excess samples is reached, even if multiple copies of the data are made
+                 * (on false) inserts up to only 1 copy of the data into the buffer
+                 */
                 void load_data_into_buffer_efficient(std::vector<data_type> & data_to_load, bool copy_until_buffer_full = true){
 
                     //get the number of samples in the data_to_load
@@ -522,6 +531,15 @@
                     }
                 }
                 
+                
+                /**
+                 * @brief load data from a 2D vector into the buffer
+                 * 
+                 * @param data_to_load (2D vector) the data to load into the buffer
+                 * @param copy_until_buffer_full (on true) continuously copies data from the vector into the buffer until
+                 * the buffer is full or until the excess samples is reached, even if multiple copies of the data are made
+                 * (on false) inserts up to only 1 copy of the data into the buffer
+                 */
                 void load_data_into_buffer_efficient(std::vector<std::vector<data_type>> & data_to_load, bool copy_until_buffer_full = true){
 
                     //get dimmensions of data_to_load array

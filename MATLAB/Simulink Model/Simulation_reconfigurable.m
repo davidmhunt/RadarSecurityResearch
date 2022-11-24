@@ -121,7 +121,8 @@ classdef Simulation_reconfigurable < handle
            
             % determine if an object has been detected in each frame, and determine
             % false positives
-            [detected, col_detection, false_positives] = performance_functions.detection(obj.frames_to_compute, estimated_ranges, actual_ranges, estimated_velocities, actual_velocities, obj.sim_config.TestSettings.Configurations.k)
+            [detected, col_detection, false_positives] = performance_functions.detection(obj.frames_to_compute, estimated_ranges, actual_ranges, estimated_velocities, actual_velocities, ...
+                    obj.sim_config.TestSettings.Configurations.k_rng, obj.sim_config.TestSettings.Configurations.k_vel)
 
             % compute the velocity and range error per frame
 

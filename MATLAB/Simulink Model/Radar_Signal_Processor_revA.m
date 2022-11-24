@@ -398,6 +398,12 @@ classdef Radar_Signal_Processor_revA < handle
     
                     %plot the clusters
                     clf;
+                    detected_velocities = [0];
+                    detected_ranges = [0];
+                    idx = [1];
+                    gscatter(detected_velocities,detected_ranges,idx);
+                    axis([-1 * obj.Radar.V_Max_m_per_s, obj.Radar.V_Max_m_per_s, 0,obj.Radar.Range_Max_m]);
+                    cla;
                     drawnow;
                     obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
                 end
