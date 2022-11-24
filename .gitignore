@@ -7,3 +7,5 @@ MATLAB/Simulink Model/histogram_plot.png
 MATLAB/Simulink Model/run_table_data.csv
 .gitignore
 MATLAB/Simulink Model/raw_data.csv
+MATLAB/Simulink Model/csvs_to_plot/*
+MATLAB/Simulink Model/generated_plots/*

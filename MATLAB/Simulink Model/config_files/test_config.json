@@ -1,16 +1,16 @@
 { "TestSettings":
     {
         "Configurations": {
-            "user":"kristen",
-            "json_config": "1GHz.json",
+            "user":"david",
+            "json_config": "4GHz.json",
             "frames_per_sim": 10,
-            "attack_type": "range spoof - similar slope, velocity spoof - similar velocity",
+            "attack_type": "target",
             "num_runs": 200,
             "pre_attack_frames": 5,
-            "k" : 0.25,
+            "k" : 0.5,
             "max_bin": 20,
-            "attack_enable": 1,
-            "set_attack_location": 0,
+            "attack_enable": 0,
+            "set_attack_location": 1,
             "attack_pos": 75,
             "attack_velocity": 7
         }
