@@ -899,42 +899,74 @@
                     if (tx_enabled && rx_enabled)
                     {
                         //create transmit thread
-                        tx_stream_complete = false;
                         std::thread transmit_thread([&]() {
-                            stream_tx_frames(frame_start_times,tx_buffer);
-                        });
-
-                        //create transmit async handler
-                        std::thread transmit_async_thread([&]() {
-                            check_tx_async_messages();
+                            stream_frames_tx_only(frame_start_times,tx_buffer,false);
                         });
 
                         //stream rx_frames
-                        stream_rx_frames(frame_start_times,rx_buffer);
+                        stream_frames_rx_only(frame_start_times,rx_buffer,false);
 
                         //wait for transmit thread to finish
                         transmit_thread.join();
-                        transmit_async_thread.join();
                     }
                     else if (tx_enabled)
                     {
-                        //create transmit thread
-                        tx_stream_complete = false;
-                        std::thread transmit_thread([&]() {
-                            stream_tx_frames(frame_start_times,tx_buffer);
-                        });
-
-                        //create transmit async handler
-                        check_tx_async_messages();
-                        //wait for transmit thread to finish
-                        transmit_thread.join();
+                        stream_frames_tx_only(frame_start_times,tx_buffer,false);
                     }
                     else
                     {
                         //stream rx_frames
-                        stream_rx_frames(frame_start_times,rx_buffer);
+                        stream_frames_rx_only(frame_start_times,rx_buffer,false);
                     }
                     std::cout << "USRPHandler::stream_frame: Complete" << std::endl << std::endl;
+                }
+
+                /**
+                 * @brief only run a transmit stream
+                 * 
+                 * @param frame_start_times a vector of uhd::time_spec_t's with the start time for each frame
+                 * @param tx_buffer a pointer to a buffer with the tx signal
+                 * @param reset_clock (on true) reset the USRP clock (defaults to false)
+                 */
+                void stream_frames_tx_only(std::vector<uhd::time_spec_t> frame_start_times,
+                                            Buffer_2D<std::complex<data_type>> * tx_buffer,
+                                            bool reset_clock = false){
+                    //set the start time
+                    if (reset_clock)
+                    {
+                        reset_usrp_clock();
+                    }
+                   
+                    //create transmit thread
+                    tx_stream_complete = false;
+                    std::thread transmit_thread([&]() {
+                        stream_tx_frames(frame_start_times,tx_buffer);
+                    });
+
+                    //create transmit async handler
+                    check_tx_async_messages();
+                    //wait for transmit thread to finish
+                    transmit_thread.join();
+                }
+
+                /**
+                 * @brief only run a transmit stream
+                 * 
+                 * @param frame_start_times a vector of uhd::time_spec_t's with the start time for each frame
+                 * @param rx_buffer a pointer to a buffer where the rx signal will be stored
+                 * @param reset_clock (on true) reset the USRP clock (defaults to false)
+                 */
+                void stream_frames_rx_only(std::vector<uhd::time_spec_t> frame_start_times,
+                                            Buffer_2D<std::complex<data_type>> * rx_buffer,
+                                            bool reset_clock = false){
+                    //set the start time
+                    if (reset_clock)
+                    {
+                        reset_usrp_clock();
+                    }
+
+                    //stream rx_frames
+                    stream_rx_frames(frame_start_times,rx_buffer);
                 }
 
                 /**

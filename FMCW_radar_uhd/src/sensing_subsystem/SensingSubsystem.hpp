@@ -15,6 +15,7 @@
     #include "../JSONHandler.hpp"
     #include "../USRPHandler.hpp"
     #include "../BufferHandler.hpp"
+    #include "../attacking_subsystem/AttackingSubsystem.hpp"
     #include "SpectrogramHandler.hpp"
     #include "EnergyDetector.hpp"
 
@@ -25,6 +26,7 @@
     using Buffers::Buffer_1D;
     using SpectrogramHandler_namespace::SpectrogramHandler;
     using EnergyDetector_namespace::EnergyDetector;
+    using AttackingSubsystem_namespace::AttackingSubsystem;
 
     namespace SensingSubsystem_namespace{
 
@@ -38,6 +40,9 @@
                 //pointer to usrp device
                 USRPHandler<data_type> * attacker_usrp_handler;
 
+                //pointer to the attacking subsystem
+                AttackingSubsystem<data_type> * attacking_subsystem;
+
                 //configuration
                 json config;
 
@@ -48,9 +53,12 @@
                  * @param config_data JSON configuration object for the attacker
                  * @param usrp_handler pointer to a USRP handler for the sensing subsystem to use
                  */
-                SensingSubsystem(json config_data, USRPHandler<data_type> * usrp_handler):
+                SensingSubsystem(json config_data,
+                    USRPHandler<data_type> * usrp_handler,
+                    AttackingSubsystem<data_type> * subsystem_attacking):
                     config(config_data),
                     attacker_usrp_handler(usrp_handler),
+                    attacking_subsystem(subsystem_attacking),
                     energy_detector(config_data),
                     spectrogram_handler(config_data){
 
@@ -99,6 +107,15 @@
 
                         next_rx_sense_start_time = spectrogram_handler.get_last_frame_start_time_s() * 1e-6
                             + spectrogram_handler.min_frame_periodicity_s;
+                        
+                        if ((attacking_subsystem -> enabled) && (i > attacking_subsystem -> attack_start_frame))
+                        {
+                            double next_frame_start_time = spectrogram_handler.get_next_frame_start_time_prediction_ms();
+                            attacking_subsystem -> compute_frame_start_times(next_frame_start_time);
+                            attacking_subsystem -> run_attack_subsystem();
+                            break;
+                        }
+                        
                     }
 
                     save_sensing_subsystem_state();

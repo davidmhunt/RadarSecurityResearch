@@ -41,6 +41,7 @@ add_library(BufferHandler BufferHandler.cpp)
 add_library(FMCWHandler FMCWHandler.cpp)
 
 #add in subdirectories
+add_subdirectory(attacking_subsystem)
 add_subdirectory(sensing_subsystem)
 
 
@@ -64,7 +65,8 @@ target_link_libraries(ATTACKER  PRIVATE nlohmann_json::nlohmann_json
                                 PRIVATE ${BoostLIBRARIES}
                                 PRIVATE BufferHandler
                                 PRIVATE USRPHandler
-                                PRIVATE SensingSubsystem)
+                                PRIVATE SensingSubsystem
+                                PRIVATE AttackingSubsystem)
 target_link_libraries(FMCWHandler   PRIVATE RADAR
                                     PRIVATE ATTACKER
                                     PRIVATE nlohmann_json::nlohmann_json)
@@ -72,5 +74,6 @@ target_link_libraries(FMCWHandler   PRIVATE RADAR
 target_link_directories(ATTACKER PRIVATE 
                             ${WORKING_DIRECTORY}/sensing_subsystem
                             ${WORKING_DIRECTORY}/sensing_subsystem/pocketfft
-                            ${WORKING_DIRECTORY}/sensing_subsystem/Eigen)
+                            ${WORKING_DIRECTORY}/sensing_subsystem/Eigen
+                            ${WORKING_DIRECTORY}/attacking_subsystem)
 

@@ -784,6 +784,15 @@
             }
 
             /**
+             * @brief Get the start time prediction for the next frame in ms
+             * 
+             * @return double the next start time in ms
+             */
+            double get_next_frame_start_time_prediction_ms(){
+                return static_cast<double>(captured_frames.buffer[frame_tracking_num_captured_frames - 1][5]) * 1e-3;
+            }
+
+            /**
              * @brief Print a summary of the estimated parameters (slope, and timing)
              * 
              */

@@ -16,12 +16,14 @@
     #include "USRPHandler.hpp"
     #include "BufferHandler.hpp"
     #include "sensing_subsystem/SensingSubsystem.hpp"
+    #include "attacking_subsystem/AttackingSubsystem.hpp"
 
     using json = nlohmann::json;
     using USRPHandler_namespace::USRPHandler;
     using Buffers::Buffer_2D;
     using Buffers::Buffer_1D;
     using SensingSubsystem_namespace::SensingSubsystem;
+    using AttackingSubsystem_namespace::AttackingSubsystem;
 
     namespace ATTACKER_namespace{
         
@@ -33,8 +35,13 @@
         template<typename data_type>
         class ATTACKER{
             private:
+
+                //configuration information
                 json config;
                 USRPHandler<data_type> usrp_handler;
+
+                //key subsystems
+                AttackingSubsystem<data_type> attacking_subsystem;
                 SensingSubsystem<data_type> sensing_subsystem;
 
                 Buffer_1D<std::complex<data_type>> rx_buffer;
@@ -72,7 +79,8 @@
                 ATTACKER(json config_data, bool initialize = true, bool run = false):
                     config(config_data),
                     usrp_handler(config_data),
-                    sensing_subsystem(config_data, & usrp_handler),
+                    attacking_subsystem(config_data, & usrp_handler),
+                    sensing_subsystem(config_data, & usrp_handler, & attacking_subsystem),
                     attacker_initialized(initialize){
                     
                     if (attacker_initialized)
@@ -192,6 +200,11 @@
                     }
                     
                     sensing_subsystem.run();
+                }
+
+                void set_attack_start_time(){
+                    //do stuff
+                    return;
                 }
         };
     }
