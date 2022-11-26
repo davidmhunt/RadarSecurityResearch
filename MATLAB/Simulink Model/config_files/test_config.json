@@ -5,7 +5,7 @@
             "json_config": "20MHz.json",
             "frames_per_sim": 10,
             "attack_type": "velocity spoof - noisy",
-            "num_runs": 400,
+            "num_runs": 1,
             "pre_attack_frames": 5,
             "k_range" : 0.25,
             "k_vel" : 0.5,
