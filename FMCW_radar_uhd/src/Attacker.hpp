@@ -15,11 +15,15 @@
     #include "JSONHandler.hpp"
     #include "USRPHandler.hpp"
     #include "BufferHandler.hpp"
+    #include "sensing_subsystem/SensingSubsystem.hpp"
+    #include "attacking_subsystem/AttackingSubsystem.hpp"
 
     using json = nlohmann::json;
     using USRPHandler_namespace::USRPHandler;
     using Buffers::Buffer_2D;
     using Buffers::Buffer_1D;
+    using SensingSubsystem_namespace::SensingSubsystem;
+    using AttackingSubsystem_namespace::AttackingSubsystem;
 
     namespace ATTACKER_namespace{
         
@@ -31,8 +35,15 @@
         template<typename data_type>
         class ATTACKER{
             private:
+
+                //configuration information
                 json config;
                 USRPHandler<data_type> usrp_handler;
+
+                //key subsystems
+                AttackingSubsystem<data_type> attacking_subsystem;
+                SensingSubsystem<data_type> sensing_subsystem;
+
                 Buffer_1D<std::complex<data_type>> rx_buffer;
                 Buffer_2D<std::complex<data_type>> tx_buffer;
 
@@ -68,25 +79,24 @@
                 ATTACKER(json config_data, bool initialize = true, bool run = false):
                     config(config_data),
                     usrp_handler(config_data),
+                    attacking_subsystem(config_data, & usrp_handler),
+                    sensing_subsystem(config_data, & usrp_handler, & attacking_subsystem),
                     attacker_initialized(initialize){
                     
                     if (attacker_initialized)
                     {
-                        //initialize the rx buffer to stream to a file
-                        init_rx_buffer();
-
-                        //compute the stream duration in seconds
-                        stream_duration_s = get_rx_stream_duration();
+                        //not implemented
                     }
                     
                     //run if specified
                     if (run){
-                        std::cout << "Run Attack not yet enabled" <<std::endl;
+                        //run the sensing subsystem
+                        sensing_subsystem.run();
                     }
                 }
 
                                 /**
-                 * @brief initializes the rx buffer for USRP operation
+                 * @brief NO LONGER USED initializes the rx buffer for USRP operation
                  * 
                  * @param desired_samples_per_buffer desired number of samples per buffer (defaults 
                  * to max for USRP device)
@@ -124,7 +134,7 @@
                 }
 
                 /**
-                 * @brief Get the duration of the rx stream (i.e: how long to listen to the victim) from the JSON config file
+                 * @brief NO LONGER USED Get the duration of the rx stream (i.e: how long to listen to the victim) from the JSON config file
                  * 
                  * @return double the stream time in ms
                  */
@@ -181,25 +191,20 @@
                     std::cout << std::endl;
                 }
 
-                /**
-                 * @brief To be implemented
-                 * 
-                 */
-                void init_attack_signal_buffer(void){
-
-                }
 
                 void run_attacker(void){
+                    usrp_handler.reset_usrp_clock();
                     if (! attacker_initialized)
                     {
-                        //initialize the rx buffer to stream to a file
-                        init_rx_buffer();
-
-                        //compute the stream duration in seconds
-                        stream_duration_s = get_rx_stream_duration();
+                        //not implemented
                     }
                     
-                    usrp_handler.rx_stream_to_file(& rx_buffer,stream_duration_s);
+                    sensing_subsystem.run();
+                }
+
+                void set_attack_start_time(){
+                    //do stuff
+                    return;
                 }
         };
     }

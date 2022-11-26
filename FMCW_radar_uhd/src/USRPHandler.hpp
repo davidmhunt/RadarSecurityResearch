@@ -32,10 +32,14 @@
 
     //user generated header files
     #include "BufferHandler.hpp"
+    #include "sensing_subsystem/EnergyDetector.hpp"
+    #include "sensing_subsystem/SpectrogramHandler.hpp"
 
     using json = nlohmann::json;
     using Buffers::Buffer_2D;
     using Buffers::Buffer_1D;
+    using EnergyDetector_namespace::EnergyDetector;
+    using SpectrogramHandler_namespace::SpectrogramHandler;
 
     namespace USRPHandler_namespace {
         
@@ -732,7 +736,7 @@
                         cout_unique_lock.unlock();
                     }
                     if (rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
-                        std::cout << "USRPHandler::stream_rx_frame: Timeout while streaming" << std::endl;
+                        std::cout << "USRPHandler::check_rx_metadata: Timeout while streaming" << std::endl;
                     }
                     if (rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW) {
                         if (not overflow_detected) {
@@ -748,7 +752,7 @@
                     }
                     if (rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE) {
                         std::stringstream error;
-                        error << "USRPHandler::stream_rx_frame: Receiver error: " << rx_md.strerror();
+                        error << "USRPHandler::check_rx_metadata: Receiver error: " << rx_md.strerror();
                         std::cerr << error.str() << std::endl;
                     }
                     return;
@@ -895,42 +899,74 @@
                     if (tx_enabled && rx_enabled)
                     {
                         //create transmit thread
-                        tx_stream_complete = false;
                         std::thread transmit_thread([&]() {
-                            stream_tx_frames(frame_start_times,tx_buffer);
-                        });
-
-                        //create transmit async handler
-                        std::thread transmit_async_thread([&]() {
-                            check_tx_async_messages();
+                            stream_frames_tx_only(frame_start_times,tx_buffer,false);
                         });
 
                         //stream rx_frames
-                        stream_rx_frames(frame_start_times,rx_buffer);
+                        stream_frames_rx_only(frame_start_times,rx_buffer,false);
 
                         //wait for transmit thread to finish
                         transmit_thread.join();
-                        transmit_async_thread.join();
                     }
                     else if (tx_enabled)
                     {
-                        //create transmit thread
-                        tx_stream_complete = false;
-                        std::thread transmit_thread([&]() {
-                            stream_tx_frames(frame_start_times,tx_buffer);
-                        });
-
-                        //create transmit async handler
-                        check_tx_async_messages();
-                        //wait for transmit thread to finish
-                        transmit_thread.join();
+                        stream_frames_tx_only(frame_start_times,tx_buffer,false);
                     }
                     else
                     {
                         //stream rx_frames
-                        stream_rx_frames(frame_start_times,rx_buffer);
+                        stream_frames_rx_only(frame_start_times,rx_buffer,false);
                     }
                     std::cout << "USRPHandler::stream_frame: Complete" << std::endl << std::endl;
+                }
+
+                /**
+                 * @brief only run a transmit stream
+                 * 
+                 * @param frame_start_times a vector of uhd::time_spec_t's with the start time for each frame
+                 * @param tx_buffer a pointer to a buffer with the tx signal
+                 * @param reset_clock (on true) reset the USRP clock (defaults to false)
+                 */
+                void stream_frames_tx_only(std::vector<uhd::time_spec_t> frame_start_times,
+                                            Buffer_2D<std::complex<data_type>> * tx_buffer,
+                                            bool reset_clock = false){
+                    //set the start time
+                    if (reset_clock)
+                    {
+                        reset_usrp_clock();
+                    }
+                   
+                    //create transmit thread
+                    tx_stream_complete = false;
+                    std::thread transmit_thread([&]() {
+                        stream_tx_frames(frame_start_times,tx_buffer);
+                    });
+
+                    //create transmit async handler
+                    check_tx_async_messages();
+                    //wait for transmit thread to finish
+                    transmit_thread.join();
+                }
+
+                /**
+                 * @brief only run a transmit stream
+                 * 
+                 * @param frame_start_times a vector of uhd::time_spec_t's with the start time for each frame
+                 * @param rx_buffer a pointer to a buffer where the rx signal will be stored
+                 * @param reset_clock (on true) reset the USRP clock (defaults to false)
+                 */
+                void stream_frames_rx_only(std::vector<uhd::time_spec_t> frame_start_times,
+                                            Buffer_2D<std::complex<data_type>> * rx_buffer,
+                                            bool reset_clock = false){
+                    //set the start time
+                    if (reset_clock)
+                    {
+                        reset_usrp_clock();
+                    }
+
+                    //stream rx_frames
+                    stream_rx_frames(frame_start_times,rx_buffer);
                 }
 
                 /**
@@ -1009,6 +1045,177 @@
                             streaming_complete = true;
                         }
                     } //end of while loop
+                    return;
+                }
+
+                /**
+                 * @brief Saves a continuous stream of samples until a given 2D buffer has been filled
+                 * 
+                 * @param rx_buffer the 2D buffer to load rx samples into and save to a file
+                 */
+                void rx_stream_to_buffer(Buffer_2D<std::complex<data_type>> * rx_buffer){
+                    
+                    
+                    //determine the number of samples per buffer
+                    size_t num_samps_per_buff = rx_buffer -> num_cols;
+                    
+                    //compute the number of samples to stream
+                    size_t total_samps = num_samps_per_buff * rx_buffer -> num_rows;
+                    
+
+                    //reset the overflow message
+                    overflow_detected = false;
+                    rx_first_buffer = true;
+
+                    //initialize the stream command
+                    uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+                    rx_stream_cmd.num_samps = total_samps;
+                    rx_stream_cmd.stream_now = true;
+
+                    //initialize tracking for when done streaming
+                    size_t num_samps_received;
+                    size_t expected_samps_to_receive = num_samps_per_buff;
+                    
+                    //send the stream command
+                    rx_stream -> issue_stream_cmd(rx_stream_cmd);
+
+                    for (size_t i = 0; i < rx_buffer -> num_rows; i++)
+                    {
+                        //receive the data
+                        num_samps_received = rx_stream -> recv(
+                                        &(rx_buffer->buffer[i].front()),
+                                        num_samps_per_buff,rx_md,0.5,true);
+                        
+                        //check the metadata to confirm good receive
+                        if (num_samps_received != expected_samps_to_receive){
+                            std::cerr << "USRPHandler::rx_stream_to_buffer: Tried receiving " << expected_samps_to_receive <<
+                                        " samples, but only received " << num_samps_received << std::endl;
+                        }
+                        check_rx_metadata(rx_md);
+
+                        //if an overflow was detected, the frame is bad, save what we had and start a new frame
+                        if (overflow_detected){
+                            std::cout << "USRPHandler::rx_stream_to_buffer: Overflow detected " << std::endl;
+                            //reset the overflow tag
+                            overflow_detected = false;
+                            break;
+                        }
+                    }
+                    return;
+                }
+
+                /**
+                 * @brief Saves a continuous stream of samples until a given 2D buffer has been filled
+                 * 
+                 * @param sensing_subsystem the sensing subsystem object
+                 */
+                void rx_record_next_frame(SpectrogramHandler<data_type> * spectrogram_handler,
+                                            EnergyDetector<data_type> * energy_detector,
+                                            double stream_start_time){
+                    
+                    
+                    //determine the number of samples per buffer
+                    size_t num_samps_per_buff = spectrogram_handler -> rx_buffer.num_cols;
+
+                    //determine number of rows in the rx buffer
+                    size_t num_rows = spectrogram_handler -> rx_buffer.num_rows;
+
+                    //set the number of rows for energy detection (i.e: the number of rows prior to a chirp detection)
+                    size_t num_energy_detection_rows = energy_detector -> num_rows_chirp_detector;
+                    
+                    //compute the number of samples to stream after a chirp is detected
+                    size_t total_samps = num_samps_per_buff * (num_rows - num_energy_detection_rows);
+
+                    //reset the overflow message
+                    overflow_detected = false;
+                    rx_first_buffer = true;
+
+                    //initialize the stream command
+                    double current_time = usrp -> get_time_now().get_real_secs();
+                    //uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
+                    uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
+                    rx_stream_cmd.num_samps = num_samps_per_buff;
+
+                    if ((stream_start_time - current_time) >= 1e-3)
+                    {
+                        rx_stream_cmd.time_spec = uhd::time_spec_t(stream_start_time);
+                        rx_stream_cmd.stream_now = false;
+                    }
+                    else{
+                        rx_stream_cmd.stream_now = true;
+                    }
+                    
+
+                    //initialize tracking for detecting overflows
+                    size_t num_samps_received;
+                    size_t expected_samps_to_receive = num_samps_per_buff;
+
+                    //initialize chirp tracking
+                    bool chirp_detected = false;
+                    size_t current_idx;
+                    energy_detector -> reset_chirp_detector();
+                    
+                    //send the stream command
+                    rx_stream -> issue_stream_cmd(rx_stream_cmd);
+
+                    while (! chirp_detected)
+                    {
+                        //receive the data
+                        current_idx = energy_detector -> get_current_chirp_detector_index();
+                        num_samps_received = rx_stream -> recv(
+                                        &(energy_detector->chirp_detector_signal.buffer[current_idx].front()),
+                                        num_samps_per_buff,rx_md,0.5,true);
+                        
+                        //check the metadata to confirm good receive
+                        if (num_samps_received != expected_samps_to_receive){
+                            std::cerr << "USRPHandler::rx_record_next_frame: Tried receiving " << expected_samps_to_receive <<
+                                        " samples when waiting for chirp, but only received " << num_samps_received << std::endl;
+                        }
+                        check_rx_metadata(rx_md);
+
+                        //if an overflow was detected, the frame is bad, save what we had and start a new frame
+                        if (overflow_detected){
+                            std::cout << "USRPHandler::rx_record_next_frame: Overflow detected " << std::endl;
+                            //reset the overflow tag
+                            overflow_detected = false;
+                        }
+                        
+                        if(rx_md.time_spec.get_real_secs() <= stream_start_time){
+                            continue;
+                        }
+                        
+                        chirp_detected = energy_detector -> check_for_chirp(rx_md.time_spec.get_real_secs());
+                    }
+                    
+                    //send a new stream command
+                    std::cout << chirp_detected << std::endl;
+                    rx_stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE;
+                    rx_stream_cmd.num_samps = total_samps;
+                    rx_stream_cmd.stream_now = true;
+                    rx_stream -> issue_stream_cmd(rx_stream_cmd);
+
+                    for (size_t i = num_energy_detection_rows; i < num_rows; i++)
+                    {
+                        //receive the data
+                        num_samps_received = rx_stream -> recv(
+                                        &(spectrogram_handler->rx_buffer.buffer[i].front()),
+                                        num_samps_per_buff,rx_md,0.5,true);
+                        
+                        //check the metadata to confirm good receive
+                        if (num_samps_received != expected_samps_to_receive){
+                            std::cerr << "USRPHandler::rx_record_next_frame: Tried receiving " << expected_samps_to_receive <<
+                                        " samples when spectrogram sensing, but only received " << num_samps_received << std::endl;
+                        }
+                        check_rx_metadata(rx_md);
+
+                        //if an overflow was detected, the frame is bad, save what we had and start a new frame
+                        if (overflow_detected){
+                            std::cout << "USRPHandler::rx_record_next_frame: Overflow detected " << std::endl;
+                            //reset the overflow tag
+                            overflow_detected = false;
+                            //break;
+                        }
+                    }
                     return;
                 }
         };

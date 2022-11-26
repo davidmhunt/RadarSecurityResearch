@@ -1,4 +1,5 @@
 {
+    "Radar_enabled":true,
     "USRPSettings":{
         "Multi-USRP":{
             "use_serial":true,
@@ -6,10 +7,10 @@
             "use_addr":false,
             "addrs": "109.222",
             "ref":"internal",
-            "sampling_rate":28.8e6,
-            "center_freq":1e9,
+            "sampling_rate":29.54e6,
+            "center_freq":1.5e9,
             "lo-offset":0.0,
-            "IF_filter_bw":28.8e6,
+            "IF_filter_bw":29.54e6,
             "wirefmt":"sc16",
             "type":"float",
             "cpufmt":"fc32",
@@ -31,7 +32,7 @@
             "ant":"RX2",
             "subdev":"A:A A:B",
             "channel": 1,
-            "offset_us": 5.7639
+            "offset_us": 6.039
         },
         "AdditionalSettings":{
             "setup_time":1.0,
@@ -42,10 +43,10 @@
         }
     },
     "RadarSettings":{
-        "tx_file_name":"/home/david/Documents/MATLAB_generated/chirp_full.bin",
-        "rx_file_name":"/home/david/Documents/MATLAB_generated/rx_data.bin",
-        "num_chirps": 256,
-        "num_frames": 30,
-        "frame_periodicity_ms": 33.34
+        "tx_file_name":"/home/david/Documents/MATLAB_generated/MATLAB_chirp_full.bin",
+        "rx_file_name":"/home/david/Documents/MATLAB_generated/cpp_rx_data.bin",
+        "num_chirps": 128,
+        "num_frames": 50,
+        "frame_periodicity_ms": 33.33
     }
 }

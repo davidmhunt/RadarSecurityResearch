@@ -32,31 +32,18 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 #declare libraries
-add_library(SpectrogramHandler SpectrogramHandler.cpp)
-add_library(EnergyDetector EnergyDetector.cpp)
-add_library(SensingSubsystem SensingSubsystem.cpp)
+add_library(AttackingSubsystem AttackingSubsystem.cpp)
 
 
 #link libraries as needed
-target_link_libraries(SpectrogramHandler    PRIVATE Threads::Threads
-                                            PRIVATE BufferHandler
-                                            PRIVATE nlohmann_json::nlohmann_json)
-target_link_libraries(EnergyDetector        PRIVATE nlohmann_json::nlohmann_json
-                                            PRIVATE BufferHandler)
-target_link_libraries(SensingSubsystem      PRIVATE Threads::Threads
-                                            PRIVATE SpectrogramHandler
-                                            PRIVATE EnergyDetector
+target_link_libraries(AttackingSubsystem    PRIVATE Threads::Threads
                                             PRIVATE nlohmann_json::nlohmann_json
                                             PRIVATE ${UHD_LIBRARIES} 
                                             PRIVATE ${BoostLIBRARIES}
                                             PRIVATE BufferHandler
-                                            PRIVATE USRPHandler
-                                            PRIVATE AttackingSubsystem)
+                                            PRIVATE USRPHandler)
 
 #include directories
-target_link_directories(SpectrogramHandler PRIVATE 
-                        ${WORKING_DIRECTORY}/pocketfft
-                        ${WORKING_DIRECTORY}/Eigen
+target_link_directories(AttackingSubsystem PRIVATE 
                         ${PARENT_DIRECTORY}
-                        ${PARENT_DIRECTORY}/attacking_subsystem
                         )
