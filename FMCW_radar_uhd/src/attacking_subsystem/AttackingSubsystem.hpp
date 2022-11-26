@@ -175,7 +175,7 @@
                 //get the offset between the Tx and Rx streams
                 
                 //set stream start time
-                attack_start_time_ms = desired_attack_start_time_ms + (stream_start_offset_us * 1e-3);
+                attack_start_time_ms = desired_attack_start_time_ms - (stream_start_offset_us * 1e-3);
 
                 //initialize the frame start times vector
                 frame_start_times = std::vector<uhd::time_spec_t>(num_attack_frames);

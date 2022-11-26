@@ -32,7 +32,7 @@
             "ant":"RX2",
             "subdev":"A:A A:B",
             "channel":0,
-            "offset_us": 5.7639
+            "offset_us": 5.5989
         },
         "AdditionalSettings":{
             "setup_time":1.0,
@@ -49,14 +49,14 @@
         "min_recording_time_ms": 2,
         "spectogram_peak_detection_threshold_dB": 7,
         "min_points_per_chirp": 5,
-        "num_victim_frames_to_capture": 15,
+        "num_victim_frames_to_capture": 10,
         "min_frame_periodicity_ms": 5
     },
     "AttackSubsystemSettings":{
         "tx_file_name": "/home/david/Documents/MATLAB_generated/MATLAB_attacking_chirps_full.bin",
         "enabled": true,
-        "num_attack_frames": 10,
+        "num_attack_frames": 45,
         "attack_start_frame": 5,
-        "estimated_frame_periodicity_ms": 33.33
+        "estimated_frame_periodicity_ms": 33.3299828
     }
 }
