@@ -4,15 +4,18 @@
             "user":"kristen",
             "json_config": "1GHz.json",
             "frames_per_sim": 10,
-            "attack_type": "range spoof - similar slope, velocity spoof - similar velocity",
-            "num_runs": 200,
+            "attack_type": "velocity spoof - noisy",
+            "num_runs": 1,
             "pre_attack_frames": 5,
-            "k" : 0.25,
-            "max_bin": 20,
+            "k_range" : 0.25,
+            "k_vel" : 0.5,
+            "max_bin": 30,
+            "bin_width": 5,
             "attack_enable": 1,
             "set_attack_location": 0,
             "attack_pos": 75,
             "attack_velocity": 7
+
         }
     }
 }
