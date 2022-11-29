@@ -121,6 +121,8 @@ classdef Radar_Signal_Processor_revA < handle
                 frequency components in a signal
             %}
             
+%             obj.Fp = 2 * 1e6; %for sensing subsystem tests                                  
+%             obj.Fst = 5 * 1e6; %for sensing subsystem tests
             obj.Fp = 7 * 1e6;                                  %start frequency of pass band
             obj.Fst = 13 * 1e6;                                 %start of stop band 
             obj.Ap = 0.5;                                       %ripple to allow in the pass band

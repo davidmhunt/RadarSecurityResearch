@@ -3,7 +3,7 @@
         "Configurations": {
             "plot_p_detection": 1,
             "plot_p_false_pos": 0,
-            "num_runs": 200,
+            "num_runs": 400,
             "max_bin": 30,
             "bin_width": 5
         }

@@ -173,7 +173,7 @@ classdef Simulator_revB < handle
 
 
             %load the attacker values into the JSON
-            %setup the victim's chirp parameters
+            %setup the attacker's chirp parameters
             obj.Attacker.Subsystem_tracking.StartFrequency_GHz         = obj.radar_config.RadarSettings.Attacker.StartFrequency_GHz;
             obj.Attacker.Subsystem_tracking.FrequencySlope_MHz_us      = obj.radar_config.RadarSettings.Attacker.FrequencySlope_MHz_us;
             obj.Attacker.Subsystem_tracking.TxStartTime_us             = obj.radar_config.RadarSettings.Attacker.TxStartTime_us;

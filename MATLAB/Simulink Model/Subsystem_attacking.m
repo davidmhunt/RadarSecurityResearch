@@ -32,6 +32,7 @@ classdef Subsystem_attacking  < handle
         sigma                               %the variance of the additional phase variation
         velocity_spoof_adjustment           %the amount to adjust the velocity by (affects phase shift per chirp)
         additional_phase_variation          %for executing velocity attacks
+        additional_phase_variation_noise    %for adding noise to the attack
         additional_time_delay_us            %for executing range attacks
 
         %variable to hold all of the emulated chirps for a specific frame
@@ -199,6 +200,7 @@ classdef Subsystem_attacking  < handle
                 obj.initialize_velocity_spoof()
             else
                 obj.additional_phase_variation = zeros(obj.chirps_to_compute,1);
+                obj.additional_phase_variation_noise = zeros(obj.chirps_to_compute,1);
             end
 
             %compute the waveform so that the sensing subsystem can use it
@@ -287,10 +289,10 @@ classdef Subsystem_attacking  < handle
                         0.8 * obj.Attacker.Bandwidth_MHz *...
                         (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us);
                 elseif obj.Attacker.FMCW_sample_rate_Msps >= 50 % mid BW attacks
-                    obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.015;
-                    obj.additional_time_delay_us = ...
-                        0.4 * obj.Attacker.Bandwidth_MHz *...
-                        (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us);
+                        obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.015;
+                        obj.additional_time_delay_us = ...
+                            0.4 * obj.Attacker.Bandwidth_MHz *...
+                            (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us);
                 else % low BW attacks
                     obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.030;
                     obj.additional_time_delay_us = ...
@@ -303,10 +305,10 @@ classdef Subsystem_attacking  < handle
         function initialize_velocity_spoof(obj)
 
             attacker_lambda_m = physconst("LightSpeed") / (obj.Attacker.StartFrequency_GHz * 1e9);
-
+            frac_chirps_to_attack = 0;
             if contains(obj.attack_mode,"noisy")
                 %compute any additional phase variation (mu = 0)
-                num_bins_to_target = max(obj.chirps_to_compute * 0.2,3);
+                num_bins_to_target = max(obj.chirps_to_compute * 0.05,3); %previously used 0.2
                 obj.sigma = num_bins_to_target * 2 * pi / obj.chirps_to_compute;
     
                 %adjust the velocity by the desired amount
@@ -321,45 +323,48 @@ classdef Subsystem_attacking  < handle
                     (obj.desired_velocity_m_s - obj.Attacker.current_victim_vel/2 ...
                     + obj.velocity_spoof_adjustment) ...
                     * obj.estimated_chirp_cycle_time_us * 1e-6 / attacker_lambda_m;
+                frac_chirps_to_attack = 0.025;
             elseif contains(obj.attack_mode,"similar velocity")
-                %adjust the velocity by the desired amount
-                obj.velocity_spoof_adjustment = 0;
-                obj.phase_shift_per_chirp = 4 * pi * ...
-                    (obj.desired_velocity_m_s - obj.Attacker.current_victim_vel/2 ...
-                    + obj.velocity_spoof_adjustment) ...
-                    * obj.estimated_chirp_cycle_time_us * 1e-6 / attacker_lambda_m;
-
-                %compute what the phase shift values would actually be with
-                %no attack
-                phase_shift_at_chirps = obj.phase_shift_per_chirp * (0:obj.chirps_to_compute - 1);
-                
-
-                %compute what the phase shift values should be with the
-                %attack
-                num_bins_to_target = max(obj.chirps_to_compute * 0.10,3);
-                max_phase_shift = num_bins_to_target * 2 * pi / obj.chirps_to_compute;
-
-                phase_shift_change_per_chirp = 2 * max_phase_shift / obj.chirps_to_compute;
-                desired_phase_shift_deltas = (-1 * max_phase_shift : phase_shift_change_per_chirp : ...
-                    max_phase_shift - phase_shift_change_per_chirp) ...
-                    + obj.phase_shift_per_chirp;
-                desired_phase_shift_at_chirps = zeros(1,obj.chirps_to_compute);
-
-                for chirp = 1:obj.chirps_to_compute - 1
-                    desired_phase_shift_at_chirps(chirp + 1) = ...
-                        desired_phase_shift_at_chirps(chirp) + ...
-                        desired_phase_shift_deltas(chirp);
-                end
-                obj.additional_phase_variation = desired_phase_shift_at_chirps - phase_shift_at_chirps;
+                frac_chirps_to_attack = 0.10;
+                obj.additional_phase_variation_noise = zeros(obj.chirps_to_compute,1);
             end
+            %adjust the velocity by the desired amount
+            obj.velocity_spoof_adjustment = 0;
+            obj.phase_shift_per_chirp = 4 * pi * ...
+                (obj.desired_velocity_m_s - obj.Attacker.current_victim_vel/2 ...
+                + obj.velocity_spoof_adjustment) ...
+                * obj.estimated_chirp_cycle_time_us * 1e-6 / attacker_lambda_m;
+
+            %compute what the phase shift values would actually be with
+            %no attack
+            phase_shift_at_chirps = obj.phase_shift_per_chirp * (0:obj.chirps_to_compute - 1);
+            
+
+            %compute what the phase shift values should be with the
+            %attack
+            num_bins_to_target = max(obj.chirps_to_compute * frac_chirps_to_attack,3);
+            max_phase_shift = num_bins_to_target * 2 * pi / obj.chirps_to_compute;
+
+            phase_shift_change_per_chirp = 2 * max_phase_shift / obj.chirps_to_compute;
+            desired_phase_shift_deltas = (-1 * max_phase_shift : phase_shift_change_per_chirp : ...
+                max_phase_shift - phase_shift_change_per_chirp) ...
+                + obj.phase_shift_per_chirp;
+            desired_phase_shift_at_chirps = zeros(1,obj.chirps_to_compute);
+
+            for chirp = 1:obj.chirps_to_compute - 1
+                desired_phase_shift_at_chirps(chirp + 1) = ...
+                    desired_phase_shift_at_chirps(chirp) + ...
+                    desired_phase_shift_deltas(chirp);
+            end
+            obj.additional_phase_variation = desired_phase_shift_at_chirps - phase_shift_at_chirps;
         end
     
         function compute_noisy_velocity_spoof_values(obj)
             %for normal distribution
-            %obj.additional_phase_variation = randn(obj.chirps_to_compute,1) * obj.sigma;
+            %obj.additional_phase_variation_noise = randn(obj.chirps_to_compute,1) * obj.sigma;
     
             %for uniform distribution
-            obj.additional_phase_variation = (rand(obj.chirps_to_compute,1) - 0.5) * 2 * obj.sigma;
+            obj.additional_phase_variation_noise = (rand(obj.chirps_to_compute,1) - 0.5) * 2 * obj.sigma;
         end
 
         function compute_next_emulated_chirps(obj)
@@ -405,9 +410,11 @@ classdef Subsystem_attacking  < handle
             
                 %compute the waveform
                 waveform = cos(pi * obj.FrequencySlope_MHz_us * 1e12 ...
-                    * obj.t.^(2) + phase_shift + obj.additional_phase_variation(chirp)) + ...
+                    * obj.t.^(2) + phase_shift + obj.additional_phase_variation(chirp) + ...
+                    obj.additional_phase_variation_noise(chirp)) + ...
                     1i * sin(pi * obj.FrequencySlope_MHz_us * 1e12...
-                    * obj.t.^(2) + phase_shift + obj.additional_phase_variation(chirp));
+                    * obj.t.^(2) + phase_shift + obj.additional_phase_variation(chirp) + ...
+                    obj.additional_phase_variation_noise(chirp));
             
                 %save it in the emulated_chirps array
                 obj.emulated_chirps(1:obj.num_samples_sweep_time,chirp) = waveform.';
