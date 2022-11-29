@@ -1148,6 +1148,7 @@
 
                     //initialize tracking for detecting overflows
                     size_t num_samps_received;
+                    size_t num_total_samps_received = 0;
                     size_t expected_samps_to_receive = num_samps_per_buff;
 
                     //initialize chirp tracking
@@ -1167,18 +1168,12 @@
                                         num_samps_per_buff,rx_md,0.5,true);
                         
                         //check the metadata to confirm good receive
-                        if (num_samps_received != expected_samps_to_receive){
-                            std::cerr << "USRPHandler::rx_record_next_frame: Tried receiving " << expected_samps_to_receive <<
+                        if ((num_samps_received != expected_samps_to_receive) &&
+                            (rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW)){
+                            std::cerr << "USRPHandler::rx_record_next_frame: (overflowed) Tried receiving " << expected_samps_to_receive <<
                                         " samples when waiting for chirp, but only received " << num_samps_received << std::endl;
                         }
                         check_rx_metadata(rx_md);
-
-                        //if an overflow was detected, the frame is bad, save what we had and start a new frame
-                        if (overflow_detected){
-                            std::cout << "USRPHandler::rx_record_next_frame: Overflow detected " << std::endl;
-                            //reset the overflow tag
-                            overflow_detected = false;
-                        }
                         
                         if(rx_md.time_spec.get_real_secs() <= stream_start_time){
                             continue;
@@ -1201,20 +1196,14 @@
                                         &(spectrogram_handler->rx_buffer.buffer[i].front()),
                                         num_samps_per_buff,rx_md,0.5,true);
                         
+                        num_total_samps_received += num_samps_received;
+                        
                         //check the metadata to confirm good receive
                         if (num_samps_received != expected_samps_to_receive){
-                            std::cerr << "USRPHandler::rx_record_next_frame: Tried receiving " << expected_samps_to_receive <<
+                            std::cout << "USRPHandler::rx_record_next_frame: Tried receiving " << expected_samps_to_receive <<
                                         " samples when spectrogram sensing, but only received " << num_samps_received << std::endl;
                         }
                         check_rx_metadata(rx_md);
-
-                        //if an overflow was detected, the frame is bad, save what we had and start a new frame
-                        if (overflow_detected){
-                            std::cout << "USRPHandler::rx_record_next_frame: Overflow detected " << std::endl;
-                            //reset the overflow tag
-                            overflow_detected = false;
-                            //break;
-                        }
                     }
                     return;
                 }

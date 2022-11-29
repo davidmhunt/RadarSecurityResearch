@@ -179,17 +179,27 @@
              * @brief Compute the power of a given rx signal
              * 
              * @param rx_signal the rx signal to compute the power of
+             * @param num_samples the maximum number of samples to use for energy detection,
+             * when set to zero (default), will use the size of the rx signal
              * @return data_type the computed signal power level
              */
-            data_type compute_signal_power (std::vector<std::complex<data_type>> & rx_signal){
+            data_type compute_signal_power (std::vector<std::complex<data_type>> & rx_signal,
+                                            size_t num_samples = 0){
+                
+                
+                if (num_samples == 0)
+                {
+                    num_samples = rx_signal.size();
+                }
+                
                 
                 //get determine the sampling period of the rx_signal
-                data_type sampling_period = static_cast<data_type>(rx_signal.size()) / sampling_frequency;
+                data_type sampling_period = static_cast<data_type>(num_samples) / sampling_frequency;
                 
                 //compute the sum of the elements
                 data_type sum;
 
-                for (size_t i = 0; i < rx_signal.size(); i++)
+                for (size_t i = 0; i < num_samples; i++)
                 {
                     sum += ((real(rx_signal[i]) * real(rx_signal[i])) + (imag(rx_signal[i]) * imag(rx_signal[i])));
                 }
@@ -255,7 +265,7 @@
                 chirp_detection_times.buffer[current_chirp_detector_index] = static_cast<data_type>(signal_start_time);
 
                 bool chirp_detected = false;
-                data_type signal_power = compute_signal_power(chirp_detector_signal.buffer[current_chirp_detector_index]);
+                data_type signal_power = compute_signal_power(chirp_detector_signal.buffer[current_chirp_detector_index], 500);
                 if ((signal_power
                      - relative_noise_power) >= threshold_level )
                 {
@@ -290,7 +300,9 @@
              * @return data_type 
              */
             data_type get_detection_start_time_us(){
-                return chirp_detection_times.buffer[current_chirp_detector_index] * 1e6;
+                size_t detection_idx = current_chirp_detector_index + 1;
+                detection_idx = detection_idx % num_rows_chirp_detector;
+                return chirp_detection_times.buffer[detection_idx] * 1e6;
             }
             
             /**
