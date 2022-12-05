@@ -157,6 +157,16 @@ classdef Radar_revB < handle
             fprintf("\t Samples per chirp \t\t %0.2f \n",obj.ChirpCycleTime_us * 1e-6 * obj.FMCW_sampling_rate_Hz)
         end
 
+        function print_CFAR_detection_region(obj)
+            fprintf("CFAR Detection Region\n");
+            fprintf("\t Range Detection Region \t\t %0.3f m to %0.3f m\n",...
+                obj.Radar_Signal_Processor.distance_detection_range(1), ...
+                obj.Radar_Signal_Processor.distance_detection_range(2));
+            fprintf("\t Velocity Detection Region \t\t %0.3f m/s to %0.3f m/s\n",...
+                obj.Radar_Signal_Processor.velocity_detection_range(1), ...
+                obj.Radar_Signal_Processor.velocity_detection_range(2));
+        end
+
         %% [2] Functions to compute calculated radar parameters
         function compute_calculated_vals(obj)
             %{

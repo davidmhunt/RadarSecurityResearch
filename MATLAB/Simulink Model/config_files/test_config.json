@@ -2,16 +2,16 @@
     {
         "Configurations": {
             "user":"david",
-            "json_config": "4GHz.json",
+            "json_config": "1GHz.json",
             "frames_per_sim": 10,
-            "attack_type": "target",
+            "attack_type": "range spoof - similar slope, velocity spoof - noisy",
             "num_runs": 400,
             "pre_attack_frames": 5,
-            "k_range" : 0.15,
+            "k_range" : 0.63,
             "k_vel" : 1.05,
             "max_bin": 30,
             "bin_width": 5,
-            "attack_enable": 0,
+            "attack_enable": 1,
             "set_attack_location": 0,
             "attack_pos": 75,
             "attack_velocity": 7

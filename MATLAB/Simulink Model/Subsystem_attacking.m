@@ -323,7 +323,13 @@ classdef Subsystem_attacking  < handle
                     (obj.desired_velocity_m_s - obj.Attacker.current_victim_vel/2 ...
                     + obj.velocity_spoof_adjustment) ...
                     * obj.estimated_chirp_cycle_time_us * 1e-6 / attacker_lambda_m;
-                frac_chirps_to_attack = 0.025;
+                if obj.Attacker.FMCW_sample_rate_Msps >= 500 %high BW attacks
+                    frac_chirps_to_attack = 0.01;
+                elseif obj.Attacker.FMCW_sample_rate_Msps >= 50 %mid BW attacks
+                    frac_chirps_to_attack = 0.025;
+                else
+                    frac_chirps_to_attack = 0.1;
+                end
             elseif contains(obj.attack_mode,"similar velocity")
                 frac_chirps_to_attack = 0.10;
                 obj.additional_phase_variation_noise = zeros(obj.chirps_to_compute,1);
