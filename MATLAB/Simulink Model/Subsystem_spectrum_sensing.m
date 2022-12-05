@@ -160,7 +160,7 @@ classdef Subsystem_spectrum_sensing < handle
             %specify an amount (in dB) that a received signal must be
             %greater than the noise level, before the sensing subsystem
             %starts to record samples
-            obj.detection_params.threshold_level = 3;
+            obj.detection_params.threshold_level = 1;
         end
        
         function initialize_timing_params(obj,min_processing_time_ms)
@@ -1296,12 +1296,15 @@ classdef Subsystem_spectrum_sensing < handle
 
         
         %functions to aid in plotting
-        function plot_received_spectogram(obj)
+        function plot_received_spectogram(obj,max_time_to_plot_us)
             %{
                 Purpose: Plot the last spectogram computed by the sensing
                 subsystem
             %}
-            surf(obj.plot_params.times,obj.plot_params.frequencies,obj.generated_spectogram);
+            idx_to_plot = obj.plot_params.times < max_time_to_plot_us;
+            surf(obj.plot_params.times(idx_to_plot),...
+                obj.plot_params.frequencies,...
+                obj.generated_spectogram(:,idx_to_plot),"LineStyle","none");
             title_str = sprintf('Spectogram');
             title(title_str);
             xlabel('Time(us)')
@@ -1309,11 +1312,18 @@ classdef Subsystem_spectrum_sensing < handle
             view([0,90.0])
         end
     
-        function plot_clusters(obj)
-                    %{
-                        Purpose: generates a plot of the detected chirps
-                    %}
-                    gscatter(obj.detected_times,obj.detected_frequencies,obj.idx);
-                end
+        function plot_clusters(obj,max_time_to_plot_us)
+            %{
+                Purpose: generates a plot of the detected chirps
+            %}
+            idx_to_plot = obj.detected_times < max_time_to_plot_us;
+            gscatter(obj.detected_times(idx_to_plot), ...
+                obj.detected_frequencies(idx_to_plot), ...
+                obj.idx(idx_to_plot));
+            title_str = sprintf('Identified Chirps');
+            title(title_str);
+            xlabel('Time(us)')
+            ylabel('Frequency (MHz)')
+        end
     end
 end
