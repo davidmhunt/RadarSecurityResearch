@@ -425,7 +425,8 @@ classdef characterization_functions
             
             %specify whether or not to record a movie of the range-doppler plot
             record_movie = false;
-            simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_compute,record_movie);
+            simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_compute, ...
+                record_movie,50,15,40);
             
             %pre-compute the victim's chirps
             simulator.Victim.precompute_radar_chirps();
