@@ -167,6 +167,14 @@ classdef Radar_revB < handle
                 obj.Radar_Signal_Processor.velocity_detection_range(2));
         end
 
+        function print_radar_parameters(obj)
+            obj.print_chirp_parameters();
+            obj.print_frame_parameters();
+            obj.print_performance_specs();
+            obj.print_FMCW_specs();
+            obj.print_CFAR_detection_region();
+        end
+
         %% [2] Functions to compute calculated radar parameters
         function compute_calculated_vals(obj)
             %{

@@ -98,8 +98,13 @@ classdef Simulator_revB < handle
             
 
             %set sweep time
-            obj.Victim.sweep_time = obj.Victim.RampEndTime_us * 1e-6;
-            obj.Attacker.Subsystem_tracking.sweep_time = obj.Attacker.Subsystem_tracking.RampEndTime_us * 1e-6;
+            %select a sweep time that ensures that there is an integer
+            %number of samples in the FMCW processing
+            sweep_time = obj.Victim.RampEndTime_us * 1e-6;
+            sweep_time = round(sweep_time * obj.Victim.FMCW_sampling_rate_Hz)/...
+                obj.Victim.FMCW_sampling_rate_Hz;
+            obj.Victim.sweep_time = sweep_time;
+            obj.Attacker.Subsystem_tracking.sweep_time = sweep_time;
             
             
             %configure the FMCW waveforms for the victim and attacker

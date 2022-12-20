@@ -379,6 +379,10 @@ classdef Radar_Signal_Processor_revA < handle
                 if obj.capture_movies
                     %plot range doppler
                     plotResponse(obj.RangeDopplerResponse,obj.radar_cube);
+                    xlim([obj.velocity_estimates(1) - 20 * obj.Radar.V_Res_m_per_s, ...
+                        obj.velocity_estimates(1) + 20 * obj.Radar.V_Res_m_per_s])
+                    ylim([obj.range_estimates(1) - 20 * obj.Radar.Range_Res_m, ...
+                        obj.range_estimates(1) + 20 * obj.Radar.Range_Res_m])
                     drawnow
                     obj.F_rngdop(obj.Radar.current_frame) = getframe(gcf);
     
