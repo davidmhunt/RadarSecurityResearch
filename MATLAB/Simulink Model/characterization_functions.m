@@ -5,7 +5,40 @@ classdef characterization_functions
 
     methods (Static)
         
-        
+    %% Attacking Subsystem Evaluation Functions
+    
+    %{
+        Purpose: Generate a series of desired range and velocity test
+            points that can be used to test the attacking subsystem's spoofing
+            accuracy
+        Inputs:
+            num_cases: the number of test cases to generate
+            valid_ranges: valid spoofing target test ranges [min,max]
+            valid_velocities: valid spoofing target test velocities
+                [min,max]
+    %}
+    function [ranges,velocities] = initialize_attack_subsystem_test_cases( ...
+                num_cases, ...
+                valid_ranges, ...
+                valid_velocities)
+
+
+            %initialize the output arrays
+            ranges = zeros(num_cases,1);
+            velocities = zeros(num_cases,1);
+
+            %using a for loop initialize all of the test cases
+            for i = 1:num_cases
+                
+                %% select parameters for the test case
+                %select a random range
+                ranges(i) = rand * (valid_ranges(2) - valid_ranges(1)) + valid_ranges(1);
+
+                %select a random velocity
+                velocities(i) = rand * (valid_velocities(2) - valid_velocities(1)) + valid_velocieis(1);
+            end
+        end
+
         %{
             Purpose: compute the objects sensed by a victim given a
             spoofing attack
@@ -85,6 +118,9 @@ classdef characterization_functions
             estimated_velocities = simulator.Victim.Radar_Signal_Processor.velocity_estimates(attack_start_frame:frames_to_compute,1);
         end
         
+
+%% Sensing Subsystem Evaluation Functions
+
         %{
             Purpose: Initialize a series of random victim configurations to
                 be used to test the sensing subsystem performance
