@@ -386,24 +386,22 @@ classdef characterization_functions
             errors_in_range = mean_absolute_errors * 1e-6 * physconst("LightSpeed");
             
             %plot a figure with error bars
-            error_bars = tail_95th_percentiles;
             figure;
             clf;
-            errorbar(mean_absolute_errors,error_bars);
+            errorbar(mean_absolute_errors,tail_95th_percentiles);
             title("Timing Estimation error vs Number of Frames")
             xlabel("Number of Frames Sensed")
             ylabel("error (us)")
-            y_lim = 3 *max(mean_absolute_errors);
-            ylim([0, y_lim])
-            xlim([0,size(prediction_errors,2)+ 1])
+            y_lim = max(mean_absolute_errors) + max(mean_absolute_errors) * 0.4;
+            ylim([-y_lim, y_lim])
             
             %add in the axis for range error
-            yyaxis right
-            plot(errors_in_range)
-            ylabel("corresponding range error (m)")
-            set(gca,"YColor", 'black')
-            y_lim = 3 * max(errors_in_range);
-            ylim([0, y_lim])
+%             yyaxis right
+%             plot(errors_in_range)
+%             ylabel("corresponding range error (m)")
+%             set(gca,"YColor", 'black')
+%             y_lim = max(errors_in_range) + max(errors_in_range) * 0.1;
+%             ylim([-y_lim, y_lim])
             
         end
 %% Functions to Run Sensing Subsystem Simulations
