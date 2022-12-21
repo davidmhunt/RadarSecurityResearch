@@ -96,7 +96,7 @@ classdef Subsystem_spectrum_sensing < handle
 
             %initialize the remaining parameters
             obj.initialize_detection_params();
-            obj.initialize_timing_params(15); %specify 20 ms of processing delay
+            obj.initialize_timing_params(20); %specify 20 ms of processing delay
             obj.initialize_spectogram_params(FMCW_sample_rate_Msps);
             obj.initialize_chirp_and_frame_tracking();
             obj.initialize_plot_params(FMCW_sample_rate_Msps);
@@ -160,7 +160,7 @@ classdef Subsystem_spectrum_sensing < handle
             %specify an amount (in dB) that a received signal must be
             %greater than the noise level, before the sensing subsystem
             %starts to record samples
-            obj.detection_params.threshold_level = -1;
+            obj.detection_params.threshold_level = 0;
         end
        
         function initialize_timing_params(obj,min_processing_time_ms)
