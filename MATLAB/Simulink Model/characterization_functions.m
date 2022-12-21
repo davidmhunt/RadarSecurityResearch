@@ -30,7 +30,7 @@ classdef characterization_functions
             %using a for loop initialize all of the test cases
             for i = 1:num_cases
                 
-                %% select parameters for the test case
+                % select parameters for the test case
                 %select a random range
                 ranges(i) = rand * (valid_ranges(2) - valid_ranges(1)) + valid_ranges(1);
 
@@ -55,8 +55,11 @@ classdef characterization_functions
                     the victim was under attack
                 estimated_velocities - the estimated velocities for each
                     frame that the victim was under attack
+                desired_ranges - the desired spoof location
+                desired_velocities - the desired spoof velocity
         %}
-        function [estimated_ranges,estimated_velocities] = ...
+        function [estimated_ranges,estimated_velocities,...
+                desired_ranges,desired_velocities] = ...
             compute_sensed_targets(config_path,spoof_range,spoof_velocity,frames_to_compute,attack_start_frame)
             
             simulator = Simulator_revB();
@@ -109,16 +112,285 @@ classdef characterization_functions
             simulator.Attacker.Subsystem_attacking.set_attack_mode(attack_type);
             
             %if it is desired to specify a specific attack location
-            simulator.Attacker.Subsystem_attacking.set_desired_attack_location(actual_range,actual_velocity);
+            simulator.Attacker.Subsystem_attacking.set_desired_attack_location(spoof_range,spoof_velocity);
         
             simulator.run_simulation_attack_no_target(frames_to_compute,false);
             
             %get the return values
-        
-            estimated_ranges = simulator.Victim.Radar_Signal_Processor.range_estimates(attack_start_frame:frames_to_compute,1);
-            estimated_velocities = simulator.Victim.Radar_Signal_Processor.velocity_estimates(attack_start_frame:frames_to_compute,1);
+            final_attack_frame = simulator.Attacker.Subsystem_attacking.frame;
+            num_attack_frames = min(final_attack_frame - 1,frames_to_compute - attack_start_frame + 1);
+
+            %get the estimated range and velocity values from the Victim
+            end_idx = frames_to_compute;
+            start_idx = frames_to_compute - num_attack_frames;
+
+            estimated_ranges = simulator.Victim.Radar_Signal_Processor.range_estimates(start_idx:end_idx,1);
+            estimated_velocities = simulator.Victim.Radar_Signal_Processor.velocity_estimates(start_idx:end_idx,1);
+            
+            %compute the desired spoofing ranges and velocities based on
+            %the final attacker frame
+            end_idx = final_attack_frame - 1;
+            start_idx = end_idx - num_attack_frames;
+            desired_ranges = (spoof_range - spoof_velocity * (start_idx:end_idx) ...
+                * simulator.Victim.FramePeriodicity_ms * 1e-3).';
+            
+            desired_velocities = spoof_velocity * ones(num_attack_frames + 1,1);
+        end
+
+        %{
+            Purpose: Run through all test cases for evaluating the spoofing
+                location accuracy and save the results to a file
+            Inputs:
+                config_path - path to the .json configuration file
+                spoof_ranges - actual range of the object to be added
+                spoof_velocities - actual velocity of the object ot be
+                    spoofed
+                frames_to_compute - number of frames to simulate before
+                    recording a result
+                attack_start_frame - the frame that the attack starts at
+                num_cases - the number of test cases
+                save_file_name - the name of the file (without the .csv) to
+                    save the results to
+            Outputs:
+                test_data_spoofing_performance - the data from each of the
+                    test cases
+        %}
+        function test_data_spoofing_performance = ...
+                run_spoofing_performance_test_cases( ...
+                    num_cases, ...
+                    frames_to_compute, ...
+                    attack_start_frame, ...
+                    spoof_ranges, ...
+                    spoof_velocities, ...
+                    config_path, ...
+                    save_file_name)
+
+            save_file_headers = [...
+                "Spoof Ranges (m)",...
+                "Spoof Velocities (m/s)",...
+                "Estimated Ranges (m)",...
+                "Estimated velocities (m/s)",...
+                "Absolute Range Spoof Error (m)",...
+                "Absolute Velocity Spoof Error (m)"];
+
+            frames_per_case = frames_to_compute - attack_start_frame + 1;
+
+            test_data_spoofing_performance = zeros(num_cases * frames_per_case,size(save_file_headers,2));
+            
+            status = sprintf("Running Test: %d of %d",1, num_cases);
+            progress_bar = waitbar(0,status,"Name","Testing Sensing Subsystem");
+            for i = 1:num_cases
+                %update the waitbar
+                status = sprintf("Running Test: %d of %d",i, num_cases);
+                waitbar(i/num_cases,progress_bar,status);
+            
+                %run the test case
+            
+                    [estimated_ranges,estimated_velocities,...
+                    desired_ranges,desired_velocities] = ...
+                            characterization_functions.compute_sensed_targets(config_path,...
+                            spoof_ranges(i),...
+                            spoof_velocities(i),...
+                            frames_to_compute,...
+                            attack_start_frame);
+            
+                %save values - resulting averages from simulation runs
+                start_idx = frames_per_case * (i - 1) + 1;
+                end_idx = frames_per_case * i;
+                test_data_spoofing_performance(start_idx:end_idx,1) = desired_ranges;
+                test_data_spoofing_performance(start_idx:end_idx,2) = desired_velocities;
+                test_data_spoofing_performance(start_idx:end_idx,3) = estimated_ranges;
+                test_data_spoofing_performance(start_idx:end_idx,4) = estimated_velocities;
+                test_data_spoofing_performance(start_idx:end_idx,5) = abs(desired_ranges - estimated_ranges);
+                test_data_spoofing_performance(start_idx:end_idx,6) = abs(desired_velocities - estimated_velocities);
+                
+                %save the results to a file - continuously saving the data
+                %allows for obtaining some data even in the event of a error or
+                %crash
+
+                %save the testing data for results
+                test_data_results = array2table(test_data_spoofing_performance,"VariableNames",save_file_headers);
+                writetable(test_data_results,save_file_name + ".csv",'WriteRowNames',true); 
+            end
+
+            
         end
         
+        %% Plotting functions for spoofing evaluation
+        %{
+            Purpose: generate a plot for the test configuration ranges and
+                velocities
+            Inputs: 
+                read_file_path - csv file containing the simulation
+                    results, desired spoof ranges and desired spoof
+                    velocities
+        %}
+        function plot_spoofing_test_configurations(read_file_path)
+            table_data_results = readtable(read_file_path);
+            ranges_m = table_data_results{:,1};
+            velocities_m_s = table_data_results{:,2};
+            figure;
+            scatter(velocities_m_s, ranges_m);
+            ylabel("Spoofing Range (m)")
+            xlabel("Spoofing Velocity (m/s)")
+            title("Spoofing Cases to Test")
+            saveas(gcf, "generated_plots/spoofing_test_configurations.png")
+        end
+
+        %{
+            Purpose: generate a plot for CDF of the test configuration
+                spoofing ranges and velocities
+            Inputs: 
+                read_file_path - csv file containing the simulation
+                    results, desired spoof ranges and desired spoof
+                    velocities
+        %}
+        function plot_spoofing_test_configuration_cdfs(read_file_path)
+            table_data_results = readtable(read_file_path);
+            ranges_m = table_data_results{:,1};
+            velocities_m_s = table_data_results{:,2};
+            figure;
+            %plot cdf for slopes
+            subplot(1,2,1);
+            [h,stats] = cdfplot(ranges_m);
+            xlabel("Spoofing Range (m)")
+            title("CDF of Test Spoofing Ranges")
+
+            %plot cdf for chirp cycle times
+            subplot(1,2,2);
+            [h,stats] = cdfplot(velocities_m_s);
+            xlabel("Spoofing Velocity (m/s)")
+            title("CDF of Test Spoofing Velocities")
+            saveas(gcf, "generated_plots/spoofing_test_configuration_cdfs.png")
+        end
+
+        %{
+            Purpose: generate a table of the key statistics for the
+                absolute error of the spoofing range accuracy and plot the cdf of the
+                absolute error
+        %}
+        function summary_table = generate_range_spoofing_accuracy_summary(read_file_path)
+            
+            %plot the cdf of the chirp slope errors
+            table_data_results = readtable(read_file_path);
+            actual_values = table_data_results{:,1};
+            estimated_values = table_data_results{:,3};
+            abs_errors = table_data_results{:,5};
+
+            %get the number of failed trials
+            num_failed_trials = size(abs_errors(isnan(abs_errors)),1);
+            percent_failed_trials = num_failed_trials / size(abs_errors,1);
+
+            %remove all NaN values from the dataset
+            abs_errors = abs_errors(~isnan(abs_errors));
+
+            %plot the results
+            
+            %statistics based on absolute errors
+            mean_error = mean(abs_errors);
+            variance_error = var(abs_errors);
+            MSE_error = mse(actual_values,estimated_values);
+            tail_95th_percentile = prctile(abs_errors,95);
+
+            figure;
+            [h,stats] = cdfplot(abs_errors);
+            xlabel("Range Spoofing Error (m)")
+            title("CDF of Chirp Slope Errors")
+            if max(abs_errors) > 5 * tail_95th_percentile
+                xlim([0,2 * tail_95th_percentile])
+            end
+            
+            variable_names = ["Mean (m)", "Variance (m)^2", "MSE (m)^2", "95th Percentile (m)", "Percent Failed Trials"];
+            summary_table = array2table( ...
+                [mean_error,...
+                variance_error,...
+                MSE_error,...
+                tail_95th_percentile,...
+                percent_failed_trials], ...
+                "VariableNames",variable_names);
+            
+            saveas(gcf, "generated_plots/range_spoofing_accuracy_error_cdf.png")
+
+        end
+
+        %{
+            Purpose: generate a table of the key statistics for the
+                absolute error of given metric and plot the cdf of the
+                absolute error
+            Inputs:
+                read_file_path - path to the read file containing the
+                    necessary information to generate the testing summary
+                actual_values_idx - column index in the read file
+                    corresponding to the actual values
+                estimated_values_idx - column index in the read file
+                    corresponding to the estimated values
+                abs_errors_idx - column index in the read file
+                    corresponding to the absolute errors for the metric
+                metric_title - a string of the name of the metric that the summary is
+                    being generated for
+                metric_units - a string of the units of the metric that the
+                    summary is being generated for
+        %}
+        function summary_table = generate_testing_summary(...
+                read_file_path,...
+                actual_values_idx, ...
+                estimated_values_idx, ...
+                abs_errors_idx, ...
+                metric_title, ...
+                metric_units)
+            
+            %plot the cdf of the chirp slope errors
+            table_data_results = readtable(read_file_path);
+            actual_values = table_data_results{:,actual_values_idx};
+            estimated_values = table_data_results{:,estimated_values_idx};
+            abs_errors = table_data_results{:,abs_errors_idx};
+
+            %get the number of failed trials
+            num_failed_trials = size(abs_errors(isnan(abs_errors)),1);
+            percent_failed_trials = num_failed_trials / size(abs_errors,1);
+
+            %remove all NaN values from the dataset
+            abs_errors = abs_errors(~isnan(abs_errors));
+
+            %plot the results
+            
+            %statistics based on absolute errors
+            mean_error = mean(abs_errors);
+            variance_error = var(abs_errors);
+            MSE_error = mse(actual_values,estimated_values);
+            tail_95th_percentile = prctile(abs_errors,95);
+
+            figure;
+            [h,stats] = cdfplot(abs_errors);
+            xlabel(metric_title + " " + metric_units);
+            title("CDF of " + metric_title + " Error");
+            if max(abs_errors) > 5 * tail_95th_percentile
+                xlim([0,2 * tail_95th_percentile])
+            end
+            
+            variable_names = [...
+                "Mean (" + metric_units + ")",...
+                "Variance ("+ metric_units + ")^2",...
+                "MSE (" + metric_units + ")^2",...
+                "95th Percentile (" + metric_units + ")",...
+                "Percent Failed Trials"];
+            summary_table = array2table( ...
+                [mean_error,...
+                variance_error,...
+                MSE_error,...
+                tail_95th_percentile,...
+                percent_failed_trials], ...
+                "VariableNames",variable_names);
+
+            %set the save file path
+            save_file_name= strrep(metric_title," ","_");
+
+            %save the cdf plot
+            saveas(gcf, "generated_plots/" + save_file_name + "_error_cdf.png");
+
+            %save a csv of the summary table
+            writetable(summary_table,save_file_name + "_error_summary.csv",'WriteRowNames',true); 
+        end
 
 %% Sensing Subsystem Evaluation Functions
 
