@@ -404,6 +404,8 @@ classdef characterization_functions
             set(gca,"YColor", 'black')
             y_lim = 3 * max(errors_in_range);
             ylim([0, y_lim])
+
+            saveas(gcf, "generated_plots/predicted_start_time_errors.png")
             
         end
 %% Functions to Run Sensing Subsystem Simulations
