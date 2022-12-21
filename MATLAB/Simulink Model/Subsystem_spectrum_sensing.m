@@ -118,8 +118,17 @@ classdef Subsystem_spectrum_sensing < handle
         end
 
         function configure_rx_buffers(obj, FMCW_sample_rate_Msps, min_recording_time_ms)
-            %specify preferences
-            samples_per_buffer = 1020;
+            %Adjust buffer size based on FMCW sampling rate
+            if FMCW_sample_rate_Msps <= 20
+                samples_per_buffer = 1020;
+            elseif FMCW_sample_rate_Msps <= 100
+                samples_per_buffer = 5000;
+            elseif FMCW_sample_rate_Msps <= 500
+                samples_per_buffer = 1e4;
+            else
+                samples_per_buffer = 2e4;
+            end
+
             
             %initialize the rx_buffer parameters
                 %specify samples per buffer
@@ -160,7 +169,7 @@ classdef Subsystem_spectrum_sensing < handle
             %specify an amount (in dB) that a received signal must be
             %greater than the noise level, before the sensing subsystem
             %starts to record samples
-            obj.detection_params.threshold_level = 0;
+            obj.detection_params.threshold_level = -3;
         end
        
         function initialize_timing_params(obj,min_processing_time_ms)
