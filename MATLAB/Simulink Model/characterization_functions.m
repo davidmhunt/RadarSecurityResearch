@@ -35,7 +35,7 @@ classdef characterization_functions
                 ranges(i) = rand * (valid_ranges(2) - valid_ranges(1)) + valid_ranges(1);
 
                 %select a random velocity
-                velocities(i) = rand * (valid_velocities(2) - valid_velocities(1)) + valid_velocieis(1);
+                velocities(i) = rand * (valid_velocities(2) - valid_velocities(1)) + valid_velocities(1);
             end
         end
 
@@ -44,8 +44,8 @@ classdef characterization_functions
             spoofing attack
             Inputs:
                 config_path - path to the .json configuration file
-                actual_range - actual range of the object to be added
-                actual_velocity - actual velocity of the object ot be
+                spoof_range - actual range of the object to be added
+                spoof_velocity - actual velocity of the object ot be
                     spoofed
                 frames_to_compute - number of frames to simulate before
                     recording a result
@@ -57,7 +57,7 @@ classdef characterization_functions
                     frame that the victim was under attack
         %}
         function [estimated_ranges,estimated_velocities] = ...
-            compute_sensed_targets(config_path,actual_range,actual_velocity,frames_to_compute,attack_start_frame)
+            compute_sensed_targets(config_path,spoof_range,spoof_velocity,frames_to_compute,attack_start_frame)
             
             simulator = Simulator_revB();
             
@@ -81,7 +81,8 @@ classdef characterization_functions
             
             %specify whether or not to record a movie of the range-doppler plot
             record_movie = false;
-            simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_compute,record_movie);
+            simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_compute, ...
+                record_movie,50,15,40);
             
             %pre-compute the victim's chirps
             simulator.Victim.precompute_radar_chirps();

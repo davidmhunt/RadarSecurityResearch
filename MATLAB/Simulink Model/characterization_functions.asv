@@ -35,7 +35,7 @@ classdef characterization_functions
                 ranges(i) = rand * (valid_ranges(2) - valid_ranges(1)) + valid_ranges(1);
 
                 %select a random velocity
-                velocities(i) = rand * (valid_velocities(2) - valid_velocities(1)) + valid_velocieis(1);
+                velocities(i) = rand * (valid_velocities(2) - valid_velocities(1)) + valid_velocities(1);
             end
         end
 
@@ -57,7 +57,7 @@ classdef characterization_functions
                     frame that the victim was under attack
         %}
         function [estimated_ranges,estimated_velocities] = ...
-            compute_sensed_targets(config_path,actual_range,actual_velocity,frames_to_compute,attack_start_frame)
+            compute_sensed_targets(config_path,spoof_range,spoof_velocity,frames_to_compute,attack_start_frame)
             
             simulator = Simulator_revB();
             
