@@ -984,11 +984,7 @@ classdef Subsystem_spectrum_sensing < handle
                 chirps_to_compute = 0;
                 num_captured_chirps = obj.frame_tracking.captured_frames(...
                     obj.frame_tracking.num_captured_frames,2);
-                if num_captured_chirps > 32
-                    chirps_to_compute = 256;
-                else
-                    chirps_to_compute = num_captured_chirps;
-                end
+                chirps_to_compute = 256;
                 
                 %send information to the attacking subsystem
                 obj.Attacker.Subsystem_attacking.compute_calculated_values(...
@@ -1052,6 +1048,13 @@ classdef Subsystem_spectrum_sensing < handle
             else
                 start_index = int32(1 - time_before_start_samples);
                 end_index = int32(observation_window_samples - time_before_start_samples);
+                %check to make sure that the end_index isn't greater than
+                %size of the chirp waveform
+                if end_index > (size(obj.Attacker.Subsystem_attacking.chirp_waveform,2) - 1)
+                    end_index = size(obj.Attacker.Subsystem_attacking.chirp_waveform,2) - 1;
+                    %adjust the estimated_chirp sample accordingly
+                    estimated_chirp = estimated_chirp(1:end_index-start_index + 2);
+                end
                 computed_chirp = obj.Attacker.Subsystem_attacking.chirp_waveform(start_index:end_index +1).';
             end
             

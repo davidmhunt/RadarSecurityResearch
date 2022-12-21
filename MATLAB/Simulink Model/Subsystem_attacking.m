@@ -658,10 +658,6 @@ classdef Subsystem_attacking  < handle
                     sending the current frame
             %}
             
-            if obj.attack_streaming_params.current_frame == 4 && ...
-                    obj.attack_streaming_params.current_chirp == 40
-                A = obj.attack_streaming_params.current_chirp;
-            end
 
             %set the default for end_of_attack
             end_of_attack = false;
@@ -681,7 +677,7 @@ classdef Subsystem_attacking  < handle
                 start_index = obj.attack_streaming_params.next_sample_index;
                 end_index = start_index + unsent_samples;
 
-                %obtain the output sig
+               
                 sig = obj.emulated_chirps(start_index:end_index,...
                     obj.attack_streaming_params.current_chirp);
 

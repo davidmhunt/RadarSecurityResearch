@@ -175,6 +175,7 @@ classdef characterization_functions
                 config_path)
 
             num_cases = size(slopes,1);
+            configurations_passed = true;
             for i = 1:num_cases
 
                 %initialize the simulator
@@ -201,10 +202,17 @@ classdef characterization_functions
                 
                 %configure the FMCW parameters
                 simulator.configure_FMCW_Radar_parameters();
-            end
 
-            fprintf("All Configurations passed \n");
-            configurations_passed = true;
+                if simulator.Victim.IdleTime_us <= 0
+                    configurations_passed = false;
+                end
+            end
+            
+            if configurations_passed
+                fprintf("All Configurations passed \n");
+            else
+                fprintf("A configuration has failed \n");
+            end
         end
         
         %{
