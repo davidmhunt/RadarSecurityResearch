@@ -160,7 +160,7 @@ classdef Subsystem_spectrum_sensing < handle
             %specify an amount (in dB) that a received signal must be
             %greater than the noise level, before the sensing subsystem
             %starts to record samples
-            obj.detection_params.threshold_level = 1;
+            obj.detection_params.threshold_level = -5;
         end
        
         function initialize_timing_params(obj,min_processing_time_ms)
