@@ -420,6 +420,7 @@ classdef characterization_functions
                 adc_sampling_rates - the adc sampling rate for each victim
                     test
                 num_adc_samples - the number of ADC samples
+                num_chirps - the number of chirps per frame
                 frames_to_compute - number of frames to simulate before
                     recording a result
                 attack_start_frame - the frame that the attack starts at
@@ -445,6 +446,7 @@ classdef characterization_functions
                 chirp_cycle_period_us, ...
                 ADC_SampleRate_MSps, ...
                 num_adc_samples, ...
+                num_chirps, ...
                 frames_to_compute)
             
             %initialize the simulator
@@ -456,6 +458,7 @@ classdef characterization_functions
             simulator.Victim.ChirpCycleTime_us = chirp_cycle_period_us;
             simulator.Victim.ADC_Samples = num_adc_samples;
             simulator.Victim.ADC_SampleRate_MSps = ADC_SampleRate_MSps;
+            simulator.Victim.NumChirps = num_chirps;
             simulator.Victim.compute_calculated_vals();
             
             %set attacker parameters
@@ -463,6 +466,7 @@ classdef characterization_functions
             simulator.Attacker.Subsystem_tracking.ChirpCycleTime_us = chirp_cycle_period_us;
             simulator.Attacker.Subsystem_tracking.ADC_Samples = num_adc_samples;
             simulator.Attacker.Subsystem_tracking.ADC_SampleRate_MSps = ADC_SampleRate_MSps;
+            simulator.Attacker.Subsystem_tracking.NumChirps = num_chirps;
             simulator.Attacker.Subsystem_tracking.compute_calculated_vals();
             
             %apply timing offsets as desired
@@ -550,6 +554,7 @@ classdef characterization_functions
                 chirp_cycle_periods_us - array of chirp cycle periods
                 adc_sampling_rates - array of adc sampling rates
                 num_adc_samples - the number of ADC samples
+                num_chirps - the number of chirps per frame
                 config_path - path to the json config
                 save_file_name - path to save the results file to (without
                     the .csv extension
@@ -569,6 +574,7 @@ classdef characterization_functions
                     chirp_cycle_periods_us, ...
                     adc_sampling_rates, ...
                     num_adc_samples,...
+                    num_chirps, ...
                     config_path, ...
                     save_file_name)
 
@@ -604,6 +610,7 @@ classdef characterization_functions
                             chirp_cycle_periods_us(i), ...
                             adc_sampling_rates(i), ...
                             num_adc_samples, ...
+                            num_chirps, ...
                             frames_to_compute);
             
                 %save values - resulting averages from simulation runs

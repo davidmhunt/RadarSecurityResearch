@@ -386,22 +386,26 @@ classdef characterization_functions
             errors_in_range = mean_absolute_errors * 1e-6 * physconst("LightSpeed");
             
             %plot a figure with error bars
+            error_bars = tail_95th_percentiles;
             figure;
             clf;
-            errorbar(mean_absolute_errors,tail_95th_percentiles);
+            errorbar(mean_absolute_errors,error_bars);
             title("Timing Estimation error vs Number of Frames")
             xlabel("Number of Frames Sensed")
             ylabel("error (us)")
-            y_lim = max(mean_absolute_errors) + max(mean_absolute_errors) * 0.4;
-            ylim([-y_lim, y_lim])
+            y_lim = 3 *max(mean_absolute_errors);
+            ylim([0, y_lim])
+            xlim([0,size(prediction_errors,2)+ 1])
             
             %add in the axis for range error
-%             yyaxis right
-%             plot(errors_in_range)
-%             ylabel("corresponding range error (m)")
-%             set(gca,"YColor", 'black')
-%             y_lim = max(errors_in_range) + max(errors_in_range) * 0.1;
-%             ylim([-y_lim, y_lim])
+            yyaxis right
+            plot(errors_in_range)
+            ylabel("corresponding range error (m)")
+            set(gca,"YColor", 'black')
+            y_lim = 3 * max(errors_in_range);
+            ylim([0, y_lim])
+
+            saveas(gcf, "generated_plots/predicted_start_time_errors.png")
             
         end
 %% Functions to Run Sensing Subsystem Simulations
@@ -416,6 +420,7 @@ classdef characterization_functions
                 adc_sampling_rates - the adc sampling rate for each victim
                     test
                 num_adc_samples - the number of ADC samples
+                num_chirps - the number of chirps per frame
                 frames_to_compute - number of frames to simulate before
                     recording a result
                 attack_start_frame - the frame that the attack starts at
@@ -441,6 +446,7 @@ classdef characterization_functions
                 chirp_cycle_period_us, ...
                 ADC_SampleRate_MSps, ...
                 num_adc_samples, ...
+                num_chirps, ...
                 frames_to_compute)
             
             %initialize the simulator
@@ -546,6 +552,7 @@ classdef characterization_functions
                 chirp_cycle_periods_us - array of chirp cycle periods
                 adc_sampling_rates - array of adc sampling rates
                 num_adc_samples - the number of ADC samples
+                num_chirps - the number of chirps per frame
                 config_path - path to the json config
                 save_file_name - path to save the results file to (without
                     the .csv extension
@@ -565,6 +572,7 @@ classdef characterization_functions
                     chirp_cycle_periods_us, ...
                     adc_sampling_rates, ...
                     num_adc_samples,...
+                    num_chirps, ...
                     config_path, ...
                     save_file_name)
 
