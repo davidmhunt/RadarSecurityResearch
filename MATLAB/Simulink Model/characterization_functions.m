@@ -5,14 +5,47 @@ classdef characterization_functions
 
     methods (Static)
         
-        
+    %% Attacking Subsystem Evaluation Functions
+    
+    %{
+        Purpose: Generate a series of desired range and velocity test
+            points that can be used to test the attacking subsystem's spoofing
+            accuracy
+        Inputs:
+            num_cases: the number of test cases to generate
+            valid_ranges: valid spoofing target test ranges [min,max]
+            valid_velocities: valid spoofing target test velocities
+                [min,max]
+    %}
+    function [ranges,velocities] = initialize_attack_subsystem_test_cases( ...
+                num_cases, ...
+                valid_ranges, ...
+                valid_velocities)
+
+
+            %initialize the output arrays
+            ranges = zeros(num_cases,1);
+            velocities = zeros(num_cases,1);
+
+            %using a for loop initialize all of the test cases
+            for i = 1:num_cases
+                
+                %% select parameters for the test case
+                %select a random range
+                ranges(i) = rand * (valid_ranges(2) - valid_ranges(1)) + valid_ranges(1);
+
+                %select a random velocity
+                velocities(i) = rand * (valid_velocities(2) - valid_velocities(1)) + valid_velocities(1);
+            end
+        end
+
         %{
             Purpose: compute the objects sensed by a victim given a
             spoofing attack
             Inputs:
                 config_path - path to the .json configuration file
-                actual_range - actual range of the object to be added
-                actual_velocity - actual velocity of the object ot be
+                spoof_range - actual range of the object to be added
+                spoof_velocity - actual velocity of the object ot be
                     spoofed
                 frames_to_compute - number of frames to simulate before
                     recording a result
@@ -24,7 +57,7 @@ classdef characterization_functions
                     frame that the victim was under attack
         %}
         function [estimated_ranges,estimated_velocities] = ...
-            compute_sensed_targets(config_path,actual_range,actual_velocity,frames_to_compute,attack_start_frame)
+            compute_sensed_targets(config_path,spoof_range,spoof_velocity,frames_to_compute,attack_start_frame)
             
             simulator = Simulator_revB();
             
@@ -48,7 +81,8 @@ classdef characterization_functions
             
             %specify whether or not to record a movie of the range-doppler plot
             record_movie = false;
-            simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_compute,record_movie);
+            simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_compute, ...
+                record_movie,50,15,40);
             
             %pre-compute the victim's chirps
             simulator.Victim.precompute_radar_chirps();
@@ -85,6 +119,9 @@ classdef characterization_functions
             estimated_velocities = simulator.Victim.Radar_Signal_Processor.velocity_estimates(attack_start_frame:frames_to_compute,1);
         end
         
+
+%% Sensing Subsystem Evaluation Functions
+
         %{
             Purpose: Initialize a series of random victim configurations to
                 be used to test the sensing subsystem performance
