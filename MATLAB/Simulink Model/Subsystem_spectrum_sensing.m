@@ -119,8 +119,8 @@ classdef Subsystem_spectrum_sensing < handle
 
         function configure_rx_buffers(obj, FMCW_sample_rate_Msps, min_recording_time_ms)
             %Adjust buffer size based on FMCW sampling rate
-            if FMCW_sample_rate_Msps <= 20
-                samples_per_buffer = 1020;
+            if FMCW_sample_rate_Msps <= 50
+                samples_per_buffer = 2040;
             elseif FMCW_sample_rate_Msps <= 100
                 samples_per_buffer = 5000;
             elseif FMCW_sample_rate_Msps <= 500
@@ -811,7 +811,8 @@ classdef Subsystem_spectrum_sensing < handle
             for i = 2:num_points
                 %determine if the current point is part of a new chirp or
                 %not
-                if(obj.detected_frequencies(i) - obj.detected_frequencies(i-1) > 0)
+                if((obj.detected_frequencies(i) - obj.detected_frequencies(i-1) > 0) && ...
+                    (obj.detected_times(i) - obj.detected_times(i-1) < 5))
                     %part of the current chirp
                     num_points_in_chirp = num_points_in_chirp + 1;
                 else

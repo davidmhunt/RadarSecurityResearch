@@ -61,7 +61,7 @@ classdef Simulation_reconfigurable < handle
 
             %specify whether or not to record a move of the range-doppler plot
             record_movie = false;
-            obj.simulator.Victim.Radar_Signal_Processor.configure_movie_capture(obj.frames_to_compute,record_movie);
+            obj.simulator.Victim.Radar_Signal_Processor.configure_movie_capture(obj.frames_to_compute,record_movie,0,0,80); %no need to zoom as video is disabled
 
             %pre-compute the victim's chirps
             obj.simulator.Victim.precompute_radar_chirps();

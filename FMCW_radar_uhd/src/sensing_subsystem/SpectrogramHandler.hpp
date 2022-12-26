@@ -608,7 +608,10 @@
                 //go through the points and determine the clusters
                 for (size_t i = 1; i < num_detected_points; i++)
                 {
-                    if ((detected_frequencies.buffer[i] - detected_frequencies.buffer[i-1]) > 0)
+                    //to be part of the same chirp, the frequency must increase, and the detected point
+                    //must be with 5 us of the previous point
+                    if (((detected_frequencies.buffer[i] - detected_frequencies.buffer[i-1]) > 0) &&
+                        ((detected_times.buffer[i] - detected_times.buffer[i-1] < 5)))
                     {
                         num_points_in_chirp += 1;
                     }
@@ -809,8 +812,15 @@
              * @brief saves the estimated frame duration (ms), chirp duration (us), and chirp slope (MHz/us)
              * to a file called cpp_estimated_parameters.bin
              * 
+             * @param use_custom_numbering set to true if it is desired to number the results for a given trial
+             * (defaults to false)
+             * @param file_num the number for the given results file (defaults to 0)
+             * @param file_path If using a custom file path, specify it here (defaults to 
+             * /home/david/Documents/MATLAB_generated/)
              */
-            void save_estimated_parameters_to_file(){
+            void save_estimated_parameters_to_file(bool number_results_file = false,
+                size_t file_num = 0,
+                std::string file_path = "/home/david/Documents/MATLAB_generated/"){
                 Buffer_1D<data_type> estimated_parameters(3,false);
                  
                 // save the frame duration, chirp duration, and chirp slope
@@ -819,7 +829,13 @@
                 estimated_parameters.buffer[2] = frame_tracking_average_chirp_slope; // MHz/us
 
                 //save the results to a file
-                std::string path = "/home/david/Documents/MATLAB_generated/cpp_estimated_parameters.bin";
+                std::string file_name;
+                if (file_num > 0){
+                    file_name = "cpp_estimated_parameters_" + std::to_string(file_num) + ".bin";
+                }else{
+                    file_name = "cpp_estimated_parameters.bin"
+                }
+                std::string path = file_path + "cpp_estimated_parameters.bin";
                 estimated_parameters.set_write_file(path,true);
                 estimated_parameters.save_to_file();
             }

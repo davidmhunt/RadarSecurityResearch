@@ -84,7 +84,7 @@ classdef Simulator_revB < handle
                     - round((obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6) / (obj.Victim.ADC_SampleRate_MSps * 1e6)))...
                     <= 1e-3)
                 
-                obj.Victim.downsample_factor = round((obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6) / (obj.Victim.ADC_SampleRate_MSps * 1e6));
+                obj.Victim.downsample_factor
             else
                 obj.Victim.downsample_factor = ceil((obj.Victim.Chirp_Tx_Bandwidth_MHz * 1e6) / (obj.Victim.ADC_SampleRate_MSps * 1e6));
             end

@@ -363,13 +363,13 @@ classdef characterization_functions
             figure;
             [h,stats] = cdfplot(abs_errors);
             xlabel(metric_title + " " + metric_units);
-            title("CDF of " + metric_title);
+            title("CDF of " + metric_title + " Error");
             if max(abs_errors) > 5 * tail_95th_percentile
                 xlim([0,2 * tail_95th_percentile])
             end
             
             variable_names = [...
-                "Mean (" + metric_units +")",...
+                "Mean (" + metric_units + ")",...
                 "Variance ("+ metric_units + ")^2",...
                 "MSE (" + metric_units + ")^2",...
                 "95th Percentile (" + metric_units + ")",...
@@ -381,9 +381,15 @@ classdef characterization_functions
                 tail_95th_percentile,...
                 percent_failed_trials], ...
                 "VariableNames",variable_names);
-            save_file_name = strrep(metric_title,)
-            saveas(gcf, "generated_plots/range_spoofing_accuracy_error_cdf.png")
 
+            %set the save file path
+            save_file_name= strrep(metric_title," ","_");
+
+            %save the cdf plot
+            saveas(gcf, "generated_plots/" + save_file_name + "_error_cdf.png");
+
+            %save a csv of the summary table
+            writetable(summary_table,save_file_name + "_error_summary.csv",'WriteRowNames',true); 
         end
 
 %% Sensing Subsystem Evaluation Functions
@@ -666,6 +672,13 @@ classdef characterization_functions
             saveas(gcf, "generated_plots/frame_period_error_estimation_cdf.png")
         end
         
+        %{
+            Purpose: Plot the absolute error of the predicted frame start
+            time with respect to the number of frames sensed
+            Inputs:
+                read_file_path: the path to the file 
+        
+        %}
         function plot_predicted_start_time_errors(read_file_path)
             %access the saved data for the predicted start time errors
             table_data_results = readtable(read_file_path);
@@ -737,8 +750,6 @@ classdef characterization_functions
                 ADC_SampleRate_MSps
                 predicted_start_time_errors
         %}
-
-
         function [actual_slope,estimated_slope,...
             actual_chirp_duration,estimated_chirp_duration,...
             actual_frame_duration, estimated_frame_duration,...
@@ -945,5 +956,382 @@ classdef characterization_functions
 
             
         end
+    
+        
+        %% USRP Implementation Functions
+        %{
+            Purpose: Initialize a series of random victim configurations to
+                be used to test the sensing subsystem performance
+            Inputs:
+                num_cases - the number of test cases to generate
+                valid_chirp_periods - the range of valid chirp periods
+                    expressed as [min,max]
+                FMCW_BW_MHz - the desired FMCW Bandwidth for the USRP
+                    to operate at
+                num_adc_samples - the number of ADC samples
+            Outputs:
+                slopes - the slope for each victim test
+                chirp_periods - the chirp period for each victim test
+                adc_sampling_rates - the adc sampling rate for each victim
+                    test
+        %}
+        function [slopes,chirp_periods,adc_sampling_rates] = USRP_initialize_sensing_subsystem_test_cases( ...
+                num_cases, ...
+                valid_chirp_periods, ...
+                FMCW_BW_MHz, ...
+                num_adc_samples)
+
+
+            %initialize the output arrays
+            slopes = zeros(num_cases,1);
+            chirp_periods = zeros(num_cases,1);
+            adc_sampling_rates = zeros(num_cases,1);
+
+            %compute the valid slopes for the given bandwidth and chirp
+            %period range
+            valid_slopes = [0,0];
+            valid_slopes(1) = FMCW_BW_MHz/valid_chirp_periods(2);
+            valid_slopes(2) = FMCW_BW_MHz/(valid_chirp_periods(1) - 7); %to ensure a positive idle time
+
+            %using a for loop initialize all of the test cases
+            for i = 1:num_cases
+                
+                % select parameters for the test case
+                %select a random slope
+                slope_MHz_us = (rand * (valid_slopes(2) - valid_slopes(1)))...
+                    + valid_slopes(1);
+                
+                %determine the range of chirp cycle periods that work with the selected
+                %slope
+                chirp_cycle_time_range_us = [0,0];
+                
+                %compute the min chirp cycle time
+                chirp_cycle_time_range_us(1) = (FMCW_BW_MHz/slope_MHz_us) + 7; %to ensure a positive idle time
+                
+                %compute the max chirp cycle time
+                chirp_cycle_time_range_us(2) = valid_chirp_periods(2);
+                
+                %randomly select a chirp cycle time
+                chirp_cycle_time_us = (rand * (chirp_cycle_time_range_us(2) - chirp_cycle_time_range_us(1)))...
+                    + chirp_cycle_time_range_us(1);
+                
+                %compute a rough guess for the ADC sample rate required to
+                %have the exact bandwidth
+                ramp_end_time = FMCW_BW_MHz / slope_MHz_us;
+                sampling_period = ramp_end_time - 7.3;
+                ADC_SampleRate_MSps = num_adc_samples / sampling_period;
+
+                %slightly adjust the parameters so that configuration will
+                %have exactly the provided bandwidth
+                downsample_factor = ceil((FMCW_BW_MHz * 1e6) / (ADC_SampleRate_MSps * 1e6));
+                ADC_SampleRate_MSps = FMCW_BW_MHz / downsample_factor;
+                
+
+                %adjust the chirp cycle period so that there is an integer
+                %number of samples in the chirp cycle period
+                chirp_cycle_time_us = ceil(chirp_cycle_time_us * ADC_SampleRate_MSps)...
+                    / ADC_SampleRate_MSps;
+    
+                %compute other required chirp parameters
+                adc_sampling_period = num_adc_samples / ADC_SampleRate_MSps;
+                
+                %for the ADC_valid time, find a time that results in an integer
+                %number of samples, but is longer than 6.3us (chosen to allow
+                %sufficient time for the signal to propogate)
+                adc_valid_start_time = ceil(6.3 * ADC_SampleRate_MSps) / ADC_SampleRate_MSps;
+
+
+                ramp_end_time = ceil((adc_sampling_period + adc_valid_start_time) *...
+                                        ADC_SampleRate_MSps) / ADC_SampleRate_MSps;
+                slope_MHz_us = FMCW_BW_MHz / ramp_end_time;
+
+                slopes(i) = slope_MHz_us;
+                chirp_periods(i) = chirp_cycle_time_us;
+                adc_sampling_rates(i) = ADC_SampleRate_MSps;
+            end
+        end
+        
+        %{
+            Purpose: Initialize a series of random victim configurations to
+                be used to test the sensing subsystem performance
+            Inputs:
+                slopes - the slope for each victim test
+                chirp_periods - the chirp period for each victim test
+                adc_sampling_rates - the adc sampling rate for each victim
+                    test
+                num_adc_samples - the number of ADC samples
+                VMCW_BW_MHz - the desired bandwidth for USRP operation
+                config_path - path to a config file for initializing other
+                    simulation variables
+            Outputs:
+                configurations_passed: a bool specifying that all
+                    configurations are usable
+        %}
+        function configurations_passed = USRP_check_test_configurations( ...
+                slopes, ...
+                chirp_periods, ...
+                adc_sampling_rates, ...
+                num_adc_samples,...
+                FMCW_BW_MHz,...
+                config_path)
+
+            num_cases = size(slopes,1);
+            configurations_passed = true;
+            for i = 1:num_cases
+
+                %initialize the simulator
+                simulator = Simulator_revB();
+                simulator.load_params_from_JSON(config_path);
+
+                %initialize the victim parameters
+                simulator.Victim.FrequencySlope_MHz_us = slopes(i);
+                simulator.Victim.ChirpCycleTime_us = chirp_periods(i);
+                simulator.Victim.ADC_Samples = num_adc_samples;
+                simulator.Victim.ADC_SampleRate_MSps = adc_sampling_rates(i);
+                simulator.Victim.compute_calculated_vals();
+                
+                %set attacker parameters
+                simulator.Attacker.Subsystem_tracking.FrequencySlope_MHz_us = slopes(i);
+                simulator.Attacker.Subsystem_tracking.ChirpCycleTime_us = chirp_periods(i);
+                simulator.Attacker.Subsystem_tracking.ADC_Samples = num_adc_samples;
+                simulator.Attacker.Subsystem_tracking.ADC_SampleRate_MSps = adc_sampling_rates(i);
+                simulator.Attacker.Subsystem_tracking.compute_calculated_vals();
+                
+                %apply timing offsets as desired
+                simulator.Victim.timing_offset_us = 0;
+                simulator.Attacker.Subsystem_tracking.timing_offset_us = 0;
+                
+                %configure the FMCW parameters
+                simulator.configure_FMCW_Radar_parameters();
+
+                if simulator.Victim.IdleTime_us <= 0
+                    configurations_passed = false;
+                elseif abs(simulator.Victim.FMCW_sampling_rate_Hz * 1e-6 - FMCW_BW_MHz) >= 1e-3
+                    configurations_passed = false;
+                end
+            end
+            
+            if configurations_passed
+                fprintf("All Configurations passed \n");
+            else
+                fprintf("A configuration has failed \n");
+            end
+        end
+
+        %{
+            Purpose: save the chirp for a  given test case to a file for
+            testing on the USRP radios
+            Inputs:
+                config_path - path to the .json configuration file
+                save_file_path - path to save the chirp to
+                test_case_number - the number of the current test case
+                slope_MHz_us - the chirp slope to use for testing
+                chirp_cycle_period_us - the chirp cycle period
+                adc_sampling_rates - the adc sampling rate for each victim
+                    test
+                num_adc_samples - the number of ADC samples
+                num_chirps - the number of chirps per frame
+                frames_to_compute - number of frames to simulate before
+                    recording a result
+                attack_start_frame - the frame that the attack starts at
+        %}
+        function [actual_slope,...
+            actual_chirp_duration, ...
+            actual_frame_duration,...
+            ADC_SampleRate_MSps] = ...
+            USRP_save_test_case_chirp( ...
+                config_path, ...
+                save_file_path, ...
+                test_case_number, ...
+                slope_MHz_us, ...
+                chirp_cycle_period_us, ...
+                ADC_SampleRate_MSps, ...
+                num_adc_samples, ...
+                num_chirps, ...
+                frames_to_compute)
+            
+            %initialize the simulator
+            simulator = Simulator_revB();
+            simulator.load_params_from_JSON(config_path);
+
+            %initialize the victim parameters
+            simulator.Victim.FrequencySlope_MHz_us = slope_MHz_us;
+            simulator.Victim.ChirpCycleTime_us = chirp_cycle_period_us;
+            simulator.Victim.ADC_Samples = num_adc_samples;
+            simulator.Victim.ADC_SampleRate_MSps = ADC_SampleRate_MSps;
+            simulator.Victim.NumChirps = num_chirps;
+            simulator.Victim.compute_calculated_vals();
+            
+            %set attacker parameters
+            simulator.Attacker.Subsystem_tracking.FrequencySlope_MHz_us = slope_MHz_us;
+            simulator.Attacker.Subsystem_tracking.ChirpCycleTime_us = chirp_cycle_period_us;
+            simulator.Attacker.Subsystem_tracking.ADC_Samples = num_adc_samples;
+            simulator.Attacker.Subsystem_tracking.ADC_SampleRate_MSps = ADC_SampleRate_MSps;
+            simulator.Attacker.Subsystem_tracking.NumChirps = num_chirps;
+            simulator.Attacker.Subsystem_tracking.compute_calculated_vals();
+            
+            %apply timing offsets as desired
+            simulator.Victim.timing_offset_us = 0;
+            simulator.Attacker.Subsystem_tracking.timing_offset_us = 0;
+            
+            %configure the FMCW parameters
+            simulator.configure_FMCW_Radar_parameters();
+            
+            %load default attacker, and victim positions and velocities
+            simulator.load_usrp_attacker_and_victim_position_and_velocity();
+            
+            %load the target
+            simulator.load_target_realistic(50,15);
+                    
+            %specify whether or not to record a movie of the range-doppler plot
+            record_movie = false;
+            simulator.Victim.Radar_Signal_Processor.configure_movie_capture(frames_to_compute, ...
+                record_movie,50,15,40);
+            
+            %pre-compute the victim's chirps
+            simulator.Victim.precompute_radar_chirps();
+        
+            %initialize the attacker
+            %initialize the attacker parameters
+            simulator.Attacker.initialize_attacker(...
+                    simulator.Victim.FMCW_sampling_rate_Hz * 1e-6,...
+                    simulator.Victim.StartFrequency_GHz,...
+                    simulator.Victim.Chirp_Tx_Bandwidth_MHz);
+            
+            %initialize the sensing subsystem's debugger
+            simulator.Attacker.Subsystem_spectrum_sensing.initialize_debugger(0,simulator.Victim,1);
+            %set to change 1 to zero to disable
+            
+            %specify the type of emulation ("target", 
+                    % "velocity spoof - noisy", 
+                    % "velocity spoof - similar velocity",
+                    % "range spoof - similar slope")
+            
+            attack_type = "velocity spoof - similar velocity";
+            desired_pos = 75;
+            desired_vel = 7;
+            %attack_type = "velocity spoof - similar velocity,range spoof - similar slope ";
+            %initialize the attacker
+            simulator.Attacker.Subsystem_attacking.set_attack_mode(attack_type);
+            
+            %if it is desired to specify a specific attack location
+            if attack_type == "target"
+                simulator.Attacker.Subsystem_attacking.set_desired_attack_location(desired_pos,desired_vel);
+            end
+
+            file_name = sprintf("MATLAB_chirp_full_%d.bin",test_case_number);
+            simulator.save_to_file(simulator.Victim.chirp,save_file_path + file_name);
+        
+            %frame duration
+            actual_frame_duration = simulator.Victim.FramePeriodicity_ms;
+            %chirp duration
+            actual_chirp_duration = simulator.Victim.ChirpCycleTime_us;
+            %slope
+            actual_slope = simulator.Victim.FrequencySlope_MHz_us;
+
+            %adc sample rate
+            ADC_SampleRate_MSps = simulator.Victim.ADC_SampleRate_MSps;
+        end
+
+                %{
+            Purpose: run the given sensing subsystem performance test cases
+            and saves the results to a csv file
+            Inputs:
+                num_cases - number of test cases to run
+                frames_to_compute - number of frames to simulate for each
+                    run
+                slopes_MHz_us - array of slopes to test
+                chirp_cycle_periods_us - array of chirp cycle periods
+                adc_sampling_rates - array of adc sampling rates
+                num_adc_samples - the number of ADC samples
+                num_chirps - the number of chirps per frame
+                config_path - path to the json config
+                save_file_name - path to save the results file to (without
+                    the .csv extension
+                chirp_save_file_path - path to the save location for each
+                test case's chirp
+            Outputs:
+                testing_data_parameter_estimations - key parameter
+                    estimations for each test case
+                testing_data_frame_start_prediction_errors - the error in
+                    the frame start time prediction for each frame in each test
+                    case
+        %}
+        function [testing_data_parameter_estimations, ...
+                testing_data_frame_start_prediction_errors] = ...
+                USRP_save_test_case_chirps( ...
+                    num_cases, ...
+                    frames_to_compute, ...
+                    slopes_MHz_us, ...
+                    chirp_cycle_periods_us, ...
+                    adc_sampling_rates, ...
+                    num_adc_samples,...
+                    num_chirps, ...
+                    config_path, ...
+                    save_file_name,...
+                    chirp_save_file_path)
+
+            save_file_headers = ["Actual Chirp Slope (Mhz/us)",...
+                "Actual Chirp Cycle Period (us)",...
+                "Actual Frame Duration (ms)",...
+                "ADC Sample Rate (MSPS)",...
+                "Estimated Chirp Slope (Mhz/us)",...
+                "Estimated Chirp Cycle Period (us)",...
+                "Estimated Frame Duration (ms)",...
+                "Absolute Slope Error (MHz/us)",...
+                "Absolute Chirp Cycle Period Error (us)",...
+                "Absolute Frame Duration Error (ms)"];
+
+            testing_data_parameter_estimations = zeros(num_cases,size(save_file_headers,2));
+            testing_data_frame_start_prediction_errors = zeros(num_cases,frames_to_compute-2);
+            
+            status = sprintf("Saving Test Chirp: %d of %d",1, num_cases);
+            progress_bar = waitbar(0,status,"Name","Initializing USRP Test Cases");
+            for i = 1:num_cases
+                %update the waitbar
+                status = sprintf("Saving Test Chirp: %d of %d",i, num_cases);
+                waitbar(i/num_cases,progress_bar,status);
+            
+                %run the test case
+                [actual_slope,...
+                actual_chirp_duration, ...
+                actual_frame_duration,...
+                ADC_SampleRate_MSps] = ...
+                    characterization_functions.USRP_save_test_case_chirp(config_path, ...
+                    chirp_save_file_path,i,slopes_MHz_us(i), ...
+                    chirp_cycle_periods_us(i), ...
+                    adc_sampling_rates(i), ...
+                    num_adc_samples, ...
+                    num_chirps, ...
+                    frames_to_compute);
+            
+                %save values - resulting averages from simulation runs
+                testing_data_parameter_estimations(i,1) = actual_slope;
+                testing_data_parameter_estimations(i,2) = actual_chirp_duration;
+                testing_data_parameter_estimations(i,3) = actual_frame_duration;
+                testing_data_parameter_estimations(i,4) = ADC_SampleRate_MSps;
+                testing_data_parameter_estimations(i,5) = estimated_slope;
+                testing_data_parameter_estimations(i,6) = estimated_chirp_duration;
+                testing_data_parameter_estimations(i,7) = estimated_frame_duration;
+                testing_data_parameter_estimations(i,8) = abs(actual_slope - estimated_slope);
+                testing_data_parameter_estimations(i,9) = abs(actual_chirp_duration - estimated_chirp_duration);
+                testing_data_parameter_estimations(i,10) = abs(actual_frame_duration - estimated_frame_duration);
+
+                %save values for frame_start_time prediction errors
+                testing_data_frame_start_prediction_errors(i,:) = predicted_start_time_errors;
+                test_data_results = array2table(testing_data_frame_start_prediction_errors);
+                writetable(test_data_results,save_file_name + "_frame_start_time_prediction_errors.csv",...
+                    'WriteRowNames',true); 
+                
+                %save the results to a file - continuously saving the data
+                %allows for obtaining some data even in the event of a error or
+                %crash
+
+                %save the testing data for results
+                test_data_results = array2table(testing_data_parameter_estimations,"VariableNames",save_file_headers);
+                writetable(test_data_results,save_file_name + "_parameter_estimations.csv",'WriteRowNames',true); 
+            end
+        end
+        
     end
 end
