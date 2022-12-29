@@ -954,7 +954,6 @@ classdef characterization_functions
                 writetable(test_data_results,save_file_name + "_parameter_estimations.csv",'WriteRowNames',true); 
             end
 
-            
         end
     
         
@@ -1328,6 +1327,143 @@ classdef characterization_functions
                 %save the results to a file - continuously saving the data
                 %allows for obtaining some data even in the event of a error or
                 %crash
+
+                %save the testing data for results
+                test_data_results = array2table(testing_data_parameter_estimations,"VariableNames",save_file_headers);
+                writetable(test_data_results,save_file_name + "_parameter_estimations.csv",'WriteRowNames',true); 
+            end
+        end
+
+        %{
+            Purpose: compute the estimated chirp slope, chirp duration, and
+            frame duration for a given sensing subsystem
+            Inputs:
+                slope_MHz_us - the chirp slope to use for testing
+                chirp_cycle_period_us - the chirp cycle period
+                adc_sampling_rates - the adc sampling rate for each victim
+                    test
+                frame_period_ms - the frame period for the given trial
+                usrp_results_path - the path to the folder containing the
+                    parameter estimations for a given test case
+                test_case_number - the number of the current test case
+                
+            Outputs:
+                actual_slope
+                estimated_slope
+                actual_chirp_duration
+                estimated_chirp_duration
+                actual_frame_duration
+                estimated_chirp_duration
+                ADC_SampleRate_MSps
+        %}
+        function [actual_slope,estimated_slope,...
+            actual_chirp_duration,estimated_chirp_duration,...
+            actual_frame_duration, estimated_frame_duration,...
+            ADC_SampleRate_MSps] = ...
+            USRP_obtain_sensed_values( ...
+                slope_MHz_us, ...
+                chirp_cycle_period_us, ...
+                ADC_SampleRate_MSps,...
+                frame_period_ms, ...
+                usrp_results_path,...
+                test_case_number)
+            
+            %get the return values
+            file_name = sprintf("cpp_estimated_parameters_%d.bin",test_case_number);
+            path = usrp_results_path + file_name;
+            simulator = Simulator_revB();
+            read_data = simulator.read_from_file(path,false,"float");
+        
+            %frame duration
+            estimated_frame_duration = read_data(1);
+            actual_frame_duration = frame_period_ms;
+            %chirp duration
+            estimated_chirp_duration = read_data(2);
+            actual_chirp_duration = chirp_cycle_period_us;
+            %slope
+            estimated_slope = read_data(3);
+            actual_slope = slope_MHz_us;
+
+        end
+        
+        %{
+            Purpose: load the given test case results from the USRP 
+            trials and save the results to a csv file
+            Inputs:
+                num_cases - number of test cases to run
+                slopes_MHz_us - array of slopes to test
+                chirp_cycle_periods_us - array of chirp cycle periods
+                adc_sampling_rates - array of adc sampling rates
+                frame_period_ms - the frame period in ms
+                save_file_name - path to save the results file to (without
+                    the .csv extension
+                usrp_results_path - path to the folder where the usrp
+                    result files are stored (one file per set of parameter
+                    estimations)
+            Outputs:
+                testing_data_parameter_estimations - key parameter
+                    estimations for each test case
+                testing_data_frame_start_prediction_errors - the error in
+                    the frame start time prediction for each frame in each test
+                    case (NOT ENABLED AT THIS TIME FOR USRP)
+        %}
+        function testing_data_parameter_estimations = ...
+                USRP_get_test_case_results( ...
+                    num_cases, ...
+                    slopes_MHz_us, ...
+                    chirp_cycle_periods_us, ...
+                    adc_sampling_rates, ...
+                    frame_period_ms, ...
+                    save_file_name,...
+                    usrp_results_path)
+
+            save_file_headers = ["Actual Chirp Slope (Mhz/us)",...
+                "Actual Chirp Cycle Period (us)",...
+                "Actual Frame Duration (ms)",...
+                "ADC Sample Rate (MSPS)",...
+                "Estimated Chirp Slope (Mhz/us)",...
+                "Estimated Chirp Cycle Period (us)",...
+                "Estimated Frame Duration (ms)",...
+                "Absolute Slope Error (MHz/us)",...
+                "Absolute Chirp Cycle Period Error (us)",...
+                "Absolute Frame Duration Error (ms)"];
+
+            testing_data_parameter_estimations = zeros(num_cases,size(save_file_headers,2));
+            
+            status = sprintf("Reading Test: %d of %d",1, num_cases);
+            progress_bar = waitbar(0,status,"Name","Testing Sensing Subsystem");
+            for i = 1:num_cases
+                %update the waitbar
+                status = sprintf("Reading Test: %d of %d",i, num_cases);
+                waitbar(i/num_cases,progress_bar,status);
+            
+                %obtain the results
+            
+                [actual_slope,estimated_slope,...
+                actual_chirp_duration,estimated_chirp_duration,...
+                actual_frame_duration, estimated_frame_duration,...
+                ADC_SampleRate_MSps] = ...
+                    characterization_functions.USRP_obtain_sensed_values(...
+                    slopes_MHz_us(i), ...
+                    chirp_cycle_periods_us(i), ...
+                    adc_sampling_rates(i),...
+                    frame_period_ms, ...
+                    usrp_results_path,...
+                    i);
+                
+            
+                %save values - resulting averages from simulation runs
+                testing_data_parameter_estimations(i,1) = actual_slope;
+                testing_data_parameter_estimations(i,2) = actual_chirp_duration;
+                testing_data_parameter_estimations(i,3) = actual_frame_duration;
+                testing_data_parameter_estimations(i,4) = ADC_SampleRate_MSps;
+                testing_data_parameter_estimations(i,5) = estimated_slope;
+                testing_data_parameter_estimations(i,6) = estimated_chirp_duration;
+                testing_data_parameter_estimations(i,7) = estimated_frame_duration;
+                testing_data_parameter_estimations(i,8) = abs(actual_slope - estimated_slope);
+                testing_data_parameter_estimations(i,9) = abs(actual_chirp_duration - estimated_chirp_duration);
+                testing_data_parameter_estimations(i,10) = abs(actual_frame_duration - estimated_frame_duration);
+
 
                 %save the testing data for results
                 test_data_results = array2table(testing_data_parameter_estimations,"VariableNames",save_file_headers);

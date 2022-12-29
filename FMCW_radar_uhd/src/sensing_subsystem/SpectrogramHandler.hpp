@@ -79,7 +79,6 @@
             data_type frame_tracking_average_frame_duration;
             data_type frame_tracking_average_chirp_duration;
             data_type frame_tracking_average_chirp_slope;
-
         
         public:
 
@@ -122,6 +121,12 @@
                 //buffer for tracking victim frames
                 Buffer_2D<data_type> captured_frames; //colums as follows: duration, number of chirps, average slope, average chirp duration, start time, next predicted frame start time
             
+            //debug status
+            bool debug;
+
+            //save file path
+            std::string save_file_path;
+
         public:
 
             /**
@@ -139,6 +144,8 @@
                     initialize_freq_and_timing_bins();
                     initialize_clustering_params();
                     initialize_chirp_and_frame_tracking();
+                    initialize_debug();
+                    initialize_save_file_path();
                 }
                 
                 
@@ -189,6 +196,16 @@
 
                 if(config["SensingSubsystemSettings"]["min_frame_periodicity_ms"].is_null()){
                     std::cerr << "SpectrogramHandler::check_config: min_frame_periodicity_ms not specified" <<std::endl;
+                    config_good = false;
+                }
+
+                if(config["SensingSubsystemSettings"]["debug"].is_null()){
+                    std::cerr << "SpectrogramHandler::check_config: debug not specified" <<std::endl;
+                    config_good = false;
+                }
+
+                if(config["SensingSubsystemSettings"]["save_file_path"].is_null()){
+                    std::cerr << "SpectrogramHandler::check_config: save_file_path not specified" <<std::endl;
                     config_good = false;
                 }
 
@@ -364,7 +381,10 @@
                 } 
             }
 
-
+            /**
+             * @brief initialize chirp and frame tracking capabilities
+             * 
+             */
             void initialize_chirp_and_frame_tracking(){
                 //chirp tracking
                 chirp_tracking_num_captured_chirps = 0;
@@ -381,6 +401,38 @@
                 min_frame_periodicity_s = config["SensingSubsystemSettings"]["min_frame_periodicity_ms"].get<double>() * 1e-3;
             }
 
+            /**
+             * @brief Initializes the debugging status to print/save extra information if desired
+             * 
+             */
+            void initialize_debug(){
+                debug = config["SensingSubsystemSettings"]["debug"].get<bool>();
+            }
+
+            /**
+             * @brief initialize the save file path for saving sensing subsystem state and
+             * parameter estimations to a file
+             * 
+             */
+            void initialize_save_file_path(){
+                save_file_path = config["SensingSubsystemSettings"]["save_file_path"].get<std::string>();
+            }
+            
+            /**
+             * @brief re-initialize all parameters (used if performing multiple experiments)
+             * 
+             */
+            void reset(){
+                initialize_spectrogram_params();
+                initialize_fft_params();
+                initialize_buffers();
+                initialize_hanning_window();
+                initialize_freq_and_timing_bins();
+                initialize_clustering_params();
+                initialize_chirp_and_frame_tracking();
+                initialize_debug();
+                initialize_save_file_path();
+            }
             /**
              * @brief Set the detection start time us object
              * 
@@ -800,11 +852,11 @@
              * 
              */
             void print_summary_of_estimated_parameters(){
-                std::cout << "SensingSubsystem::run: average frame duration: " <<
+                std::cout << "SpectrogramHandler::print_summary_of_estimated_parameters: average frame duration: " <<
                     frame_tracking_average_frame_duration * 1e-3 << "ms" <<std::endl;
-                std::cout << "SensingSubsystem::run: average chirp duration: " <<
+                std::cout << "SpectrogramHandler::print_summary_of_estimated_parameters: average chirp duration: " <<
                     frame_tracking_average_chirp_duration << "us" <<std::endl;
-                std::cout << "SensingSubsystem::run: average chirp slope: " <<
+                std::cout << "SpectrogramHandler::print_summary_of_estimated_parameters: average chirp slope: " <<
                     frame_tracking_average_chirp_slope << "MHz/us" <<std::endl;
             }
 
@@ -815,12 +867,9 @@
              * @param use_custom_numbering set to true if it is desired to number the results for a given trial
              * (defaults to false)
              * @param file_num the number for the given results file (defaults to 0)
-             * @param file_path If using a custom file path, specify it here (defaults to 
-             * /home/david/Documents/MATLAB_generated/)
              */
             void save_estimated_parameters_to_file(bool number_results_file = false,
-                size_t file_num = 0,
-                std::string file_path = "/home/david/Documents/MATLAB_generated/"){
+                size_t file_num = 0){
                 Buffer_1D<data_type> estimated_parameters(3,false);
                  
                 // save the frame duration, chirp duration, and chirp slope
@@ -833,9 +882,9 @@
                 if (file_num > 0){
                     file_name = "cpp_estimated_parameters_" + std::to_string(file_num) + ".bin";
                 }else{
-                    file_name = "cpp_estimated_parameters.bin"
+                    file_name = "cpp_estimated_parameters.bin";
                 }
-                std::string path = file_path + "cpp_estimated_parameters.bin";
+                std::string path = save_file_path + file_name;
                 estimated_parameters.set_write_file(path,true);
                 estimated_parameters.save_to_file();
             }

@@ -189,8 +189,25 @@
                 //std::cout << std::endl;
             }
 
+            /**
+             * @brief run the attack subsystem (assumes frame start times already computed and attack
+             * signal buffer already initialized)
+             * 
+             */
             void run_attack_subsystem(){
                 attacker_usrp_handler -> stream_frames_tx_only(frame_start_times, & attack_signal_buffer);
+            }
+
+            /**
+             * @brief Resets the attacking subsystem (useful if performing multiple runs)
+             * 
+             */
+            void reset(){
+                initialize_attack_subsystem_parameters();
+                if (enabled)
+                {
+                    init_attack_signal_buffer();
+                }
             }
 
             

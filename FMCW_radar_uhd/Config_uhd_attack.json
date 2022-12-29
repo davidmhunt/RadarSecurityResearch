@@ -1,5 +1,4 @@
 {
-    "Attacker_enabled":true,
     "USRPSettings":{
         "Multi-USRP":{
             "use_serial":true,
@@ -38,8 +37,8 @@
             "setup_time":1.0,
             "skip-lo":false,
             "int-n":false,
-            "bufferHandler_debug":false,
-            "simplified_streamer_metadata":true
+            "simplified_streamer_metadata":true,
+            "debug":false
         }
     },
     "SensingSubsystemSettings":{
@@ -50,7 +49,9 @@
         "spectogram_peak_detection_threshold_dB": 7,
         "min_points_per_chirp": 5,
         "num_victim_frames_to_capture": 7,
-        "min_frame_periodicity_ms": 20
+        "min_frame_periodicity_ms": 20,
+        "debug": true,
+        "save_file_path": "/home/david/Documents/MATLAB_generated/cpp_sensed_parameters/"
     },
     "AttackSubsystemSettings":{
         "tx_file_name": "/home/david/Documents/MATLAB_generated/MATLAB_attacking_chirps_full.bin",

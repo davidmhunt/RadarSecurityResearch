@@ -66,6 +66,7 @@
 
                 //debug settings
                 bool simplified_metadata;
+                bool debug;
 
             public:
                 //usrp device
@@ -119,6 +120,14 @@
                     else{
                         std::cerr << "USRPHandler::configure_debug: couldn't find simplified_streamer_metadata in JSON" <<std::endl;
                     }
+
+                    if (config["USRPSettings"]["AdditionalSettings"]["debug"].is_null() == false){
+                        debug = config["USRPSettings"]["AdditionalSettings"]["debug"].get<bool>();
+                        std::cout << "USRPHandler::configure_debug: debug: " << debug << std::endl << std::endl;
+                    }
+                    else{
+                        std::cerr << "USRPHandler::configure_debug: couldn't find debug in JSON" <<std::endl;
+                    }
                 }
 
                 /**
@@ -131,7 +140,7 @@
                 uhd::device_addrs_t find_devices (void){
                     uhd::device_addr_t hint;
                     uhd::device_addrs_t dev_addrs = uhd::device::find(hint);
-                    if (dev_addrs.size() > 0){
+                    if (dev_addrs.size() > 0 && debug){
                         std::cout << "USRPHandler::find_devices: Number of devices found: " << dev_addrs.size() << "\n";
                         for (size_t i = 0; i < dev_addrs.size(); i++)
                         {
@@ -150,9 +159,11 @@
                     hint["serial"] = serial;
                     uhd::device_addrs_t dev_addrs = uhd::device::find(hint);
                     if (dev_addrs.size() > 0){
-                        std::cout << "USRPHandler::find_device_serial: Number of devices found: " << dev_addrs.size() << "\n";
+                        if(debug){
+                            std::cout << "USRPHandler::find_device_serial: Number of devices found: " << dev_addrs.size() << "\n";
                             std::cout << "USRPHandler::find_device_serial: Device Information: \n" << dev_addrs[0].to_pp_string() <<std::endl;
-                            device = dev_addrs[0];
+                        }
+                        device = dev_addrs[0];
                     }
                     else{
                         std::cerr << "USRPHandler::find_device_serial: No devices found\n";
@@ -166,9 +177,11 @@
                     hint["addr"] = addr;
                     uhd::device_addrs_t dev_addrs = uhd::device::find(hint);
                     if (dev_addrs.size() > 0){
-                        std::cout << "USRPHandler::find_device_addr: Number of devices found: " << dev_addrs.size() << "\n";
+                        if(debug){
+                            std::cout << "USRPHandler::find_device_addr: Number of devices found: " << dev_addrs.size() << "\n";
                             std::cout << "USRPHandler::find_device_addr: Device Information: \n" << dev_addrs[0].to_pp_string() <<std::endl;
-                            device = dev_addrs[0];
+                        }
+                        device = dev_addrs[0];
                     }
                     else{
                         std::cerr << "USRPHandler::find_device_addr: No devices found\n";
@@ -189,7 +202,12 @@
                     {
                         
                         std::string serial = config["USRPSettings"]["Multi-USRP"]["serial"].get<std::string>();
-                        std::cout << "USRPHandler::create_USRP_device:Creating the usrp device with serial: " <<  serial << std::endl;
+
+                        if (debug)
+                        {
+                            std::cout << "USRPHandler::create_USRP_device:Creating the usrp device with serial: " <<  serial << std::endl;
+                        }
+                        
                         uhd::device_addr_t device = find_device_serial(serial);
                         
                         usrp = uhd::usrp::multi_usrp::make(device);
@@ -202,7 +220,12 @@
                         config["USRPSettings"]["Multi-USRP"]["addrs"].get<std::string>().empty() == false)
                     {
                         std::string addr = config["USRPSettings"]["Multi-USRP"]["addrs"].get<std::string>();
-                        std::cout << "USRPHandler::create_USRP_device:Creating the usrp device with addrs: " <<  addr << std::endl;
+                        
+                        if (debug)
+                        {
+                            std::cout << "USRPHandler::create_USRP_device:Creating the usrp device with addrs: " <<  addr << std::endl;
+                        }
+                        
                         uhd::device_addr_t device = find_device_serial(addr);
                         
                         usrp = uhd::usrp::multi_usrp::make(device);
@@ -213,7 +236,11 @@
                     else //if no device was specified, search for and use the first USRP device
                     {
                         std::cout << std::endl;
-                        std::cout << "USRPHandler::create_USRP_device: No usrp device arguments specified, searching for device...\n";
+                        if (debug)
+                        {
+                            std::cout << "USRPHandler::create_USRP_device: No usrp device arguments specified, searching for device...\n";
+                        }
+                        
                         uhd::device_addrs_t dev_addrs = find_devices();
                         usrp = uhd::usrp::multi_usrp::make(dev_addrs[0]);
                     }
@@ -227,8 +254,13 @@
                 void wait_for_setup_time(void){
                     if (config["USRPSettings"]["AdditionalSettings"]["setup_time"].is_null() == false){
                         float setup_time = config["USRPSettings"]["AdditionalSettings"]["setup_time"].get<float>();
-                        std::cout << "USRPHandler::wait_for_setup_time: waiting for " << 
-                                    setup_time * 1000 << " ms for setup" <<std::endl << std::endl;
+                        
+                        if (debug)
+                        {
+                            std::cout << "USRPHandler::wait_for_setup_time: waiting for " << 
+                                setup_time * 1000 << " ms for setup" <<std::endl << std::endl;
+                        }
+                        
                         std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1000 * setup_time)));
                     }
                     else{
@@ -267,16 +299,21 @@
                     if (config["USRPSettings"]["RX"]["subdev"].is_null() == false){
                         std::string rx_subdev = config["USRPSettings"]["RX"]["subdev"].get<std::string>();
                         if (rx_subdev.empty() == false){
-                            std::cout << "USRPHandler::set_subdevices: Setting Rx Subdevice: " 
-                                << rx_subdev << std::endl;
                             
                             //set the subdevice
                             usrp->set_rx_subdev_spec(rx_subdev);
 
                             //print confirmation of subdevice setting successfully
                             uhd::usrp::subdev_spec_t rx_subdev_spec = usrp -> get_rx_subdev_spec();
-                            std::cout << "USRPHandler::set_subdevices: Rx Subdevice: " 
-                                << rx_subdev_spec.to_pp_string() <<std::endl;
+
+                            if(debug)
+                            {
+                                std::cout << "USRPHandler::set_subdevices: Setting Rx Subdevice: " 
+                                    << rx_subdev << std::endl;
+
+                                std::cout << "USRPHandler::set_subdevices: Rx Subdevice: " 
+                                    << rx_subdev_spec.to_pp_string() <<std::endl;
+                            }
                         }
                         else{
                             std::cout << "USRPHandler::set_subdevices: failed to set Rx Subdevice" <<std::endl;
@@ -287,18 +324,26 @@
                     if (config["USRPSettings"]["TX"]["subdev"].is_null() == false){
                         std::string tx_subdev = config["USRPSettings"]["TX"]["subdev"].get<std::string>();
                         if (tx_subdev.empty() == false){
-                            std::cout << "USRPHandler::set_subdevices: Setting Tx Subdevice: " 
-                                << tx_subdev << std::endl;
                             usrp->set_tx_subdev_spec(tx_subdev);
                             uhd::usrp::subdev_spec_t tx_subdev_spec = usrp -> get_tx_subdev_spec();
-                            std::cout << "USRPHandler::set_subdevices: Tx Subdevice: " 
-                                << tx_subdev_spec.to_pp_string() <<std::endl;
+                            if (debug)
+                            {
+                                std::cout << "USRPHandler::set_subdevices: Setting Tx Subdevice: " 
+                                    << tx_subdev << std::endl;
+                                std::cout << "USRPHandler::set_subdevices: Tx Subdevice: " 
+                                    << tx_subdev_spec.to_pp_string() <<std::endl;
+                            }
+                            
                         }
                         else{
                             std::cout << "USRPHandler::set_subdevices: failed to set Tx Subdevice" <<std::endl;
                         }
                     }
-                    std::cout << "USRPHandler::set_subdevices: Using Device: " << usrp->get_pp_string() << std::endl;
+                    if (debug)
+                    {
+                        std::cout << "USRPHandler::set_subdevices: Using Device: " << usrp->get_pp_string() << std::endl;
+                    }
+                    
                 }
 
                 /**
@@ -315,11 +360,14 @@
                         if (rx_rate <= 0.0) {
                             std::cerr << "USRPHandler::set_sample_rate: Please specify a valid RX sample rate" << std::endl;
                         }
-                        std::cout << "USRPHandler::set_sample_rate: Setting RX Rate: " << 
-                                    rx_rate/1e6 << " Msps..." << std::endl;
                         usrp->set_rx_rate(rx_rate, rx_channel);
-                        std::cout << "USRPHandler::set_sample_rate: Actual RX Rate: " << 
-                                    usrp->get_rx_rate(rx_channel) / 1e6 << " Msps..." << std::endl;
+                        if(debug)
+                        {
+                            std::cout << "USRPHandler::set_sample_rate: Setting RX Rate: " << 
+                                        rx_rate/1e6 << " Msps..." << std::endl;
+                            std::cout << "USRPHandler::set_sample_rate: Actual RX Rate: " << 
+                                        usrp->get_rx_rate(rx_channel) / 1e6 << " Msps..." << std::endl;
+                        }
                     }
                     else {
                         std::cerr << "USRPHandler::set_sample_rate: No Rx sample rate in JSON";
@@ -332,11 +380,13 @@
                         if (tx_rate <= 0.0) {
                             std::cerr << "USRPHandler::set_sample_rate: Please specify a valid TX sample rate" << std::endl;
                         }
-                        std::cout << "USRPHandler::set_sample_rate: Setting TX Rate: " << 
-                                    tx_rate/1e6 << " Msps..." << std::endl;
                         usrp->set_tx_rate(tx_rate, tx_channel);
-                        std::cout << "USRPHandler::set_sample_rate: Actual TX Rate: " << 
-                                    usrp->get_tx_rate(tx_channel) / 1e6 << " Msps..." << std::endl <<std::endl;
+                        if(debug){
+                            std::cout << "USRPHandler::set_sample_rate: Setting TX Rate: " << 
+                                        tx_rate/1e6 << " Msps..." << std::endl;
+                            std::cout << "USRPHandler::set_sample_rate: Actual TX Rate: " << 
+                                        usrp->get_tx_rate(tx_channel) / 1e6 << " Msps..." << std::endl <<std::endl;
+                        }
                     }
                     else {
                         std::cerr << "USRPHandler::set_sample_rate: No Tx sample rate in JSON";
@@ -358,27 +408,34 @@
                         float lo_offset = config["USRPSettings"]["Multi-USRP"]["lo-offset"].get<float>();
 
                         //setting Rx
-                        std::cout << "Setting Rx Freq: " << center_freq/1e6 << " MHz" << std::endl;
-                        std::cout << "Setting Rx Lo-offset: : " << lo_offset/1e6 << " MHz" << std::endl;
+                        if(debug){
+                            std::cout << "Setting Rx Freq: " << center_freq/1e6 << " MHz" << std::endl;
+                            std::cout << "Setting Rx Lo-offset: : " << lo_offset/1e6 << " MHz" << std::endl;
+                        }
                         uhd::tune_request_t rx_tune_request;
                         rx_tune_request = uhd::tune_request_t(center_freq,lo_offset);
                         if (config["USRPSettings"]["AdditionalSettings"]["int-n"].get<bool>() == true){
                             rx_tune_request.args = uhd::device_addr_t("mode_n=integer");
                         }
                         usrp->set_rx_freq(rx_tune_request);
-                        std::cout << "Actual Rx Freq: " << usrp->get_rx_freq()/1e6 << " MHz" <<std::endl <<std::endl;
-
+                        if(debug){
+                            std::cout << "Actual Rx Freq: " << usrp->get_rx_freq()/1e6 << " MHz" <<std::endl <<std::endl;
+                        }
 
                         //setting Tx
-                        std::cout << "Setting Tx Freq: " << center_freq/1e6 << " MHz" << std::endl;
-                        std::cout << "Setting Tx Lo-offset: : " << lo_offset/1e6 << " MHz" << std::endl;
+                        if(debug){
+                            std::cout << "Setting Tx Freq: " << center_freq/1e6 << " MHz" << std::endl;
+                            std::cout << "Setting Tx Lo-offset: : " << lo_offset/1e6 << " MHz" << std::endl;
+                        }
                         uhd::tune_request_t tx_tune_request;
                         tx_tune_request = uhd::tune_request_t(center_freq,lo_offset);
                         if (config["USRPSettings"]["AdditionalSettings"]["int-n"].get<bool>() == true){
                             tx_tune_request.args = uhd::device_addr_t("mode_n=integer");
                         }
                         usrp->set_tx_freq(tx_tune_request);
-                        std::cout << "Actual Tx Freq: " << usrp->get_tx_freq()/1e6 << " MHz" <<std::endl <<std::endl;
+                        if(debug){
+                            std::cout << "Actual Tx Freq: " << usrp->get_tx_freq()/1e6 << " MHz" <<std::endl <<std::endl;
+                        }
                     }
                     else{
                         std::cerr << "USRPHandler::set_center_frequency: center frequency and lo-offset not defined in JSON config file\n";
@@ -395,22 +452,26 @@
                     if (config["USRPSettings"]["RX"]["gain"].is_null() == false)
                     {
                         double rx_gain = config["USRPSettings"]["RX"]["gain"].get<double>();
-                        std::cout << "USRPHandler::set_rf_gain: Setting Rx Gain: " << rx_gain << 
-                                    " dB" <<std::endl;
                         usrp -> set_rx_gain(rx_gain,rx_channel);
-                        std::cout << "USRPHandler::set_rf_gain: Actual Rx Gain: " << usrp -> get_rx_gain(rx_channel) << 
-                                    " dB" <<std::endl;
+                        if(debug){
+                            std::cout << "USRPHandler::set_rf_gain: Setting Rx Gain: " << rx_gain << 
+                                        " dB" <<std::endl;
+                            std::cout << "USRPHandler::set_rf_gain: Actual Rx Gain: " << usrp -> get_rx_gain(rx_channel) << 
+                                        " dB" <<std::endl;
+                        }
                     }
                     
                     //set Tx Gain
                     if (config["USRPSettings"]["TX"]["gain"].is_null() == false)
                     {
                         double tx_gain = config["USRPSettings"]["TX"]["gain"].get<double>();
-                        std::cout << "USRPHandler::set_rf_gain: Setting Tx Gain: " << tx_gain << 
-                                    " dB" <<std::endl;
                         usrp -> set_tx_gain(tx_gain,tx_channel);
-                        std::cout << "USRPHandler::set_rf_gain: Actual Tx Gain: " << usrp -> get_tx_gain(tx_channel) << 
-                                    " dB" <<std::endl <<std::endl;
+                        if(debug){
+                            std::cout << "USRPHandler::set_rf_gain: Setting Tx Gain: " << tx_gain << 
+                                        " dB" <<std::endl;
+                            std::cout << "USRPHandler::set_rf_gain: Actual Tx Gain: " << usrp -> get_tx_gain(tx_channel) << 
+                                        " dB" <<std::endl <<std::endl;
+                        }
                     }
                 }
                 
@@ -423,18 +484,21 @@
                         double if_filter_bw = config["USRPSettings"]["Multi-USRP"]["IF_filter_bw"].get<double>();
 
                         //set Rx IF filter BW
-                        std::cout << "USRPHandler::set_if_filter_bw: Setting Rx Bandwidth: " <<
-                                        if_filter_bw/1e6 << " MHz" <<std::endl;
                         usrp->set_rx_bandwidth(if_filter_bw);
-                        std::cout << "USRPHandler::set_if_filter_bw: Actual Rx Bandwidth: " <<
-                                        usrp->get_rx_bandwidth()/1e6 << " MHz" <<std::endl;
-                        
+                        if(debug){
+                            std::cout << "USRPHandler::set_if_filter_bw: Setting Rx Bandwidth: " <<
+                                            if_filter_bw/1e6 << " MHz" <<std::endl;
+                            std::cout << "USRPHandler::set_if_filter_bw: Actual Rx Bandwidth: " <<
+                                            usrp->get_rx_bandwidth()/1e6 << " MHz" <<std::endl;
+                        }
                         //set Tx IF filter BW
+                        usrp->set_tx_bandwidth(if_filter_bw);
+                        if(debug){
                         std::cout << "USRPHandler::set_if_filter_bw: Setting Tx Bandwidth: " <<
                                         if_filter_bw/1e6 << " MHz" <<std::endl;
-                        usrp->set_tx_bandwidth(if_filter_bw);
                         std::cout << "USRPHandler::set_if_filter_bw: Actual Tx Bandwidth: " <<
                                         usrp->get_tx_bandwidth()/1e6 << " MHz" <<std::endl <<std::endl;
+                        }
                     }
                 }
                 
@@ -447,21 +511,25 @@
                     //set Rx Antenna
                     if(config["USRPSettings"]["RX"]["ant"].is_null() == false){
                         std::string rx_ant = config["USRPSettings"]["RX"]["ant"].get<std::string>();
-                        std::cout << "USRPHandler::set_antennas: Setting Rx Antenna: " <<
-                                    rx_ant << std::endl;
                         usrp->set_rx_antenna(rx_ant,rx_channel);
-                        std::cout << "USRPHandler::set_antennas: Actual Rx Antenna: " <<
-                                    usrp->get_rx_antenna(rx_channel) << std::endl;
+                        if(debug){
+                            std::cout << "USRPHandler::set_antennas: Setting Rx Antenna: " <<
+                                        rx_ant << std::endl;
+                            std::cout << "USRPHandler::set_antennas: Actual Rx Antenna: " <<
+                                        usrp->get_rx_antenna(rx_channel) << std::endl;
+                        }
                     }
 
                     //set Tx Antenna
                     if(config["USRPSettings"]["TX"]["ant"].is_null() == false){
                         std::string tx_ant = config["USRPSettings"]["TX"]["ant"].get<std::string>();
-                        std::cout << "USRPHandler::set_antennas: Setting Tx Antenna: " <<
-                                    tx_ant << std::endl;
                         usrp->set_tx_antenna(tx_ant,tx_channel);
-                        std::cout << "USRPHandler::set_antennas: Actual Tx Antenna: " <<
-                                    usrp->get_tx_antenna(tx_channel) << std::endl <<std::endl;
+                        if(debug){
+                            std::cout << "USRPHandler::set_antennas: Setting Tx Antenna: " <<
+                                        tx_ant << std::endl;
+                            std::cout << "USRPHandler::set_antennas: Actual Tx Antenna: " <<
+                                        usrp->get_tx_antenna(tx_channel) << std::endl <<std::endl;
+                        }
                     }
                 }
 
@@ -481,8 +549,10 @@
                             if (std::find(sensor_names.begin(), sensor_names.end(), "lo_locked")
                                 != sensor_names.end()) {
                                 uhd::sensor_value_t lo_locked = usrp->get_tx_sensor("lo_locked", 0);
-                                std::cout << "USRPHandler::check_lo_locked: Checking TX: " << lo_locked.to_pp_string()
-                                        << std::endl;
+                                if(debug){
+                                    std::cout << "USRPHandler::check_lo_locked: Checking TX: " << lo_locked.to_pp_string()
+                                            << std::endl;
+                                }
                                 UHD_ASSERT_THROW(lo_locked.to_bool());
                             }
 
@@ -491,8 +561,10 @@
                             if (std::find(sensor_names.begin(), sensor_names.end(), "lo_locked")
                                 != sensor_names.end()) {
                                 uhd::sensor_value_t lo_locked = usrp->get_rx_sensor("lo_locked", 0);
-                                std::cout << "USRPHandler::check_lo_locked: Checking RX: " << lo_locked.to_pp_string()
-                                        << std::endl;
+                                if(debug){
+                                    std::cout << "USRPHandler::check_lo_locked: Checking RX: " << lo_locked.to_pp_string()
+                                            << std::endl;
+                                }
                                 UHD_ASSERT_THROW(lo_locked.to_bool());
                             }
 
@@ -502,16 +574,20 @@
                                 and (std::find(sensor_names.begin(), sensor_names.end(), "mimo_locked")
                                     != sensor_names.end())) {
                                 uhd::sensor_value_t mimo_locked = usrp->get_mboard_sensor("mimo_locked", 0);
-                                std::cout << boost::format("USRPHandler::check_lo_locked:Checking MIMO: %s ...") % mimo_locked.to_pp_string()
-                                        << std::endl;
+                                if(debug){
+                                    std::cout << boost::format("USRPHandler::check_lo_locked:Checking MIMO: %s ...") % mimo_locked.to_pp_string()
+                                            << std::endl;
+                                }
                                 UHD_ASSERT_THROW(mimo_locked.to_bool());
                             }
                             if ((ref == "external")
                                 and (std::find(sensor_names.begin(), sensor_names.end(), "ref_locked")
                                     != sensor_names.end())) {
                                 uhd::sensor_value_t ref_locked = usrp->get_mboard_sensor("ref_locked", 0);
-                                std::cout << boost::format("USRPHandler::check_lo_locked:Checking External: %s ...") % ref_locked.to_pp_string()
-                                        << std::endl;
+                                if(debug){
+                                    std::cout << boost::format("USRPHandler::check_lo_locked:Checking External: %s ...") % ref_locked.to_pp_string()
+                                            << std::endl;
+                                }
                                 UHD_ASSERT_THROW(ref_locked.to_bool());
                             }
                         }
@@ -520,7 +596,9 @@
                         }
                     }
                     else{
-                        std::cout << "USRPHandler::check_lo_locked: skipping lo-locked check\n\n";
+                        if(debug){
+                            std::cout << "USRPHandler::check_lo_locked: skipping lo-locked check\n\n";
+                        }
                     }
                 }
 
@@ -632,9 +710,11 @@
                     rx_samples_per_buffer = rx_stream -> get_max_num_samps();
 
                     //print the result
-                    std::cout << "USRPHandler::init_stream_args: tx_spb: " << tx_samples_per_buffer << 
-                        " rx_spb: " << rx_samples_per_buffer <<std::endl;
-                    std::cout << "USRPHandler::init_stream_args: initialized stream arguments" << std::endl << std::endl;
+                    if(debug){
+                        std::cout << "USRPHandler::init_stream_args: tx_spb: " << tx_samples_per_buffer << 
+                            " rx_spb: " << rx_samples_per_buffer <<std::endl;
+                        std::cout << "USRPHandler::init_stream_args: initialized stream arguments" << std::endl << std::endl;
+                    }
                 }
 
                 /**
@@ -642,8 +722,10 @@
                  * 
                  */
                 void reset_usrp_clock(void){
-                    std::cout << "USRPHandler::reset_usrp_clock: setting device timestamp to 0" << 
-                                std::endl << std::endl;
+                    if(debug){
+                        std::cout << "USRPHandler::reset_usrp_clock: setting device timestamp to 0" << 
+                                    std::endl << std::endl;
+                    }
                     usrp -> set_time_now(uhd::time_spec_t(0.0));
                     return;
                 }
@@ -724,12 +806,14 @@
 
                     if(rx_first_buffer){
                         cout_unique_lock.lock();
-                        std::cout << "USRPHandler::check_rx_metadata: start of burst metadata: " << std::endl <<
-                                    rx_md.to_pp_string(simplified_metadata) << std::endl <<std::endl;
+                        if(debug){
+                            std::cout << "USRPHandler::check_rx_metadata: start of burst metadata: " << std::endl <<
+                                        rx_md.to_pp_string(simplified_metadata) << std::endl <<std::endl;
+                        }
                         rx_first_buffer = false;
                         cout_unique_lock.unlock();
                     }
-                    if(rx_md.end_of_burst && rx_md.has_time_spec && not simplified_metadata) {
+                    if(rx_md.end_of_burst && rx_md.has_time_spec && not simplified_metadata && debug) {
                         cout_unique_lock.lock();
                         std::cout << "USRPHandler::check_rx_metadata: end of burst occurred at " <<
                                     rx_md.time_spec.get_real_secs() << " s" <<std::endl;
@@ -741,13 +825,22 @@
                     if (rx_md.error_code == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW) {
                         if (not overflow_detected) {
                             overflow_detected = true;
-                            std::cerr <<    
-                                        "Got an overflow indication. Please consider the following:\n" <<
-                                        "  Your write medium must sustain a rate of " << 
-                                        (usrp->get_rx_rate(rx_channel) * sizeof(std::complex<float>) / 1e6) <<"MB/s.\n" <<
-                                        "  Dropped samples will not be written to the file.\n" <<
-                                        "  Please modify this example for your purposes.\n" <<
-                                        "  This message will not appear again.\n"; 
+                            if (! simplified_metadata && debug)
+                            {
+                                std::cerr <<    
+                                    "Got an overflow indication. Please consider the following:\n" <<
+                                    "  Your write medium must sustain a rate of " << 
+                                    (usrp->get_rx_rate(rx_channel) * sizeof(std::complex<float>) / 1e6) <<"MB/s.\n" <<
+                                    "  Dropped samples will not be written to the file.\n" <<
+                                    "  Please modify this example for your purposes.\n" <<
+                                    "  This message will not appear again.\n"; 
+                            }
+                            else
+                            {
+                                std::cerr << "USRPHandler::check_rx_metadata: Overflow Detected";
+                            }
+                            
+                            
                         }
                     }
                     if (rx_md.error_code != uhd::rx_metadata_t::ERROR_CODE_NONE) {
@@ -779,8 +872,10 @@
                     size_t num_frames = frame_start_times.size();
 
                     cout_unique_lock.lock();
-                    std::cout << "USRPHandler::stream_tx_frame: streaming frame starting at : " <<
-                                frame_start_times[0].get_real_secs() << " s" << std::endl;
+                    if(debug){
+                        std::cout << "USRPHandler::stream_tx_frame: streaming frame starting at : " <<
+                                    frame_start_times[0].get_real_secs() << " s" << std::endl;
+                    }
                     cout_unique_lock.unlock();
 
                     //stream desired number of frames
@@ -792,7 +887,7 @@
                         tx_md.start_of_burst = false;
                         tx_md.end_of_burst = false;
 
-                        if (not simplified_metadata && i > 0)
+                        if (debug && not simplified_metadata && i > 0)
                         {
                             cout_unique_lock.lock();
                             std::cout << "USRPHandler::stream_tx_frame: streaming frame starting at : " <<
@@ -844,7 +939,9 @@
                         if (not tx_stream->recv_async_msg(tx_async_md)) {
                             if (exit_flag == true){
                                 cout_unique_lock.lock();
-                                std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to exit flag" <<std::endl;
+                                if(debug){
+                                    std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to exit flag" <<std::endl;
+                                }
                                 cout_unique_lock.unlock();
                                 return;
                             }
@@ -855,7 +952,7 @@
                         switch (tx_async_md.event_code) {
                             case uhd::async_metadata_t::EVENT_CODE_BURST_ACK:
                                 //std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to end of burst" <<std::endl;
-                                if (tx_async_md.has_time_spec && not simplified_metadata){
+                                if (tx_async_md.has_time_spec && not simplified_metadata && debug){
                                     cout_unique_lock.lock();
                                     std::cout << "USRPHandler::check_tx_async_messages: end of burst occurred at " <<
                                             tx_async_md.time_spec.get_real_secs() << " s" << std::endl;
@@ -918,7 +1015,9 @@
                         //stream rx_frames
                         stream_frames_rx_only(frame_start_times,rx_buffer,false);
                     }
-                    std::cout << "USRPHandler::stream_frame: Complete" << std::endl << std::endl;
+                    if(debug){
+                        std::cout << "USRPHandler::stream_frame: Complete" << std::endl << std::endl;
+                    }
                 }
 
                 /**
@@ -1183,7 +1282,10 @@
                     }
                     
                     //send a new stream command
-                    std::cout << chirp_detected << std::endl;
+                    if(debug)
+                    {
+                        std::cout << "USRPHandler::rx_record_next_frame: detected chirp" << std::endl;
+                    }
                     rx_stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE;
                     rx_stream_cmd.num_samps = total_samps;
                     rx_stream_cmd.stream_now = true;

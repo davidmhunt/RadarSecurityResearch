@@ -175,7 +175,11 @@
                         read_file_stream = std::make_shared<std::ifstream>(std::ifstream());
                         read_file_stream -> open(read_file.c_str(), std::ios::in | std::ios::binary);
                         if(read_file_stream -> is_open()){
-                            std::cout << "Buffer::init_read_file_stream: read file opened successfully" <<std::endl;
+                            if (debug_status)
+                            {
+                                std::cout << "Buffer::init_read_file_stream: read file opened successfully" <<std::endl;
+                            }
+                            
                         }
                         else{
                             std::cerr << "BufferHandler::failed to open read file\n";
@@ -196,7 +200,10 @@
                         write_file_stream = std::make_shared<std::ofstream>(std::ofstream());
                         write_file_stream -> open(write_file.c_str(), std::ios::out | std::ios::binary);
                         if(write_file_stream -> is_open()){
-                            std::cout << "Buffer::init_write_file_stream: write file opened successfully" <<std::endl;
+                            if(debug_status)
+                            {
+                                std::cout << "Buffer::init_write_file_stream: write file opened successfully" <<std::endl;
+                            }
                         }
                         else{
                             std::cerr << "BufferHandler::failed to open write file\n";
@@ -211,7 +218,9 @@
                 void close_read_file_stream(void){
                     if(read_file_stream -> is_open()){
                         read_file_stream -> close();
-                        std::cout << "Buffer::close_read_file_stream: read file stream closed" << std::endl;
+                        if(debug_status){
+                            std::cout << "Buffer::close_read_file_stream: read file stream closed" << std::endl;
+                        }
                     }
                     else{
                         std::cerr << "Buffer::close_read_file_stream: close_read_file_stream"  << 
@@ -226,7 +235,9 @@
                 void close_write_file_stream(void){
                     if(write_file_stream -> is_open()){
                         write_file_stream -> close();
-                        std::cout << "Buffer::close_write_file_stream: write file stream closed" << std::endl;
+                        if(debug_status){
+                            std::cout << "Buffer::close_write_file_stream: write file stream closed" << std::endl;
+                        }
                     }
                     else{
                         std::cerr << "Buffer::close_write_file_stream: close_write_file_stream"  << 
@@ -255,8 +266,9 @@
 
                         //determine the number of samples in the file
                         size_t detected_samples = size / sizeof(data_type);
-                        std::cout << "Buffer::load_data_from_read_file: detected samples: " << detected_samples << std::endl;
-
+                        if(debug_status){
+                            std::cout << "Buffer::load_data_from_read_file: detected samples: " << detected_samples << std::endl;
+                        }
                         //define the vector
                         data_vector = std::vector<data_type>(detected_samples);
 
@@ -633,7 +645,7 @@
                         load_data_into_buffer_efficient(data,false);
                     }
                     else {
-                        std::cout << "Buffer_2D::import_from_file: attempted to import from file when buffer wasn't initialized" <<std::endl;
+                        std::cerr << "Buffer_2D::import_from_file: attempted to import from file when buffer wasn't initialized" <<std::endl;
                     }
                     
                 }

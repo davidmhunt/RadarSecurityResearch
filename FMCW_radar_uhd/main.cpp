@@ -46,12 +46,13 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
     
     //attacker configuration
     std::string attack_config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_uhd_attack.json";
-
+    std::string fmcw_config_file = "/home/david/Documents/RadarSecurityResearch/FMCW_radar_uhd/Config_FMCW.json";
 
     //read the config file
     std::cout << "\nMAIN: Parsing JSON\n";
     json radar_config = JSONHandler::parse_JSON(radar_config_file,false);
     json attack_config = JSONHandler::parse_JSON(attack_config_file,false);
+    json fmcw_config = JSONHandler::parse_JSON(fmcw_config_file,false);
 
 
     //check to make sure that the radar and attacker have a valid config format:
@@ -80,11 +81,11 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
 
     
     if (type == "double" && cpufmt == "fc64"){
-        FMCWHandler<double> fmcw_handler(radar_config,attack_config,true);
+        FMCWHandler<double> fmcw_handler(fmcw_config,radar_config,attack_config,true);
     }
     else if (type == "float" && cpufmt == "fc32")
     {
-        FMCWHandler<float> fmcw_handler(radar_config,attack_config,true);
+        FMCWHandler<float> fmcw_handler(fmcw_config,radar_config,attack_config,true);
     }
     /*
     else if (type == "int16_t" && cpufmt == "sc16")

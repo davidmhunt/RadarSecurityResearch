@@ -46,6 +46,10 @@
                 //configuration
                 json config;
 
+                //debug status
+                bool debug;
+
+
             public:
                 /**
                  * @brief Construct a new Sensing Subsystem object
@@ -62,36 +66,79 @@
                     energy_detector(config_data),
                     spectrogram_handler(config_data){
 
-                        //measure the relative noise power for the energy detector
-                        mesaure_relative_noise_power();
+                        if(check_config()){
+                            //measure the relative noise power for the energy detector
+                            init_debug_status();
+                            mesaure_relative_noise_power();
+                        }
+                        else{
+                            std::cerr << "SensingSubsystem: config did not pass check" << std::endl;
+                        }
                 }
 
                 ~SensingSubsystem(){};
+
+                /**
+             * @brief Check the json config file to make sure all necessary parameters are included
+             * 
+             * @return true - JSON is all good and has required elements
+             * @return false - JSON is missing certain fields
+             */
+            bool check_config(){
+                bool config_good = true;
+
+                //check debug status
+                if(config["SensingSubsystemSettings"]["debug"].is_null()){
+                    std::cerr << "SensingSubsystem::check_config: debug not specified" <<std::endl;
+                    config_good = false;
+                }
+
+                return config_good;
+            }
+
+            /**
+             * @brief Initialize the debug flag for the sensing subsystem
+             * 
+             */
+            void init_debug_status(){
+                debug = config["SensingSubsystemSettings"]["debug"].get<bool>();
+            }
 
                 /**
                  * @brief measure the relative noise power and configure the energy detector
                  * 
                  */
                 void mesaure_relative_noise_power(void){
-                    std::cout << "SensingSubsystem::measure_relative_noise_power: measurig relative noise power" << std::endl;
 
                     //stream the ambient signal
                     attacker_usrp_handler -> rx_stream_to_buffer(& energy_detector.noise_power_measureent_signal);
 
                     energy_detector.compute_relative_noise_power();
 
-                    std::cout << "relative noise power: " << energy_detector.relative_noise_power << "dB" << std::endl;
+                    if(debug)
+                    {
+                        std::cout << "SensingSubsystem::measure_relative_noise_power: measurig relative noise power" << std::endl;
+                        std::cout << "relative noise power: " << energy_detector.relative_noise_power << "dB" << std::endl;
+                    }
+
                     return;
                 }
 
                 /**
-                 * @brief Run the sensing subsystem
+                 * @brief Run the sensing subsystem. If the sensing subsystem is being run as part of a 
+                 * series of experiments, the multiple_runs and run_number parameters can be used to
+                 * specify the run number so that each parameter estimation has a unique result file.
                  * 
+                 * @param multiple_runs set to true if the sensing subystem is being run multiple times
+                 * @param run_number the number of the run (experiment) being performed
                  */
-                void run(void){
+                void run(bool multiple_runs = false,
+                    size_t run_number = 0){
                     
                     data_type detection_start_time_us;
-                    double next_rx_sense_start_time = 0.0;
+                    double next_rx_sense_start_time = 
+                        (attacker_usrp_handler -> usrp -> get_time_now().get_real_secs()) 
+                        + spectrogram_handler.min_frame_periodicity_s;
                     //process the detected chirp
                     for (size_t i = 0; i < spectrogram_handler.max_frames_to_capture; i++)
                     {
@@ -118,10 +165,39 @@
                         
                     }
 
-                    save_sensing_subsystem_state();
-                    std::cout << "SensingSubsystem::run: completed frame tracking" << std::endl;
-                    spectrogram_handler.print_summary_of_estimated_parameters();
-                    spectrogram_handler.save_estimated_parameters_to_file();
+                    if (debug)
+                    {
+                        std::cout << "SensingSubsystem::run: completed frame tracking" << std::endl;
+                        save_sensing_subsystem_state();
+                        spectrogram_handler.print_summary_of_estimated_parameters();
+                    }
+                    
+                    spectrogram_handler.save_estimated_parameters_to_file(multiple_runs,run_number);
+                }
+                
+                /**
+                 * @brief For multiple runs, the flushes the USRP buffer to prevent any spill-over
+                 * of samples from the previous run
+                 * 
+                 */
+                void flush_usrp_buffer(void){
+                    size_t spb = config["USRPSettings"]["RX"]["spb"].get<size_t>();
+                    size_t num_rows = 10;
+                    Buffer_2D<std::complex<data_type>> temp_buffer(num_rows,spb);
+                    attacker_usrp_handler -> rx_stream_to_buffer(& temp_buffer);
+                }
+                
+                /**
+                 * @brief resets the sensing subsystem and the spectrogram_handler. Does not reset
+                 * the energy detectors estimated noise power though
+                 * 
+                 */
+                void reset(void){
+                    spectrogram_handler.reset();
+                    energy_detector.reset_chirp_detector();
+                    flush_usrp_buffer();
+                    //energy_detector.initialize_chirp_detection_params();
+                    //mesaure_relative_noise_power();
                 }
 
                 /**
@@ -130,49 +206,50 @@
                  */
                 void save_sensing_subsystem_state(void){
                     //save the hanning window to a file to confirm correctness
+                    std::string folder_path = spectrogram_handler.save_file_path;
                     std::string path;
-                    path = "/home/david/Documents/MATLAB_generated/cpp_hanning_window.bin";
+                    path = folder_path + "cpp_hanning_window.bin";
                     spectrogram_handler.hanning_window.set_write_file(path);
                     spectrogram_handler.hanning_window.save_to_file();
                     
                     //load and reshape the received signal to confirm correctness
-                    path = "/home/david/Documents/MATLAB_generated/cpp_reshaped_and_windowed_for_fft.bin";
+                    path = folder_path + "cpp_reshaped_and_windowed_for_fft.bin";
                     spectrogram_handler.reshaped__and_windowed_signal_for_fft.set_write_file(path,true);
                     spectrogram_handler.reshaped__and_windowed_signal_for_fft.save_to_file();
 
                     //compute the fft to confirm correctness
-                    path = "/home/david/Documents/MATLAB_generated/cpp_generated_spectrogram.bin";
+                    path = folder_path + "cpp_generated_spectrogram.bin";
                     spectrogram_handler.generated_spectrogram.set_write_file(path,true);
                     spectrogram_handler.generated_spectrogram.save_to_file();
 
                     //detect the points in the spectrogram
-                    path = "/home/david/Documents/MATLAB_generated/cpp_spectrogram_point_vals.bin";
+                    path = folder_path + "cpp_spectrogram_point_vals.bin";
                     spectrogram_handler.spectrogram_points_values.set_write_file(path,true);
                     spectrogram_handler.spectrogram_points_values.save_to_file();
 
                     //detect the times and frequencies
-                    path = "/home/david/Documents/MATLAB_generated/cpp_detected_times.bin";
+                    path = folder_path + "cpp_detected_times.bin";
                     spectrogram_handler.detected_times.set_write_file(path,true);
                     spectrogram_handler.detected_times.save_to_file();
-                    path = "/home/david/Documents/MATLAB_generated/cpp_detected_frequencies.bin";
+                    path = folder_path + "cpp_detected_frequencies.bin";
                     spectrogram_handler.detected_frequencies.set_write_file(path,true);
                     spectrogram_handler.detected_frequencies.save_to_file();
 
                     //compute the clusters
-                    path = "/home/david/Documents/MATLAB_generated/cpp_computed_clusters.bin";
+                    path = folder_path + "cpp_computed_clusters.bin";
                     spectrogram_handler.cluster_indicies.set_write_file(path,true);
                     spectrogram_handler.cluster_indicies.save_to_file();
 
                     //fit linear models
-                    path = "/home/david/Documents/MATLAB_generated/cpp_detected_slopes.bin";
+                    path = folder_path + "cpp_detected_slopes.bin";
                     spectrogram_handler.detected_slopes.set_write_file(path,true);
                     spectrogram_handler.detected_slopes.save_to_file();
-                    path = "/home/david/Documents/MATLAB_generated/cpp_detected_intercepts.bin";
+                    path = folder_path + "cpp_detected_intercepts.bin";
                     spectrogram_handler.detected_intercepts.set_write_file(path,true);
                     spectrogram_handler.detected_intercepts.save_to_file();
 
                     //compute victim parameters
-                    path = "/home/david/Documents/MATLAB_generated/cpp_captured_frames.bin";
+                    path = folder_path + "cpp_captured_frames.bin";
                     spectrogram_handler.captured_frames.set_write_file(path,true);
                     spectrogram_handler.captured_frames.save_to_file();
 

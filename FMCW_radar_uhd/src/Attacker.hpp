@@ -69,11 +69,30 @@
                     }
                 }
 
-                void run_attacker(void){
+                /**
+                 * @brief Run the attacker. If the attacker is being run as part of a 
+                 * series of experiments, the multiple_runs and run_number parameters can be used to
+                 * specify the run number so that each parameter estimation has a unique result file.
+                 * 
+                 * @param multiple_runs set to true if the attacker is being run multiple times
+                 * @param run_number the number of the run (experiment) being performed
+                 */
+                void run_attacker(bool multiple_runs = false,
+                    size_t run_number = 0){
                     usrp_handler.reset_usrp_clock();
                     
-                    sensing_subsystem.run();
+                    sensing_subsystem.run(multiple_runs,run_number);
                     //sensing subsystem will automatically call the attacking subsystem when needed
+                }
+
+                /**
+                 * @brief Resets the Attacker to a fresh state (useful if performing multiple experiments).
+                 * Resets the sensing subsystem and attacking subsystem
+                 * 
+                 */
+                void reset(void){
+                    sensing_subsystem.reset();
+                    attacking_subsystem.reset();
                 }
         };
     }

@@ -1,5 +1,4 @@
 {
-    "Radar_enabled":true,
     "USRPSettings":{
         "Multi-USRP":{
             "use_serial":true,
@@ -38,15 +37,16 @@
             "setup_time":1.0,
             "skip-lo":false,
             "int-n":false,
-            "bufferHandler_debug":false,
-            "simplified_streamer_metadata":true
+            "simplified_streamer_metadata":true,
+            "debug":false
         }
     },
     "RadarSettings":{
-        "tx_file_name":"/home/david/Documents/MATLAB_generated/MATLAB_full_chirps/MATLAB_chirp_full_2.bin",
-        "rx_file_name":"/home/david/Documents/MATLAB_generated/cpp_rx_data.bin",
+        "tx_file_folder_path":"/home/david/Documents/MATLAB_generated/MATLAB_full_chirps/",
+        "rx_file_folder_path":"/home/david/Documents/MATLAB_generated/cpp_rx_data_files/",
         "num_chirps": 128,
         "num_frames": 50,
-        "frame_periodicity_ms": 33.33
+        "frame_periodicity_ms": 33.33,
+        "debug":false
     }
 }

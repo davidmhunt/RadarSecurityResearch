@@ -23,27 +23,36 @@ namespace FMCWHandler_namespace {
 
             json victim_config;
             json attack_config;
-            
+            json fmcw_config;
+
             RADAR<data_type> Victim;
             ATTACKER<data_type> Attacker;
+
+            //to support multiple runs
+            bool multiple_runs;
+            std::string victim_tx_files_folder_path;
+            size_t num_runs;
 
         public:
             /**
              * @brief Construct a new FMCWHandler object
              * 
+             * @param fmcw_config_obj a JSON config object for the FMCW simulation
              * @param victim_config_obj a JSON config object for the victim
              * @param attack_config_obj a JSON config object for the attacker
              * @param run (default false) on true, runs the experiment
              */
-            FMCWHandler(json victim_config_obj,json attack_config_obj, bool run = false)
-                :victim_config(victim_config_obj),
+            FMCWHandler(json fmcw_config_obj, json victim_config_obj,json attack_config_obj, bool run = false)
+                :fmcw_config(fmcw_config_obj),
+                victim_config(victim_config_obj),
                 attack_config(attack_config_obj),
-                Victim(victim_config_obj,true, false),
+                Victim(victim_config_obj),
                 Attacker(attack_config_obj,false){
                     
                     if(check_config())
                     {
                         get_enabled_status();
+                        get_multiple_runs_configuration();
                         if (run)
                         {
                             run_FMCW();
@@ -60,16 +69,26 @@ namespace FMCWHandler_namespace {
             bool check_config(){
                 bool config_good = true;
                 //check sampling rate
-                if(attack_config["Attacker_enabled"].is_null()){
+                if(fmcw_config["Attacker_enabled"].is_null()){
                     std::cerr << "FMCWHandler::check_config: Attacker_enabled not in JSON" <<std::endl;
                     config_good = false;
                 }
 
-                if(victim_config["Radar_enabled"].is_null()){
+                if(fmcw_config["Radar_enabled"].is_null()){
                     std::cerr << "FMCWHandler::check_config: Radar_enabled not in JSON" <<std::endl;
                     config_good = false;
                 }
-                
+
+                if(fmcw_config["multiple_runs"]["perform_multiple_runs"].is_null()){
+                    std::cerr << "FMCWHandler::check_config: perform_multiple_runs not in JSON" <<std::endl;
+                    config_good = false;
+                }else if (fmcw_config["multiple_runs"]["perform_multiple_runs"].get<bool>())
+                {
+                    if(fmcw_config["multiple_runs"]["num_runs"].is_null()){
+                        std::cerr << "FMCWHandler::check_config: num_runs not in JSON" <<std::endl;
+                        config_good = false;
+                    }
+                }
                 return config_good;
             }
 
@@ -78,15 +97,38 @@ namespace FMCWHandler_namespace {
              * 
              */
             void get_enabled_status(void){
-                attack_enabled = attack_config["Attacker_enabled"].get<bool>();
-                victim_enabled = victim_config["Radar_enabled"].get<bool>();
+                attack_enabled = fmcw_config["Attacker_enabled"].get<bool>();
+                victim_enabled = fmcw_config["Radar_enabled"].get<bool>();
+            }
+
+            /**
+             * @brief Setup whether or not to perform multiple runs. If multiple runs are requested,
+             * also get the number of runs
+             * 
+             */
+            void get_multiple_runs_configuration(void){
+                multiple_runs = fmcw_config["multiple_runs"]["perform_multiple_runs"].get<bool>();
+                if(multiple_runs)
+                {
+                    num_runs = fmcw_config["multiple_runs"]["num_runs"].get<size_t>();
+                }
             }
 
             /**
              * @brief Run the FMCW simulation with the vicitm and attacker in separate threads
              * 
+             * @param run_number (defaults to 0) the run number if multiple runs are being performed
              */
-            void run_FMCW(void){
+            void run_FMCW_trial(size_t run_number = 0){
+
+                if(multiple_runs)
+                {
+                    std::cout << "FMCWHandler::run_FMCW_trial: running trial:" << run_number << std::endl;
+                }
+                else
+                {
+                    std::cout << "FMCWHandler::run_FMCW_trial: running trial" << std::endl;
+                }
 
                 if (attack_enabled && victim_enabled)
                     {
@@ -96,8 +138,7 @@ namespace FMCWHandler_namespace {
                         });
 
                         //run the attacker
-                        std::cout << "running attack" << std::endl;
-                        Attacker.run_attacker();
+                        Attacker.run_attacker(multiple_runs,run_number);
 
                         //wait for victim thread to finish
                         victim_thread.join();
@@ -105,16 +146,49 @@ namespace FMCWHandler_namespace {
                     else if (attack_enabled)
                     {
                         //run the attacker
-                        std::cout << "running attack" << std::endl;
-                        Attacker.run_attacker();
+                        Attacker.run_attacker(multiple_runs,run_number);
                     }
                     else
                     {
                         //run the victim
                         Victim.run_RADAR();
                     }
+
+                    if(multiple_runs)
+                {
+                    std::cout << "FMCWHandler::run_FMCW_trial: trial " << run_number << " complete" << std::endl;
+                }
+                else
+                {
+                    std::cout << "FMCWHandler::run_FMCW_trial: trial complete" << std::endl;
+                }
             }
 
+            /**
+             * @brief Runs the FMCW implementation (runs multiple trials if multiple_trials is true)
+             * 
+             */
+            void run_FMCW(void){
+
+                if (multiple_runs)
+                {
+                    for (size_t i = 1; i <= num_runs; i++)
+                    {
+                        Victim.initialize_radar(true,i);
+                        Attacker.reset();
+                        run_FMCW_trial(i);
+                    }
+                    
+                }
+                else //only a single run requested
+                {
+                    Victim.initialize_radar(false,0);
+                    Attacker.reset();
+                    run_FMCW_trial();
+                }
+                
+                
+            }
     };
 }
 
