@@ -1210,7 +1210,8 @@
                  */
                 void rx_record_next_frame(SpectrogramHandler<data_type> * spectrogram_handler,
                                             EnergyDetector<data_type> * energy_detector,
-                                            double stream_start_time){
+                                            double stream_start_time,
+                                            double max_waiting_time = 1){
                     
                     
                     //determine the number of samples per buffer
@@ -1244,6 +1245,8 @@
                         rx_stream_cmd.stream_now = true;
                     }
                     
+                    //detemine the maximum waiting time for deteting a chirp
+                    double max_end_time = current_time + max_waiting_time;
 
                     //initialize tracking for detecting overflows
                     size_t num_samps_received;
@@ -1277,6 +1280,12 @@
                         if(rx_md.time_spec.get_real_secs() <= stream_start_time){
                             continue;
                         }
+                        else if (rx_md.time_spec.get_real_secs() >= max_end_time)
+                        {
+                            std::cout << "USRPHandler::rx_record_next_frame: timed out while waiting for new chirp" << std::endl;
+                            continue;
+                        }
+                        
                         
                         chirp_detected = energy_detector -> check_for_chirp(rx_md.time_spec.get_real_secs());
                     }

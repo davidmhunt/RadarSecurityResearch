@@ -85,6 +85,7 @@
             //public variable for frame tracking
             size_t max_frames_to_capture;
             double min_frame_periodicity_s;
+            double max_waiting_time;
 
             //buffers used
 
@@ -206,6 +207,11 @@
 
                 if(config["SensingSubsystemSettings"]["save_file_path"].is_null()){
                     std::cerr << "SpectrogramHandler::check_config: save_file_path not specified" <<std::endl;
+                    config_good = false;
+                }
+
+                if(config["SensingSubsystemSettings"]["max_waiting_time_ms"].is_null()){
+                    std::cerr << "SpectrogramHandler::check_config: max_waiting_time_ms not specified" <<std::endl;
                     config_good = false;
                 }
 
@@ -399,6 +405,7 @@
 
                 //min frame periodicity
                 min_frame_periodicity_s = config["SensingSubsystemSettings"]["min_frame_periodicity_ms"].get<double>() * 1e-3;
+                max_waiting_time = config["SensingSubsystemSettings"]["max_waiting_time_ms"].get<double>() * 1e-3;
             }
 
             /**

@@ -10,3 +10,10 @@ MATLAB/Simulink Model/raw_data.csv
 MATLAB/Simulink Model/csvs_to_plot/*
 MATLAB/Simulink Model/generated_plots/*
 MATLAB/Simulink Model/Subsystem_spectrum_sensing.asv
+MATLAB/Simulink Model/.~lock.USRP_test_data_parameter_estimations.csv#
+MATLAB/Simulink Model/USRP_test_data_parameter_estimations.csv
+MATLAB/Simulink Model/Frame_Period_Estimation_error_summary.csv
+MATLAB/Simulink Model/Chirp_Slope_error_summary.csv
+MATLAB/Simulink Model/Chirp_Cycle_Period_error_summary.csv
+MATLAB/Simulink Model/USRP_test_data_parameter_estimations.csv
+MATLAB/Simulink Model/USRP_test_data_parameter_estimations.csv

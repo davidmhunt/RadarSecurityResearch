@@ -145,7 +145,8 @@
                         //have USRP sample until it detects a chirp
                         attacker_usrp_handler -> rx_record_next_frame(& spectrogram_handler, 
                             & energy_detector,
-                            next_rx_sense_start_time);
+                            next_rx_sense_start_time,
+                            spectrogram_handler.max_waiting_time);
                         detection_start_time_us = energy_detector.get_detection_start_time_us();
                         spectrogram_handler.set_detection_start_time_us(detection_start_time_us);
                         energy_detector.save_chirp_detection_signal_to_buffer(& (spectrogram_handler.rx_buffer));
