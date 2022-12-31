@@ -7,6 +7,8 @@
     #include <string>
     #include <complex>
     #include <csignal>
+    #include <mutex>
+    #include <thread>
 
     //JSON class
     #include <nlohmann/json.hpp>
@@ -29,6 +31,9 @@
             public:
                 //enable flag
                 bool enabled;
+
+                //attack status
+                bool attacking; //true when the system is attacking
             private:
                 //pointer to usrp device
                 USRPHandler<data_type> * attacker_usrp_handler;
@@ -40,9 +45,18 @@
                 double attack_start_time_ms;
                 double stream_start_offset_us;
                 std::vector<uhd::time_spec_t> frame_start_times;
+
+                //for tracking how many frames have been loaded and the current attacking frame
+                size_t current_attack_frame; //for tracking the current attack frame
+                size_t next_frame_to_load; //for tracking the next frame to load
+                bool new_frame_start_time_available;
                 
                 //FMCW arguments
                 size_t num_attack_frames;
+
+                //mutex for frame start times to ensure thread safety
+                std::mutex frame_start_times_mutex;
+
             public:
                 size_t attack_start_frame;
             private:
@@ -70,6 +84,7 @@
                         if (enabled)
                         {
                             init_attack_signal_buffer();
+                            init_frame_start_times_buffer();
                         }
                         
                     }                    
@@ -151,7 +166,22 @@
 
                 //attack signal buffer
                 samples_per_buffer = config["USRPSettings"]["TX"]["spb"].get<double>();
+
+                //set attacking flags
+                attacking = false;
             }
+
+            /**
+             * @brief Initialize the buffer that tracks the frame start times
+             * 
+             */
+            void init_frame_start_times_buffer(void){
+                frame_start_times = std::vector<uhd::time_spec_t>(num_attack_frames);
+                current_attack_frame = 0;
+                next_frame_to_load = 0;
+                new_frame_start_time_available = false;
+            }
+
 
             /**
              * @brief load the pre-computed attack signal into the attack signal buffer
@@ -164,6 +194,73 @@
 
                 //load the samples into the buffer
                 attack_signal_buffer.import_from_file(samples_per_buffer);
+            }
+
+            /**
+             * @brief Load a new frame start time into the frame_start_time_buffer
+             * 
+             * @param desired_attack_start_time_ms the desired attack start time in ms
+             */
+            void load_new_frame_start_time(double desired_attack_start_time_ms){
+
+                std::unique_lock<std::mutex> frame_start_times_lock(frame_start_times_mutex, std::defer_lock);
+
+
+                if (next_frame_to_load < num_attack_frames)
+                {
+
+                    //set stream start time
+                    double attack_start_time_s = (desired_attack_start_time_ms - (stream_start_offset_us * 1e-3)) * 1e-3;
+                    
+                    //check to make sure that the attack_start_time is valid
+                    double current_time = attacker_usrp_handler -> usrp -> get_time_now().get_real_secs();
+                    
+                    if((attack_start_time_s - current_time) <= 1e-3)
+                    {
+                        std::cerr << "AttackingSubsystem::load_new_frame_start_time: frame start time occurs before current USRP time" <<std::endl;
+                    }
+                    else
+                    {
+                        if(next_frame_to_load == 0)
+                        {
+                            attacking = true;
+                        }
+
+                        frame_start_times_lock.lock();
+                        frame_start_times[next_frame_to_load] = uhd::time_spec_t(attack_start_time_s);
+                        next_frame_to_load += 1;
+                        new_frame_start_time_available = true;
+                        frame_start_times_lock.unlock();
+                    }
+                }
+            }
+
+            void run(){
+                while (current_attack_frame < num_attack_frames)
+                {
+                    std::unique_lock<std::mutex> frame_start_times_lock(frame_start_times_mutex, std::defer_lock);
+                    frame_start_times_lock.lock();
+                    if (new_frame_start_time_available)
+                    {
+                        std::vector<uhd::time_spec_t> frame_start_time(1);
+                        frame_start_time[0] = frame_start_times[current_attack_frame];
+                        current_attack_frame += 1;
+                        if (current_attack_frame == next_frame_to_load)
+                        {
+                            new_frame_start_time_available = false;
+                        }
+                        frame_start_times_lock.unlock();
+
+                        //transmit the attack
+                        attacker_usrp_handler -> stream_frames_tx_only(frame_start_time, & attack_signal_buffer);
+                        
+                    }
+                    else{
+                        frame_start_times_lock.unlock();
+                        //std::this_thread::sleep_for(std::chrono::milliseconds(int64_t(1)));
+                    }
+                    
+                }
             }
 
             /**
@@ -188,6 +285,7 @@
                 }
                 //std::cout << std::endl;
             }
+
 
             /**
              * @brief run the attack subsystem (assumes frame start times already computed and attack

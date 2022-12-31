@@ -7,6 +7,7 @@
     #include <string>
     #include <complex>
     #include <csignal>
+    #include <thread>
 
     //JSON class
     #include <nlohmann/json.hpp>
@@ -80,9 +81,20 @@
                 void run_attacker(bool multiple_runs = false,
                     size_t run_number = 0){
                     usrp_handler.reset_usrp_clock();
-                    
-                    sensing_subsystem.run(multiple_runs,run_number);
-                    //sensing subsystem will automatically call the attacking subsystem when needed
+
+                    if (attacking_subsystem.enabled)
+                    {
+                        std::thread attacking_subsystem_thread([&]() {
+                            attacking_subsystem.run();
+                        });
+
+                        sensing_subsystem.run(multiple_runs,run_number);
+
+                        attacking_subsystem_thread.join();
+                    }
+                    else{
+                        sensing_subsystem.run(multiple_runs,run_number);
+                    }
                 }
 
                 /**

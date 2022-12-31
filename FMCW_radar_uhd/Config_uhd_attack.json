@@ -6,10 +6,10 @@
             "use_addr":false,
             "addrs": "109.222",
             "ref":"internal",
-            "sampling_rate":28e6,
+            "sampling_rate":29.536e6,
             "center_freq":1.5e9,
             "lo-offset":0.0,
-            "IF_filter_bw":28e6,
+            "IF_filter_bw":29.536e6,
             "wirefmt":"sc16",
             "type":"float",
             "cpufmt":"fc32",
@@ -48,7 +48,7 @@
         "min_recording_time_ms": 2,
         "spectogram_peak_detection_threshold_dB": 7,
         "min_points_per_chirp": 5,
-        "num_victim_frames_to_capture": 7,
+        "num_victim_frames_to_capture": 20,
         "min_frame_periodicity_ms": 20,
         "max_waiting_time_ms": 1000,
         "debug": true,
@@ -56,9 +56,9 @@
     },
     "AttackSubsystemSettings":{
         "tx_file_name": "/home/david/Documents/MATLAB_generated/MATLAB_attacking_chirps_full.bin",
-        "enabled": false,
+        "enabled": true,
         "num_attack_frames": 10,
-        "attack_start_frame": 5,
-        "estimated_frame_periodicity_ms": 33.3299828
+        "attack_start_frame": 7,
+        "estimated_frame_periodicity_ms": 33.3299
     }
 }

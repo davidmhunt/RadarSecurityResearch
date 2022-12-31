@@ -933,14 +933,20 @@
                     bool exit_flag = false;
                     while (true) {
                         if (tx_stream_complete) {
+                            cout_unique_lock.lock();
+                                if(debug){
+                                    std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to exit flag" <<std::endl;
+                                }
+                                cout_unique_lock.unlock();
                             exit_flag = true;
+                            return;
                         }
 
-                        if (not tx_stream->recv_async_msg(tx_async_md)) {
+                        if (not tx_stream->recv_async_msg(tx_async_md,0.01)) {
                             if (exit_flag == true){
                                 cout_unique_lock.lock();
                                 if(debug){
-                                    std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to exit flag" <<std::endl;
+                                    std::cout << "USRPHandler::check_tx_async_messages: exiting async handler due to exit flag and tx metadata timeout" <<std::endl;
                                 }
                                 cout_unique_lock.unlock();
                                 return;
@@ -970,7 +976,9 @@
                             case uhd::async_metadata_t::EVENT_CODE_SEQ_ERROR_IN_BURST:
                                 std::cerr << "USRPHandler::check_tx_async_messages: Packet Loss Detected" << std::endl;
                                 break;
-
+                            case uhd::async_metadata_t::EVENT_CODE_TIME_ERROR:
+                                std::cerr <<  "USRPHandler::check_tx_async_messages: Packet had time that was late" << std::endl;
+                                break;
                             default:
                                 std::cerr <<  "USRPHandler::check_tx_async_messages: Event code: " << tx_async_md.event_code
                                         << std::endl;

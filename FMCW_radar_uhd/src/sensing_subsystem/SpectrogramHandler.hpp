@@ -79,6 +79,7 @@
             data_type frame_tracking_average_frame_duration;
             data_type frame_tracking_average_chirp_duration;
             data_type frame_tracking_average_chirp_slope;
+            bool attack_in_progress; //status for if an attack is in progress
         
         public:
 
@@ -406,6 +407,9 @@
                 //min frame periodicity
                 min_frame_periodicity_s = config["SensingSubsystemSettings"]["min_frame_periodicity_ms"].get<double>() * 1e-3;
                 max_waiting_time = config["SensingSubsystemSettings"]["max_waiting_time_ms"].get<double>() * 1e-3;
+
+                //set attack in progress status flag
+                attack_in_progress = false;
             }
 
             /**
@@ -763,31 +767,63 @@
              */
             void compute_victim_parameters(){
                 
-                //determine number of chirps detected
-                chirp_tracking_num_captured_chirps = detected_slopes.num_samples;
-                
-                //compute average chirp slope
-                data_type sum = 0;
-                for (size_t i = 0; i < chirp_tracking_num_captured_chirps; i++)
-                {
-                    sum += detected_slopes.buffer[i];
-                }
-                chirp_tracking_average_slope = sum/
-                        static_cast<data_type>(chirp_tracking_num_captured_chirps);
-
-                //compute average chirp intercept
-                chirp_tracking_average_chirp_duration = 
-                        (detected_intercepts.buffer[chirp_tracking_num_captured_chirps - 1]
-                        - detected_intercepts.buffer[0])
-                        / static_cast<data_type>(chirp_tracking_num_captured_chirps - 1);
-                
                 //increment frame counter
                 frame_tracking_num_captured_frames += 1;
+                
+                //if an attack is in progress, all chirps except the first chirp are affected by 
+                //interference from the attacker subsystem
+                if(not attack_in_progress)
+                {
+                    //determine number of chirps detected
+                    chirp_tracking_num_captured_chirps = detected_slopes.num_samples;
+                    
+                    //compute average chirp slope
+                    data_type sum = 0;
+                    for (size_t i = 0; i < chirp_tracking_num_captured_chirps; i++)
+                    {
+                        sum += detected_slopes.buffer[i];
+                    }
+                    chirp_tracking_average_slope = sum/
+                            static_cast<data_type>(chirp_tracking_num_captured_chirps);
 
-                //save num captured chirps, average slope, average chirp duration, and start time
-                captured_frames.buffer[frame_tracking_num_captured_frames - 1][1] = static_cast<data_type>(chirp_tracking_num_captured_chirps);
-                captured_frames.buffer[frame_tracking_num_captured_frames - 1][2] = chirp_tracking_average_slope;
-                captured_frames.buffer[frame_tracking_num_captured_frames - 1][3] = chirp_tracking_average_chirp_duration;
+                    //compute average chirp intercept
+                    chirp_tracking_average_chirp_duration = 
+                            (detected_intercepts.buffer[chirp_tracking_num_captured_chirps - 1]
+                            - detected_intercepts.buffer[0])
+                            / static_cast<data_type>(chirp_tracking_num_captured_chirps - 1);
+
+                    //save num captured chirps, average slope, average chirp duration, and start time
+                    captured_frames.buffer[frame_tracking_num_captured_frames - 1][1] = static_cast<data_type>(chirp_tracking_num_captured_chirps);
+                    captured_frames.buffer[frame_tracking_num_captured_frames - 1][2] = chirp_tracking_average_slope;
+                    captured_frames.buffer[frame_tracking_num_captured_frames - 1][3] = chirp_tracking_average_chirp_duration;
+
+                    //compute average chirp slope across all frames
+                    data_type sum_slopes = 0; //sum of all average chirp slopes
+                    data_type sum_count = 0; //sum of total number of chirps detected
+                    for (size_t i = 0; i < frame_tracking_num_captured_frames; i++)
+                    {
+                        sum_slopes += captured_frames.buffer[i][2] * (captured_frames.buffer[i][1] - 1);
+                        sum_count += captured_frames.buffer[i][1] - 1;
+                    }
+                    frame_tracking_average_chirp_slope = sum_slopes/sum_count;
+                    
+                    //compute average chirp curation across all frames
+                    data_type sum_durations = 0; //sum of all average chirp durations
+                    sum_count = 0; //sum of total number of chirps detected
+                    for (size_t i = 0; i < frame_tracking_num_captured_frames; i++)
+                    {
+                        sum_durations += captured_frames.buffer[i][3] * (captured_frames.buffer[i][1] - 1);
+                        sum_count += captured_frames.buffer[i][1] - 1;
+                    }
+                    frame_tracking_average_chirp_duration = sum_durations/sum_count;
+                }
+                else
+                {
+                    bool testing = true;
+                }
+                
+                
+                //estimated frame start time
                 captured_frames.buffer[frame_tracking_num_captured_frames - 1][4] = detected_intercepts.buffer[0]; //time of first chirp
 
                 //TODO: compute precise frame start time
@@ -805,35 +841,15 @@
                         captured_frames.buffer[0][4])
                         / static_cast<data_type>(frame_tracking_num_captured_frames - 1);
                     
-                    //predict next frame
+                    //predict next frame - predict the time of the second chirp so that the attack doesn't interfere with the 1st chirp
                     captured_frames.buffer[frame_tracking_num_captured_frames - 1][5] = 
                         captured_frames.buffer[frame_tracking_num_captured_frames - 1][4]
-                        + frame_tracking_average_frame_duration;
+                        + 1 * frame_tracking_average_frame_duration + frame_tracking_average_chirp_duration;
                 }
                 else{
                     captured_frames.buffer[frame_tracking_num_captured_frames - 1][0] = 0;
                     captured_frames.buffer[frame_tracking_num_captured_frames - 1][5] = 0;
                 }
-
-                //compute average chirp slope across all frames
-                data_type sum_slopes = 0; //sum of all average chirp slopes
-                data_type sum_count = 0; //sum of total number of chirps detected
-                for (size_t i = 0; i < frame_tracking_num_captured_frames; i++)
-                {
-                    sum_slopes += captured_frames.buffer[i][2] * (captured_frames.buffer[i][1] - 1);
-                    sum_count += captured_frames.buffer[i][1] - 1;
-                }
-                frame_tracking_average_chirp_slope = sum_slopes/sum_count;
-                
-                //compute average chirp curation across all frames
-                data_type sum_durations = 0; //sum of all average chirp durations
-                sum_count = 0; //sum of total number of chirps detected
-                for (size_t i = 0; i < frame_tracking_num_captured_frames; i++)
-                {
-                    sum_durations += captured_frames.buffer[i][3] * (captured_frames.buffer[i][1] - 1);
-                    sum_count += captured_frames.buffer[i][1] - 1;
-                }
-                frame_tracking_average_chirp_duration = sum_durations/sum_count;
             }
 
             /**
@@ -852,6 +868,15 @@
              */
             double get_next_frame_start_time_prediction_ms(){
                 return static_cast<double>(captured_frames.buffer[frame_tracking_num_captured_frames - 1][5]) * 1e-3;
+            }
+
+            /**
+             * @brief Set the attack in progress flag (on true, spectrogram handler changes behavior to avoid interference with attacking subsystem)
+             * 
+             * @param status status of the attacking subsystem (true means attack is ongoing)
+             */
+            void set_attack_in_progress(bool status){
+                attack_in_progress = status;
             }
 
             /**

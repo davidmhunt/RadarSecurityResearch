@@ -66,7 +66,8 @@ target_link_libraries(ATTACKER  PRIVATE nlohmann_json::nlohmann_json
                                 PRIVATE BufferHandler
                                 PRIVATE USRPHandler
                                 PRIVATE SensingSubsystem
-                                PRIVATE AttackingSubsystem)
+                                PRIVATE AttackingSubsystem
+                                PRIVATE Threads::Threads)
 target_link_libraries(FMCWHandler   PRIVATE RADAR
                                     PRIVATE ATTACKER
                                     PRIVATE nlohmann_json::nlohmann_json)

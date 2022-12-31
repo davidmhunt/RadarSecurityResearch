@@ -157,11 +157,12 @@
                             + spectrogram_handler.min_frame_periodicity_s;
                         
                         if ((attacking_subsystem -> enabled) && (i > attacking_subsystem -> attack_start_frame))
-                        {
+                        {   spectrogram_handler.set_attack_in_progress(true);
                             double next_frame_start_time = spectrogram_handler.get_next_frame_start_time_prediction_ms();
-                            attacking_subsystem -> compute_frame_start_times(next_frame_start_time);
-                            attacking_subsystem -> run_attack_subsystem();
-                            break;
+                            attacking_subsystem -> load_new_frame_start_time(next_frame_start_time);
+                            //attacking_subsystem -> compute_frame_start_times(next_frame_start_time);
+                            //attacking_subsystem -> run_attack_subsystem();
+                            //break;
                         }
                         
                     }
