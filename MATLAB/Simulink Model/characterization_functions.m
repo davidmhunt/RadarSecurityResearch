@@ -331,6 +331,8 @@ classdef characterization_functions
                 metric_units - a string of the units of the metric that the
                     summary is being generated for
                 percentile - the percentile to compute for the tail
+                scale_factor - scale the error by a specified factor
+                (used to change unit scales)
         %}
         function summary_table = generate_testing_summary(...
                 read_file_path,...
@@ -339,13 +341,14 @@ classdef characterization_functions
                 abs_errors_idx, ...
                 metric_title, ...
                 metric_units, ...
-                percentile)
+                percentile,...
+                scale_factor)
             
             %plot the cdf of the chirp slope errors
             table_data_results = readtable(read_file_path);
             actual_values = table_data_results{:,actual_values_idx};
             estimated_values = table_data_results{:,estimated_values_idx};
-            abs_errors = table_data_results{:,abs_errors_idx};
+            abs_errors = table_data_results{:,abs_errors_idx} * scale_factor;
 
             %get the number of failed trials
             num_failed_trials = size(abs_errors(isnan(abs_errors)),1);
@@ -571,117 +574,16 @@ classdef characterization_functions
             saveas(gcf, "generated_plots/victim_test_configuration_cdfs.png")
         end
 
-        %{
-            Purpose: generate a table of the key statistics for the
-                absolute error of the slope estimation and plot the cdf of the
-                absolute error
-        %}
-        function summary_table = generate_slope_estimation_summary(read_file_path)
-            
-            %plot the cdf of the chirp slope errors
-            table_data_results = readtable(read_file_path);
-            actual_values = table_data_results{:,1};
-            estimated_values = table_data_results{:,5};
-            abs_errors = table_data_results{:,8};
-            figure;
-            [h,stats] = cdfplot(abs_errors);
-            xlabel("Chirp Slope Error (MHz/us)")
-            title("CDF of Chirp Slope Errors")
-            
-            %statistics based on absolute errors
-            mean_error = mean(abs_errors);
-            variance_error = var(abs_errors);
-            MSE_error = mse(actual_values,estimated_values);
-            tail_95th_percentile = prctile(abs_errors,95);
-            
-            variable_names = ["Mean (MHz/us)", "Variance (MHz/us)^2", "MSE (MHz/us)^2", "95th Percentile (MHz/us)"];
-            summary_table = array2table( ...
-                [mean_error,...
-                variance_error,...
-                MSE_error,...
-                tail_95th_percentile], ...
-                "VariableNames",variable_names);
-            
-            saveas(gcf, "generated_plots/slope_error_estimation_cdf.png")
-
-        end
-
-        %{
-            Purpose: generate a table of the key statistics for the
-                absolute error of the chirp cycle period estimation and plot the cdf of the
-                absolute error
-        %}
-        function summary_table = generate_chirp_period_estimation_summary(read_file_path)
-            
-            %plot the cdf of the chirp slope errors
-            table_data_results = readtable(read_file_path);
-            actual_values = table_data_results{:,2};
-            estimated_values = table_data_results{:,6};
-            abs_errors = table_data_results{:,9};
-            figure;
-            [h,stats] = cdfplot(abs_errors);
-            xlabel("Chirp Cycle Period Estimation Error (us)")
-            title("CDF of Chirp Cycle Period Estimation Errors")
-            
-            %statistics based on absolute errors
-            mean_error = mean(abs_errors);
-            variance_error = var(abs_errors);
-            MSE_error = mse(actual_values,estimated_values);
-            tail_95th_percentile = prctile(abs_errors,95);
-            
-            variable_names = ["Mean (us)", "Variance (us)^2", "MSE (us)^2", "95th Percentile (us)"];
-            summary_table = array2table( ...
-                [mean_error,...
-                variance_error,...
-                MSE_error,...
-                tail_95th_percentile], ...
-                "VariableNames",variable_names);
-
-            saveas(gcf, "generated_plots/chirp_cycle_period_error_estimation_cdf.png")
-        end
-
-        %{
-            Purpose: generate a table of the key statistics for the
-                absolute error of the frame period estimation and plot the cdf of the
-                absolute error
-        %}
-        function summary_table = generate_frame_period_estimation_summary(read_file_path)
-            
-            %plot the cdf of the chirp slope errors
-            table_data_results = readtable(read_file_path);
-            actual_values = table_data_results{:,3};
-            estimated_values = table_data_results{:,7};
-            abs_errors = table_data_results{:,10};
-            figure;
-            [h,stats] = cdfplot(abs_errors);
-            xlabel("Frame Period Estimation Error (us)")
-            title("CDF of Frame Period Estimation Errors")
-            
-            %statistics based on absolute errors
-            mean_error = mean(abs_errors);
-            variance_error = var(abs_errors);
-            MSE_error = mse(actual_values,estimated_values);
-            tail_95th_percentile = prctile(abs_errors,95);
-            
-            variable_names = ["Mean (us)", "Variance (us)^2", "MSE (us)^2", "95th Percentile (us)"];
-            summary_table = array2table( ...
-                [mean_error,...
-                variance_error,...
-                MSE_error,...
-                tail_95th_percentile], ...
-                "VariableNames",variable_names);
-
-            saveas(gcf, "generated_plots/frame_period_error_estimation_cdf.png")
-        end
         
         %{
             Purpose: Plot the absolute error of the predicted frame start
             time with respect to the number of frames sensed
             Inputs:
                 read_file_path: the path to the file 
+                use_log_scale: on true, uses a log scale
         
         %}
-        function plot_predicted_start_time_errors(read_file_path)
+        function plot_predicted_start_time_errors(read_file_path,use_log_scale)
             %access the saved data for the predicted start time errors
             table_data_results = readtable(read_file_path);
             prediction_errors = abs(table_data_results{:,:});
@@ -711,17 +613,23 @@ classdef characterization_functions
             title("Timing Estimation error vs Number of Frames")
             xlabel("Number of Frames Sensed")
             ylabel("error (us)")
-            y_lim = 3 *max(mean_absolute_errors);
+            y_lim = 1.5 *max(mean_absolute_errors);
             ylim([0, y_lim])
             xlim([0,size(prediction_errors,2)+ 1])
+            if  use_log_scale
+                set(gca, 'YScale','log');
+            end
             
             %add in the axis for range error
             yyaxis right
             plot(errors_in_range)
             ylabel("corresponding range error (m)")
             set(gca,"YColor", 'black')
-            y_lim = 3 * max(errors_in_range);
+            y_lim = 1.5 * max(errors_in_range);
             ylim([0, y_lim])
+            if use_log_scale
+                set(gca, 'YScale','log');
+            end
 
             saveas(gcf, "generated_plots/predicted_start_time_errors.png")
             
