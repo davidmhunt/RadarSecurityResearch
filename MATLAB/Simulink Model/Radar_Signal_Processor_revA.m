@@ -424,6 +424,9 @@ classdef Radar_Signal_Processor_revA < handle
                             * obj.tgt_velocity)...
                             + obj.num_bins_zoom * obj.Radar.Range_Res_m,...
                             obj.Radar.Range_Max_m)])
+                    xlabel("Velocity (m/s)")
+                    ylabel("Range(m)")
+                    title("CA-CFAR Detections")
                     drawnow
                     obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
                 end
@@ -470,6 +473,9 @@ classdef Radar_Signal_Processor_revA < handle
                             + obj.num_bins_zoom * obj.Radar.Range_Res_m,...
                             obj.Radar.Range_Max_m)])
                     cla;
+                    xlabel("Velocity (m/s)")
+                    ylabel("Range(m)")
+                    title("CA-CFAR Detections")
                     drawnow;
                     obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
                 end
