@@ -156,7 +156,7 @@ namespace FMCWHandler_namespace {
                         //run the attacker
                         Attacker.run_attacker(multiple_runs,run_number);
                     }
-                    else
+                    else if (victim_enabled)
                     {
                         //run the victim
                         Victim.run_RADAR();
