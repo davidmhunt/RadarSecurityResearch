@@ -694,20 +694,30 @@
                 void init_stream_args(void){
                     std::string cpu_format = config["USRPSettings"]["Multi-USRP"]["cpufmt"].get<std::string>();
                     std::string wirefmt = config["USRPSettings"]["Multi-USRP"]["wirefmt"].get<std::string>();
+
+                    //get the samples per buffer
+                    tx_samples_per_buffer = config["USRPSettings"]["TX"]["spb"].get<size_t>();
+                    rx_samples_per_buffer = config["USRPSettings"]["RX"]["spb"].get<size_t>();
                     
                     //configure tx stream args
                     std::vector<size_t> tx_channels(1,tx_channel);
                     tx_stream_args = uhd::stream_args_t(cpu_format,wirefmt);
                     tx_stream_args.channels = tx_channels;
                     tx_stream = usrp -> get_tx_stream(tx_stream_args);
-                    tx_samples_per_buffer = tx_stream -> get_max_num_samps();
+                    if (tx_samples_per_buffer == 0)
+                    {
+                        tx_samples_per_buffer = tx_stream -> get_max_num_samps();
+                    }
                     
                     //configure rx stream args
                     std::vector<size_t> rx_channels(1,rx_channel);
                     rx_stream_args = uhd::stream_args_t(cpu_format,wirefmt);
                     rx_stream_args.channels = rx_channels;
                     rx_stream = usrp -> get_rx_stream(rx_stream_args);
+                    if(rx_samples_per_buffer ==0)
+                    {
                     rx_samples_per_buffer = rx_stream -> get_max_num_samps();
+                    }
 
                     //print the result
                     if(debug){
