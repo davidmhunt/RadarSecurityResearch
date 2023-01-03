@@ -42,8 +42,8 @@
         }
     },
     "RadarSettings":{
-        "tx_file_folder_path":"/home/david/Documents/MATLAB_generated/MATLAB_full_chirps/",
-        "rx_file_folder_path":"/home/david/Documents/MATLAB_generated/cpp_rx_data_files/",
+        "tx_file_folder_path":"/home/davidh/Documents/MATLAB_generated/MATLAB_full_chirps/",
+        "rx_file_folder_path":"/home/davidh/Documents/MATLAB_generated/cpp_rx_data_files/",
         "num_chirps": 128,
         "num_frames": 50,
         "frame_periodicity_ms": 33.33,

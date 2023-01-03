@@ -52,10 +52,10 @@
         "min_frame_periodicity_ms": 20,
         "max_waiting_time_ms": 1000,
         "debug": true,
-        "save_file_path": "/home/david/Documents/MATLAB_generated/cpp_sensed_parameters/"
+        "save_file_path": "/home/davidh/Documents/MATLAB_generated/cpp_sensed_parameters/"
     },
     "AttackSubsystemSettings":{
-        "tx_file_name": "/home/david/Documents/MATLAB_generated/MATLAB_attacking_chirps_full.bin",
+        "tx_file_name": "/home/davidh/Documents/MATLAB_generated/MATLAB_attacking_chirps_full.bin",
         "enabled": false,
         "num_attack_frames": 20,
         "attack_start_frame": 10,
