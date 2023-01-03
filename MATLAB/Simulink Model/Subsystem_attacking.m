@@ -284,10 +284,10 @@ classdef Subsystem_attacking  < handle
             %}
             if contains(obj.attack_mode,"similar slope") 
                 if obj.Attacker.FMCW_sample_rate_Msps >= 500 %high BW attacks
-                    obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.007;
+                    obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.003; %- previously used 0.007
                     obj.additional_time_delay_us = ...
-                        0.8 * obj.Attacker.Bandwidth_MHz *...
-                        (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us);
+                        0.5 * obj.Attacker.Bandwidth_MHz *...
+                        (1/obj.estimated_frequency_slope_MHz_us - 1/obj.FrequencySlope_MHz_us); %previously used 0.8
                 elseif obj.Attacker.FMCW_sample_rate_Msps >= 50 % mid BW attacks
                         obj.FrequencySlope_MHz_us = obj.estimated_frequency_slope_MHz_us + obj.estimated_frequency_slope_MHz_us * 0.015;
                         obj.additional_time_delay_us = ...

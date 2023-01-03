@@ -1,7 +1,10 @@
 {
     "USRPSettings":{
         "Multi-USRP":{
-            "args":"addr=192.168.70.2",
+            "use_serial":false,
+            "serial": "3231EFC",
+            "use_addr":true,
+            "addrs": "192.168.70.7",
             "ref":"internal",
             "sampling_rate":100e6,
             "center_freq":1.5e9,
@@ -13,40 +16,37 @@
             "stream_start_time":0.25
         },
         "TX":{
-            "file":"",
+            "enabled":true,
             "spb":0,
-            "gain":10,
+            "gain":50,
             "ant":"TX/RX",
-            "subdev":"B:0",
+            "subdev":"A:0",
             "channel":0
         },
         "RX":{
-            "file":"",
+            "enabled":true,
             "spb":0,
             "spp":0,
-            "gain":10,
+            "gain":50,
             "ant":"RX2",
-            "subdev":"B:0",
-            "channel":0,
-            "offset_us": 0.8433
+            "subdev":"A:0",
+            "channel": 0,
+            "offset_us": 5.5989
         },
         "AdditionalSettings":{
             "setup_time":1.0,
             "skip-lo":false,
             "int-n":false,
-            "bufferHandler_debug":false,
             "simplified_streamer_metadata":true,
-            "synchronize_rx_tx": true,
-            "synchronize_rx_tx_debug":true,
-            "rx_sync_file_name": "/home/zq40/Desktop/David_Radar/MATLAB_generated/rx__sync_data.bin",
-            "sync_out_file_name": "/home/zq40/Desktop/David_Radar/MATLAB_generated/sync_out_data.bin"
+            "debug":true
         }
     },
-    "FMCWSettings":{
-        "tx_file_name":"/home/zq40/Desktop/David_Radar/MATLAB_generated/chirp_full.bin",
-        "rx_file_name":"/home/zq40/Desktop/David_Radar/MATLAB_generated/rx_data.bin",
-        "num_chirps": 256,
-        "num_frames": 30,
-        "frame_periodicity_ms": 33.33
+    "RadarSettings":{
+        "tx_file_folder_path":"/home/david/Documents/MATLAB_generated/MATLAB_full_chirps/",
+        "rx_file_folder_path":"/home/david/Documents/MATLAB_generated/cpp_rx_data_files/",
+        "num_chirps": 128,
+        "num_frames": 50,
+        "frame_periodicity_ms": 33.33,
+        "debug":false
     }
 }

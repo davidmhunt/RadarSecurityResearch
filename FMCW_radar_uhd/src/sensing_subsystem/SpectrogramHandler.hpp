@@ -56,6 +56,7 @@
 
             //peak_detection_parameters
             data_type peak_detection_threshold;
+            data_type spectrogram_absolute_max_val;
 
             //frequency and timing variables
             data_type FMCW_sampling_rate;
@@ -266,6 +267,7 @@
 
                 //set the peak detection threshold for the spectogram
                 peak_detection_threshold = config["SensingSubsystemSettings"]["spectogram_peak_detection_threshold_dB"].get<data_type>();
+                spectrogram_absolute_max_val = 0;
             }
 
 
@@ -616,30 +618,34 @@
                 data_type max_val;
                 size_t idx;
 
-                //variable to track the absolute maximum value detected in the spectrogram
-                data_type absolute_max_val = generated_spectrogram.buffer[0][0];
-
                 //clear the detected times and frequencies buffers
                 detected_times.clear();
                 detected_frequencies.clear();
 
-                //get the maximum_value from each computed_spectrogram
-                for (size_t i = 0; i < num_rows_spectrogram; i++)
+                if(not attack_in_progress)
                 {
-                    max_val_and_idx = compute_max_val(generated_spectrogram.buffer[i]);
-                    max_val = std::get<0>(max_val_and_idx);
-                    idx = std::get<1>(max_val_and_idx);
-                    spectrogram_points_values.buffer[i] = max_val;
-                    spectrogram_points_indicies.buffer[i] = idx;
+                    //variable to track the absolute maximum value detected in the spectrogram
+                    spectrogram_absolute_max_val = generated_spectrogram.buffer[0][0];
 
-                    //update the max value
-                    if (max_val > absolute_max_val)
+                    //get the maximum_value from each computed_spectrogram
+                    for (size_t i = 0; i < num_rows_spectrogram; i++)
                     {
-                        absolute_max_val = max_val;
+                        max_val_and_idx = compute_max_val(generated_spectrogram.buffer[i]);
+                        max_val = std::get<0>(max_val_and_idx);
+                        idx = std::get<1>(max_val_and_idx);
+                        spectrogram_points_values.buffer[i] = max_val;
+                        spectrogram_points_indicies.buffer[i] = idx;
+
+                        //update the max value
+                        if (max_val > spectrogram_absolute_max_val)
+                        {
+                            spectrogram_absolute_max_val = max_val;
+                        }
                     }
                 }
                 
-                data_type threshold = absolute_max_val - peak_detection_threshold;
+                
+                data_type threshold = spectrogram_absolute_max_val - peak_detection_threshold;
                 //go through the spectrogram_points and zero out the points below the threshold
                 for (size_t i = 0; i < num_rows_spectrogram; i ++){
                     if (spectrogram_points_values.buffer[i] > threshold)
@@ -807,7 +813,7 @@
                     }
                     frame_tracking_average_chirp_slope = sum_slopes/sum_count;
                     
-                    //compute average chirp curation across all frames
+                    //compute average chirp duration across all frames
                     data_type sum_durations = 0; //sum of all average chirp durations
                     sum_count = 0; //sum of total number of chirps detected
                     for (size_t i = 0; i < frame_tracking_num_captured_frames; i++)
@@ -817,10 +823,6 @@
                     }
                     frame_tracking_average_chirp_duration = sum_durations/sum_count;
                 }
-                else
-                {
-                    bool testing = true;
-                }
                 
                 
                 //estimated frame start time
@@ -829,7 +831,8 @@
                 //TODO: compute precise frame start time
 
                 //compute frame duration, average frame duration, and predict next frame
-                if(frame_tracking_num_captured_frames > 1){
+                if(frame_tracking_num_captured_frames > 1)
+                {
                     //compute and save frame duration
                     captured_frames.buffer[frame_tracking_num_captured_frames - 1][0] =
                         captured_frames.buffer[frame_tracking_num_captured_frames - 1][4]
@@ -846,7 +849,8 @@
                         captured_frames.buffer[frame_tracking_num_captured_frames - 1][4]
                         + 1 * frame_tracking_average_frame_duration + frame_tracking_average_chirp_duration;
                 }
-                else{
+                else
+                {
                     captured_frames.buffer[frame_tracking_num_captured_frames - 1][0] = 0;
                     captured_frames.buffer[frame_tracking_num_captured_frames - 1][5] = 0;
                 }

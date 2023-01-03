@@ -34,6 +34,9 @@
 
                 //attack status
                 bool attacking; //true when the system is attacking
+
+                //attack complete (for sensing system to tell attacking subsystem that the attack is complete)
+                bool sensing_complete;
             private:
                 //pointer to usrp device
                 USRPHandler<data_type> * attacker_usrp_handler;
@@ -56,6 +59,7 @@
 
                 //mutex for frame start times to ensure thread safety
                 std::mutex frame_start_times_mutex;
+                std::mutex sensing_complete_mutex;
 
             public:
                 size_t attack_start_frame;
@@ -169,6 +173,7 @@
 
                 //set attacking flags
                 attacking = false;
+                sensing_complete = false;
             }
 
             /**
@@ -236,7 +241,7 @@
             }
 
             void run(){
-                while (current_attack_frame < num_attack_frames)
+                while (current_attack_frame < num_attack_frames && not get_sensing_complete()) //make sure that the sensing subsystem is still active
                 {
                     std::unique_lock<std::mutex> frame_start_times_lock(frame_start_times_mutex, std::defer_lock);
                     frame_start_times_lock.lock();
@@ -263,6 +268,35 @@
                 }
             }
 
+            /**
+             * @brief Set the sensing complete object's value
+             * 
+             * @param new_value - set to true if the sensing subsystem is no longer performing sensing
+             */
+            void set_sensing_complete(bool new_value){
+                std::unique_lock<std::mutex> sensing_complete_lock(sensing_complete_mutex, std::defer_lock);
+                
+                sensing_complete_lock.lock();
+                sensing_complete = new_value;
+                sensing_complete_lock.unlock();
+            }
+
+            /**
+             * @brief Get the attack complete object's value
+             * 
+             * @return true - sensing subsystem is no longer performing sensing
+             * @return false - sensing subsystem is still sensing
+             */
+            bool get_sensing_complete(){
+                std::unique_lock<std::mutex> sensing_complete_lock(sensing_complete_mutex, std::defer_lock);
+                
+                sensing_complete_lock.lock();
+                bool sensing_complete_status = sensing_complete;
+                sensing_complete_lock.unlock();
+
+                return sensing_complete_status;
+            }
+            
             /**
              * @brief Computes the frame start times in advance, and applies an offset if one is necessary
              * 

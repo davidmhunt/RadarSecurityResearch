@@ -1,10 +1,10 @@
 {
     "USRPSettings":{
         "Multi-USRP":{
-            "use_serial":true,
+            "use_serial":false,
             "serial": "3231EB8",
-            "use_addr":false,
-            "addrs": "109.222",
+            "use_addr":true,
+            "addrs": "192.168.70.3",
             "ref":"internal",
             "sampling_rate":29.536e6,
             "center_freq":1.5e9,
@@ -20,7 +20,7 @@
             "spb":2040,
             "gain":50,
             "ant":"TX/RX",
-            "subdev":"A:A A:B",
+            "subdev":"A:0",
             "channel":0
         },
         "RX":{
@@ -29,7 +29,7 @@
             "spp":0,
             "gain":50,
             "ant":"RX2",
-            "subdev":"A:A A:B",
+            "subdev":"A:0",
             "channel":0,
             "offset_us": 5.5989
         },
@@ -38,7 +38,7 @@
             "skip-lo":false,
             "int-n":false,
             "simplified_streamer_metadata":true,
-            "debug":false
+            "debug":true
         }
     },
     "SensingSubsystemSettings":{

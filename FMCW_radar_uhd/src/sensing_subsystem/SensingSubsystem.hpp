@@ -156,16 +156,20 @@
                         next_rx_sense_start_time = spectrogram_handler.get_last_frame_start_time_s() * 1e-6
                             + spectrogram_handler.min_frame_periodicity_s;
                         
+                        //send to attacker if enabled
                         if ((attacking_subsystem -> enabled) && (i > attacking_subsystem -> attack_start_frame))
                         {   spectrogram_handler.set_attack_in_progress(true);
                             double next_frame_start_time = spectrogram_handler.get_next_frame_start_time_prediction_ms();
                             attacking_subsystem -> load_new_frame_start_time(next_frame_start_time);
-                            //attacking_subsystem -> compute_frame_start_times(next_frame_start_time);
-                            //attacking_subsystem -> run_attack_subsystem();
-                            //break;
                         }
-                        
                     }
+
+                    //tell attacking subsystem that sensing is not longer being performed
+                    if (attacking_subsystem -> enabled)
+                    {
+                        attacking_subsystem -> set_sensing_complete(true);
+                    }
+                    
 
                     if (debug)
                     {
