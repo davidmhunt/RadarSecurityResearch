@@ -197,7 +197,7 @@
                      // create a usrp device
                     if (config["USRPSettings"]["Multi-USRP"]["use_serial"].is_null() == false &&
                         config["USRPSettings"]["Multi-USRP"]["use_serial"].get<bool>() == true &&
-                        config["USRPSettings"]["Multi-USRP"]["serial"].is_null() == false &&
+                        config["USRPSettings"]["Multi-USRP"]["serial"].is_null() == false &&find
                         config["USRPSettings"]["Multi-USRP"]["serial"].get<std::string>().empty() == false)
                     {
                         
@@ -226,7 +226,7 @@
                             std::cout << "USRPHandler::create_USRP_device:Creating the usrp device with addrs: " <<  addr << std::endl;
                         }
                         
-                        uhd::device_addr_t device = find_device_serial(addr);
+                        uhd::device_addr_t device = find_device_addr(addr);
                         
                         usrp = uhd::usrp::multi_usrp::make(device);
                         
