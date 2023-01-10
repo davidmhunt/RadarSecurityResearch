@@ -1222,11 +1222,11 @@ classdef Subsystem_spectrum_sensing < handle
         
                 %intercept errors
                 obj.Debugger.detected_chirp_intercepts_errors(:,1:2) = obj.Debugger.detected_chirp_intercepts(:,1:2);
-                obj.Debugger.detected_chirp_intercepts_errors(:,3) = obj.Debugger.detected_chirp_intercepts(:,3) - true_chirp_intercepts; 
+                obj.Debugger.detected_chirp_intercepts_errors(:,3) = (obj.Debugger.detected_chirp_intercepts(:,3) - true_chirp_intercepts); 
         
                 %slope errors
                 obj.Debugger.detected_chirp_slopes_errors(:,1:2) = obj.Debugger.detected_chirp_slopes(:,1:2);
-                obj.Debugger.detected_chirp_slopes_errors(:,3) = obj.Debugger.detected_chirp_slopes(:,3) - victim.FrequencySlope_MHz_us;
+                obj.Debugger.detected_chirp_slopes_errors(:,3) = (obj.Debugger.detected_chirp_slopes(:,3) - victim.FrequencySlope_MHz_us);
         
                 %error for time points
                 obj.Debugger.detected_times_errors(:,1:2) = obj.Debugger.detected_times(:,1:2);
