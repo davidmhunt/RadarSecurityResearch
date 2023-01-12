@@ -189,7 +189,7 @@
                 void run(bool multiple_runs = false,
                     size_t run_number = 0){
                     
-                    data_type detection_start_time_us;
+                    double detection_start_time_us;
                     double next_rx_sense_start_time = 
                         (attacker_usrp_handler -> usrp -> get_time_now().get_real_secs()) 
                         + spectrogram_handler.min_frame_periodicity_s;

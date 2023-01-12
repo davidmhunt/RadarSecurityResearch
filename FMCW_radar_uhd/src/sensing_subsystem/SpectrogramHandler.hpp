@@ -59,27 +59,27 @@
             data_type spectrogram_absolute_max_val;
 
             //frequency and timing variables
-            data_type FMCW_sampling_rate;
-            data_type frequency_resolution;
-            data_type frequency_sampling_period;
-            data_type detected_time_offset;
-            std::vector<data_type> frequencies;
-            std::vector<data_type> times;
+            double FMCW_sampling_rate;
+            double frequency_resolution;
+            double frequency_sampling_period;
+            double detected_time_offset;
+            std::vector<double> frequencies;
+            std::vector<double> times;
 
             //clustering parameters
             size_t min_points_per_chirp;
             int max_cluster_index;
 
             //timing parameters
-            data_type detection_start_time_us;
-            const data_type c = 2.99792458e8;
+            double detection_start_time_us;
+            const double c = 2.99792458e8;
             size_t chirp_tracking_num_captured_chirps;
-            data_type chirp_tracking_average_slope; //in MHz/us
-            data_type chirp_tracking_average_chirp_duration; //in us
+            double chirp_tracking_average_slope; //in MHz/us
+            double chirp_tracking_average_chirp_duration; //in us
             size_t frame_tracking_num_captured_frames;
-            data_type frame_tracking_average_frame_duration;
-            data_type frame_tracking_average_chirp_duration;
-            data_type frame_tracking_average_chirp_slope;
+            double frame_tracking_average_frame_duration;
+            double frame_tracking_average_chirp_duration;
+            double frame_tracking_average_chirp_slope;
             bool attack_in_progress; //status for if an attack is in progress
         
         public:
@@ -111,18 +111,18 @@
                 Buffer_1D<size_t> spectrogram_points_indicies;
 
                 //frequency and timing bins
-                Buffer_1D<data_type> detected_times;
-                Buffer_1D<data_type> detected_frequencies;
+                Buffer_1D<double> detected_times;
+                Buffer_1D<double> detected_frequencies;
 
                 //cluster indicies
                 Buffer_1D<int> cluster_indicies;
 
                 //buffers for detected chirps
-                Buffer_1D<data_type> detected_slopes;
-                Buffer_1D<data_type> detected_intercepts;
+                Buffer_1D<double> detected_slopes;
+                Buffer_1D<double> detected_intercepts;
 
                 //buffer for tracking victim frames
-                Buffer_2D<data_type> captured_frames; //colums as follows: duration, number of chirps, average slope, average chirp duration, start time, next predicted frame start time
+                Buffer_2D<double> captured_frames; //colums as follows: duration, number of chirps, average slope, average chirp duration, start time, next predicted frame start time
             
             //debug status
             bool debug;
@@ -360,11 +360,11 @@
             void initialize_spectrogram_params(){
 
                 //specify the sampling rate
-                FMCW_sampling_rate = config["USRPSettings"]["Multi-USRP"]["sampling_rate"].get<data_type>();
+                FMCW_sampling_rate = config["USRPSettings"]["Multi-USRP"]["sampling_rate"].get<double>();
                 samples_per_buffer_rx_signal = config["USRPSettings"]["RX"]["spb"].get<size_t>();
 
                 //determine the frequency sampling period based on the sampling rate
-                data_type freq_sampling_period;
+                double freq_sampling_period;
                 if (FMCW_sampling_rate > 500e6)
                 {
                     freq_sampling_period = 0.5e-6;
@@ -383,12 +383,12 @@
 
                 //recompute the actual frequency sampling window using the number of samples 
                 // per sampling window
-                freq_sampling_period = static_cast<data_type>(samples_per_sampling_window) /
+                freq_sampling_period = static_cast<double>(samples_per_sampling_window) /
                                             FMCW_sampling_rate;
                 
                 //determine the number of rows in the rx signal buffer
-                data_type row_period = static_cast<data_type>(samples_per_buffer_rx_signal)/FMCW_sampling_rate;
-                data_type min_recording_time_ms = config["SensingSubsystemSettings"]["min_recording_time_ms"].get<data_type>();
+                double row_period = static_cast<double>(samples_per_buffer_rx_signal)/FMCW_sampling_rate;
+                double min_recording_time_ms = config["SensingSubsystemSettings"]["min_recording_time_ms"].get<double>();
                 num_rows_rx_signal = static_cast<size_t>(std::ceil((min_recording_time_ms * 1e-3)/row_period));
 
                 //determine the number of samples per rx signal
@@ -439,20 +439,20 @@
                 spectrogram_points_indicies = Buffer_1D<size_t>(num_rows_spectrogram);
 
                 //tracking detected times
-                detected_times = Buffer_1D<data_type>(num_rows_spectrogram);
-                detected_frequencies = Buffer_1D<data_type>(num_rows_spectrogram);
+                detected_times = Buffer_1D<double>(num_rows_spectrogram);
+                detected_frequencies = Buffer_1D<double>(num_rows_spectrogram);
 
                 //clustering indicies
                 cluster_indicies = Buffer_1D<int>(num_rows_spectrogram);
 
                 //detected slopes and intercepts
-                detected_slopes = Buffer_1D<data_type>(num_rows_spectrogram);
-                detected_intercepts = Buffer_1D<data_type>(num_rows_spectrogram);
+                detected_slopes = Buffer_1D<double>(num_rows_spectrogram);
+                detected_intercepts = Buffer_1D<double>(num_rows_spectrogram);
 
                 //captured frames
                 max_frames_to_capture = 
                     config["SensingSubsystemSettings"]["num_victim_frames_to_capture"].get<size_t>();
-                captured_frames = Buffer_2D<data_type>(max_frames_to_capture,6);
+                captured_frames = Buffer_2D<double>(max_frames_to_capture,6);
             }
 
             /**
@@ -462,32 +462,32 @@
             void initialize_freq_and_timing_bins(){
                 //initialize the frequency parameters and buffers
                 frequency_resolution = FMCW_sampling_rate * 1e-6 /
-                            static_cast<data_type>(fft_size);
+                            static_cast<double>(fft_size);
 
-                frequencies = std::vector<data_type>(fft_size,0);
+                frequencies = std::vector<double>(fft_size,0);
 
                 for (size_t i = 0; i < fft_size; i++)
                 {
-                    frequencies[i] = frequency_resolution * static_cast<data_type>(i);
+                    frequencies[i] = frequency_resolution * static_cast<double>(i);
                 }
 
                 //initialize the timing parameters and buffers
                     //compute the timing offset
                     frequency_sampling_period = 
-                            static_cast<data_type>(samples_per_sampling_window)/
+                            static_cast<double>(samples_per_sampling_window)/
                                 (FMCW_sampling_rate * 1e-6);
                     
                     detected_time_offset = frequency_sampling_period * 
-                                static_cast<data_type>(fft_size) / 2 /
-                                static_cast<data_type>(samples_per_sampling_window);
+                                static_cast<double>(fft_size) / 2 /
+                                static_cast<double>(samples_per_sampling_window);
                     
                     //create the times buffer
-                    times = std::vector<data_type>(num_rows_spectrogram,0);
+                    times = std::vector<double>(num_rows_spectrogram,0);
                 
                     for (size_t i = 0; i < num_rows_spectrogram; i++)
                     {
                         times[i] = (frequency_sampling_period *
-                                    static_cast<data_type>(i)) + detected_time_offset;
+                                    static_cast<double>(i)) + detected_time_offset;
                     }
             }
 
@@ -579,14 +579,15 @@
                 initialize_debug();
                 initialize_save_file_path();
             }
+            
             /**
              * @brief Set the detection start time us object
              * 
              * @param start_time_us the time that the first sample in the rx_buffer occured at (us)
              * @param victim_distance_m the range of the victim (m)
              */
-            void set_detection_start_time_us(data_type start_time_us, data_type victim_distance_m = 0){
-                data_type distance_delay_us = (victim_distance_m / c) * 1e6;
+            void set_detection_start_time_us(double start_time_us, double victim_distance_m = 0){
+                double distance_delay_us = (victim_distance_m / c) * 1e6;
                 detection_start_time_us = start_time_us - distance_delay_us;
             }
 
@@ -848,9 +849,6 @@
                     max_cluster_index = chirp - 1;
                 }
 
-                
-                
-
                 //set the remaining samples in the cluster array to zero
                 for (size_t i = num_detected_points; i < num_rows_spectrogram; i++)
                 {
@@ -869,7 +867,7 @@
                 detected_intercepts.clear();
                 
                 //initialize the b vector
-                Eigen::Vector<data_type,2> b;
+                Eigen::Vector<double,2> b;
                 size_t n = 0;
 
                 //initialize variables to find indicies for each cluster index
@@ -883,8 +881,8 @@
                     n = indicies.size();
 
                     //initialize Y and X matricies
-                    Eigen::Matrix<data_type,Dynamic,2> X(n,2);
-                    Eigen::Vector<data_type,Dynamic> Y(n);
+                    Eigen::Matrix<double,Dynamic,2> X(n,2);
+                    Eigen::Vector<double,Dynamic> Y(n);
 
                     for (size_t j = 0; j < n; j++)
                     {
@@ -917,28 +915,28 @@
                     chirp_tracking_num_captured_chirps = detected_slopes.num_samples;
                     
                     //compute average chirp slope
-                    data_type sum = 0;
+                    double sum = 0;
                     for (size_t i = 0; i < chirp_tracking_num_captured_chirps; i++)
                     {
                         sum += detected_slopes.buffer[i];
                     }
                     chirp_tracking_average_slope = sum/
-                            static_cast<data_type>(chirp_tracking_num_captured_chirps);
+                            static_cast<double>(chirp_tracking_num_captured_chirps);
 
                     //compute average chirp intercept
                     chirp_tracking_average_chirp_duration = 
                             (detected_intercepts.buffer[chirp_tracking_num_captured_chirps - 1]
                             - detected_intercepts.buffer[0])
-                            / static_cast<data_type>(chirp_tracking_num_captured_chirps - 1);
+                            / static_cast<double>(chirp_tracking_num_captured_chirps - 1);
 
                     //save num captured chirps, average slope, average chirp duration, and start time
-                    captured_frames.buffer[frame_tracking_num_captured_frames - 1][1] = static_cast<data_type>(chirp_tracking_num_captured_chirps);
+                    captured_frames.buffer[frame_tracking_num_captured_frames - 1][1] = static_cast<double>(chirp_tracking_num_captured_chirps);
                     captured_frames.buffer[frame_tracking_num_captured_frames - 1][2] = chirp_tracking_average_slope;
                     captured_frames.buffer[frame_tracking_num_captured_frames - 1][3] = chirp_tracking_average_chirp_duration;
 
                     //compute average chirp slope across all frames
-                    data_type sum_slopes = 0; //sum of all average chirp slopes
-                    data_type sum_count = 0; //sum of total number of chirps detected
+                    double sum_slopes = 0; //sum of all average chirp slopes
+                    double sum_count = 0; //sum of total number of chirps detected
                     for (size_t i = 0; i < frame_tracking_num_captured_frames; i++)
                     {
                         sum_slopes += captured_frames.buffer[i][2] * (captured_frames.buffer[i][1] - 1);
@@ -947,7 +945,7 @@
                     frame_tracking_average_chirp_slope = sum_slopes/sum_count;
                     
                     //compute average chirp duration across all frames
-                    data_type sum_durations = 0; //sum of all average chirp durations
+                    double sum_durations = 0; //sum of all average chirp durations
                     sum_count = 0; //sum of total number of chirps detected
                     for (size_t i = 0; i < frame_tracking_num_captured_frames; i++)
                     {
@@ -995,7 +993,7 @@
              * @return double the start time of the most recent frame in seconds
              */
             double get_last_frame_start_time_s(){
-                return static_cast<double>(captured_frames.buffer[frame_tracking_num_captured_frames - 1][4]);
+                return captured_frames.buffer[frame_tracking_num_captured_frames - 1][4];
             }
 
             /**
@@ -1004,7 +1002,7 @@
              * @return double the next start time in ms
              */
             double get_next_frame_start_time_prediction_ms(){
-                return static_cast<double>(captured_frames.buffer[frame_tracking_num_captured_frames - 1][5]) * 1e-3;
+                return (captured_frames.buffer[frame_tracking_num_captured_frames - 1][5]) * 1e-3;
             }
 
             /**
@@ -1039,7 +1037,7 @@
              */
             void save_estimated_parameters_to_file(bool number_results_file = false,
                 size_t file_num = 0){
-                Buffer_1D<data_type> estimated_parameters(3,false);
+                Buffer_1D<double> estimated_parameters(3,false);
                  
                 // save the frame duration, chirp duration, and chirp slope
                 estimated_parameters.buffer[0] = frame_tracking_average_frame_duration * 1e-3; // ms

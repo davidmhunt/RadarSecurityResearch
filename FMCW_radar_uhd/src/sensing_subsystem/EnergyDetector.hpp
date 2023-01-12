@@ -40,7 +40,7 @@
 
                 //parameters for chirp energy detection
                 size_t current_chirp_detector_index;
-                Buffers::Buffer_1D<data_type> chirp_detection_times;
+                Buffers::Buffer_1D<double> chirp_detection_times;
             public:
                 size_t num_rows_chirp_detector;
                 Buffers::Buffer_2D<std::complex<data_type>> noise_power_measureent_signal;
@@ -224,7 +224,7 @@
                 current_chirp_detector_index = 0;
 
                 chirp_detector_signal = Buffer_2D<std::complex<data_type>>(num_rows_chirp_detector,samples_per_buffer);
-                chirp_detection_times = Buffer_1D<data_type>(num_rows_chirp_detector);
+                chirp_detection_times = Buffer_1D<double>(num_rows_chirp_detector);
             }
 
             /**
@@ -314,7 +314,7 @@
              */
             bool check_for_chirp(double signal_start_time){
 
-                chirp_detection_times.buffer[current_chirp_detector_index] = static_cast<data_type>(signal_start_time);
+                chirp_detection_times.buffer[current_chirp_detector_index] = signal_start_time;
 
                 bool chirp_detected = false;
                 data_type signal_power = compute_signal_power(chirp_detector_signal.buffer[current_chirp_detector_index], 500);
@@ -349,9 +349,9 @@
             /**
              * @brief Get the detection start time in us
              * 
-             * @return data_type 
+             * @return double
              */
-            data_type get_detection_start_time_us(){
+            double get_detection_start_time_us(){
                 size_t detection_idx = current_chirp_detector_index + 1;
                 detection_idx = detection_idx % num_rows_chirp_detector;
                 return chirp_detection_times.buffer[detection_idx] * 1e6;
