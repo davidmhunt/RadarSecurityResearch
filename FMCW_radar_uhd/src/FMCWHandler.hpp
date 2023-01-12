@@ -158,7 +158,7 @@ namespace FMCWHandler_namespace {
 
                 if(multiple_runs)
                 {
-                    std::cout << "FMCWHandler::run_FMCW_trial: running trial:" << run_number << std::endl;
+                    std::cout << std::endl << std::endl << "FMCWHandler::run_FMCW_trial: running trial:" << run_number << std::endl;
                 }
                 else
                 {

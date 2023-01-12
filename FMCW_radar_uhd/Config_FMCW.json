@@ -2,7 +2,7 @@
     "Radar_enabled":true,
     "Attacker_enabled":true,
     "multiple_runs": {
-        "perform_multiple_runs": false,
+        "perform_multiple_runs": true,
         "num_runs": 200    
     }
 }

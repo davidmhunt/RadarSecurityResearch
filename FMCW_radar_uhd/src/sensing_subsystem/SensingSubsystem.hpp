@@ -241,10 +241,11 @@
                  * 
                  */
                 void flush_usrp_buffer(void){
+                    attacker_usrp_handler -> reset_usrp_clock();
                     size_t spb = config["USRPSettings"]["RX"]["spb"].get<size_t>();
                     size_t num_rows = 10;
                     Buffer_2D<std::complex<data_type>> temp_buffer(num_rows,spb);
-                    attacker_usrp_handler -> rx_stream_to_buffer(& temp_buffer);
+                    attacker_usrp_handler -> rx_stream_to_buffer(& temp_buffer,false);
                 }
                 
                 /**

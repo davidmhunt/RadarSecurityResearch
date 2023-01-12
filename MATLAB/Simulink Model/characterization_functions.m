@@ -1282,7 +1282,7 @@ classdef characterization_functions
             file_name = sprintf("cpp_estimated_parameters_%d.bin",test_case_number);
             path = usrp_results_path + file_name;
             simulator = Simulator_revB();
-            read_data = simulator.read_from_file(path,false,"float");
+            read_data = simulator.read_from_file(path,false,"double");
         
             %frame duration
             estimated_frame_duration = read_data(1);

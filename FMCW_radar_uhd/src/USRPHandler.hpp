@@ -1246,8 +1246,10 @@
                  * @brief Saves a continuous stream of samples until a given 2D buffer has been filled
                  * 
                  * @param rx_buffer the 2D buffer to load rx samples into and save to a file
+                 * @param print_num_samples_error (default true), on false, will not print an error pertaining to the number
+                 * of requested samples not matching (set to false when flushing the rx buffer)
                  */
-                void rx_stream_to_buffer(Buffer_2D<std::complex<data_type>> * rx_buffer){
+                void rx_stream_to_buffer(Buffer_2D<std::complex<data_type>> * rx_buffer, bool print_num_samples_error = true){
                     
                     
                     //determine the number of samples per buffer
@@ -1281,7 +1283,7 @@
                                         num_samps_per_buff,rx_md,0.5,true);
                         
                         //check the metadata to confirm good receive
-                        if (num_samps_received != expected_samps_to_receive){
+                        if (num_samps_received != expected_samps_to_receive && print_num_samples_error){
                             std::cerr << "USRPHandler::rx_stream_to_buffer: Tried receiving " << expected_samps_to_receive <<
                                         " samples, but only received " << num_samps_received << std::endl;
                         }
