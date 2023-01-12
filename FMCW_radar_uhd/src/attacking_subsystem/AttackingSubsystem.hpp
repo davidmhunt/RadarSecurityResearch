@@ -72,16 +72,86 @@
                 Buffer_2D<std::complex<data_type>> attack_signal_buffer;
 
             public:
+                
+                /**
+                 * @brief Construct a new Attacking Subsystem object - DEFAULT CONSTRUCTOR, DOES NOT INITIALIZE AttackingSubsystem
+                 * 
+                 */
+                AttackingSubsystem(){}
+
                 /**
                  * @brief Construct a new Attacking Subsystem object
                  * 
                  * @param config_data JSON configuration object for the attacker
                  * @param usrp_handler pointer to a USRP handler for the attacking subsystem to use
                  */
-                AttackingSubsystem(json config_data, USRPHandler<data_type> * usrp_handler):
-                    config(config_data),
-                    attacker_usrp_handler(usrp_handler)
-                {
+                AttackingSubsystem(json config_data, USRPHandler<data_type> * usrp_handler){
+                    // initialize the Attacking Subsystem
+                    init(config_data,usrp_handler);                 
+                }
+
+                AttackingSubsystem(const AttackingSubsystem & rhs) : enabled(rhs.enabled),
+                                                                    attacking(rhs.attacking),
+                                                                    sensing_complete(rhs.sensing_complete),
+                                                                    attacker_usrp_handler(rhs.attacker_usrp_handler),
+                                                                    config(rhs.config),
+                                                                    attack_start_time_ms(rhs.attack_start_time_ms),
+                                                                    stream_start_offset_us(rhs.stream_start_offset_us),
+                                                                    frame_start_times(rhs.frame_start_times),
+                                                                    current_attack_frame(rhs.current_attack_frame),
+                                                                    next_frame_to_load(rhs.next_frame_to_load),
+                                                                    new_frame_start_time_available(rhs.new_frame_start_time_available),
+                                                                    num_attack_frames(rhs.num_attack_frames),
+                                                                    frame_start_times_mutex(), //mutexes are not copyable
+                                                                    sensing_complete_mutex(), //mutexes are not copyable
+                                                                    attack_start_frame(rhs.attack_start_frame),
+                                                                    frame_periodicity_ms(rhs.frame_periodicity_ms),
+                                                                    samples_per_buffer(rhs.samples_per_buffer),
+                                                                    attack_signal_file(rhs.attack_signal_file),
+                                                                    attack_signal_buffer(rhs.attack_signal_buffer)
+                                                                    {}
+
+                /**
+                 * @brief Assignment operator
+                 * 
+                 * @param rhs existing AttackingSubsystem
+                 * @return AttackingSubsystem& 
+                 */
+                AttackingSubsystem & operator=(const AttackingSubsystem & rhs){
+                    if(this != & rhs){
+                        enabled = rhs.enabled;
+                        attacking = rhs.attacking;
+                        sensing_complete = rhs.sensing_complete;
+                        attacker_usrp_handler = rhs.attacker_usrp_handler;
+                        config = rhs.config;
+                        attack_start_time_ms = rhs.attack_start_time_ms;
+                        stream_start_offset_us = rhs.stream_start_offset_us;
+                        frame_start_times = rhs.frame_start_times;
+                        current_attack_frame = rhs.current_attack_frame;
+                        next_frame_to_load = rhs.next_frame_to_load;
+                        new_frame_start_time_available = rhs.new_frame_start_time_available;
+                        //both of the mutexes are not copyable
+                        attack_start_frame = rhs.attack_start_frame;
+                        frame_periodicity_ms = rhs.frame_periodicity_ms;
+                        samples_per_buffer = rhs.samples_per_buffer;
+                        attack_signal_file = rhs.attack_signal_file;
+                        attack_signal_buffer = rhs.attack_signal_buffer;
+                    }
+
+                    return *this;
+                }
+
+                ~AttackingSubsystem(){}
+
+                /**
+                 * @brief initialize the AttackingSubsystem
+                 * 
+                 * @param config_data json object with configuration data
+                 * @param usrp_handler pointer to a USRPHandler object
+                 */
+                void init(json & config_data, USRPHandler<data_type> * usrp_handler){
+                    config = config_data;
+                    attacker_usrp_handler = usrp_handler;
                     if (check_config())
                     {
                         initialize_attack_subsystem_parameters();
@@ -91,10 +161,8 @@
                             init_frame_start_times_buffer();
                         }
                         
-                    }                    
+                    }
                 }
-
-                ~AttackingSubsystem(){}
 
                 /**
              * @brief Check the json config file to make sure all necessary parameters are included

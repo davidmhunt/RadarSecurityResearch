@@ -133,11 +133,148 @@
         public:
 
             /**
+             * @brief Construct a new Spectrogram Handler object - DOES NOT INITIALIZE SPECTROGRAM HANDLER
+             * 
+             */
+            SpectrogramHandler(){}
+            
+            /**
              * @brief Construct a new Spectrogram Handler object using a config file
              * 
              * @param json_config a json object with configuration information 
              */
-            SpectrogramHandler(json json_config): config(json_config){
+            SpectrogramHandler(json & json_config){
+                init(json_config);
+            }
+
+            /**
+             * @brief Construct a new Spectrogram Handler object- COPY CONSTRUCTOR
+             * 
+             * @param rhs existing SpectrogramHandler object
+             */
+            SpectrogramHandler(const SpectrogramHandler & rhs) : config(rhs.config),
+                                                                samples_per_sampling_window(rhs.samples_per_sampling_window),
+                                                                fft_size(rhs.fft_size),
+                                                                num_rows_rx_signal(rhs.num_rows_rx_signal),
+                                                                samples_per_buffer_rx_signal(rhs.samples_per_buffer_rx_signal),
+                                                                num_rows_spectrogram(rhs.num_rows_spectrogram),
+                                                                num_samples_rx_signal(rhs.num_samples_rx_signal),
+                                                                num_samples_per_spectrogram(rhs.num_samples_per_spectrogram),
+                                                                shape(rhs.shape),
+                                                                stride(rhs.stride),
+                                                                axes(rhs.axes),
+                                                                peak_detection_threshold(rhs.peak_detection_threshold),
+                                                                spectrogram_absolute_max_val(rhs.spectrogram_absolute_max_val),
+                                                                FMCW_sampling_rate(rhs.FMCW_sampling_rate),
+                                                                frequency_resolution(rhs.frequency_resolution),
+                                                                frequency_sampling_period(rhs.frequency_sampling_period),
+                                                                detected_time_offset(rhs.detected_time_offset),
+                                                                frequencies(rhs.frequencies),
+                                                                times(rhs.times),
+                                                                min_points_per_chirp(rhs.min_points_per_chirp),
+                                                                max_cluster_index(rhs.max_cluster_index),
+                                                                detection_start_time_us(rhs.detection_start_time_us),
+                                                                c(rhs.c),
+                                                                chirp_tracking_num_captured_chirps(rhs.chirp_tracking_num_captured_chirps),
+                                                                chirp_tracking_average_slope(rhs.chirp_tracking_average_slope),
+                                                                chirp_tracking_average_chirp_duration(rhs.chirp_tracking_average_chirp_duration),
+                                                                frame_tracking_num_captured_frames(rhs.frame_tracking_num_captured_frames),
+                                                                frame_tracking_average_frame_duration(rhs.frame_tracking_average_frame_duration),
+                                                                frame_tracking_average_chirp_duration(rhs.frame_tracking_average_chirp_duration),
+                                                                frame_tracking_average_chirp_slope(rhs.frame_tracking_average_chirp_slope),
+                                                                attack_in_progress(rhs.attack_in_progress),
+                                                                max_frames_to_capture(rhs.max_frames_to_capture),
+                                                                min_frame_periodicity_s(rhs.min_frame_periodicity_s),
+                                                                max_waiting_time(rhs.max_waiting_time),
+                                                                rx_buffer(rhs.rx_buffer),
+                                                                reshaped__and_windowed_signal_for_fft(rhs.reshaped__and_windowed_signal_for_fft),
+                                                                hanning_window(rhs.hanning_window),
+                                                                computed_fft(rhs.computed_fft),
+                                                                generated_spectrogram(rhs.generated_spectrogram),
+                                                                spectrogram_points_values(rhs.spectrogram_points_values),
+                                                                spectrogram_points_indicies(rhs.spectrogram_points_indicies),
+                                                                detected_times(rhs.detected_times),
+                                                                detected_frequencies(rhs.detected_frequencies),
+                                                                cluster_indicies(rhs.cluster_indicies),
+                                                                detected_slopes(rhs.detected_slopes),
+                                                                detected_intercepts(rhs.detected_intercepts),
+                                                                captured_frames(rhs.captured_frames),
+                                                                debug(rhs.debug),
+                                                                save_file_path(rhs.save_file_path)
+                                                                {}
+            
+            /**
+             * @brief Assignment operator
+             * 
+             * @param rhs existing SpectrogramHandler object
+             * @return SpectrogramHandler& 
+             */
+            SpectrogramHandler & operator=(const SpectrogramHandler & rhs){
+                if(this != &rhs)
+                {
+                    config = rhs.config;
+                    samples_per_sampling_window = rhs.samples_per_sampling_window;
+                    fft_size = rhs.fft_size;
+                    num_rows_rx_signal = rhs.num_rows_rx_signal;
+                    samples_per_buffer_rx_signal = rhs.samples_per_buffer_rx_signal;
+                    num_rows_spectrogram = rhs.num_rows_spectrogram;
+                    num_samples_rx_signal = rhs.num_samples_rx_signal;
+                    num_samples_per_spectrogram = rhs.num_samples_per_spectrogram;
+                    shape = rhs.shape;
+                    stride = rhs.stride;
+                    axes = rhs.axes;
+                    peak_detection_threshold = rhs.peak_detection_threshold;
+                    spectrogram_absolute_max_val = rhs.spectrogram_absolute_max_val;
+                    FMCW_sampling_rate = rhs.FMCW_sampling_rate;
+                    frequency_resolution = rhs.frequency_resolution;
+                    frequency_sampling_period = rhs.frequency_sampling_period;
+                    detected_time_offset = rhs.detected_time_offset;
+                    frequencies = rhs.frequencies;
+                    times = rhs.times;
+                    min_points_per_chirp = rhs.min_points_per_chirp;
+                    max_cluster_index = rhs.max_cluster_index;
+                    detection_start_time_us = rhs.detection_start_time_us;
+                    c = rhs.c;
+                    chirp_tracking_num_captured_chirps = rhs.chirp_tracking_num_captured_chirps;
+                    chirp_tracking_average_slope = rhs.chirp_tracking_average_slope;
+                    chirp_tracking_average_chirp_duration = rhs.chirp_tracking_average_chirp_duration;
+                    frame_tracking_num_captured_frames = rhs.frame_tracking_num_captured_frames;
+                    frame_tracking_average_frame_duration = rhs.frame_tracking_average_frame_duration;
+                    frame_tracking_average_chirp_duration = rhs.frame_tracking_average_chirp_duration;
+                    frame_tracking_average_chirp_slope = rhs.frame_tracking_average_chirp_slope;
+                    attack_in_progress = rhs.attack_in_progress;
+                    max_frames_to_capture = rhs.max_frames_to_capture;
+                    min_frame_periodicity_s = rhs.min_frame_periodicity_s;
+                    max_waiting_time = rhs.max_waiting_time;
+                    rx_buffer = rhs.rx_buffer;
+                    reshaped__and_windowed_signal_for_fft = rhs.reshaped__and_windowed_signal_for_fft;
+                    hanning_window = rhs.hanning_window;
+                    computed_fft = rhs.computed_fft;
+                    generated_spectrogram = rhs.generated_spectrogram;
+                    spectrogram_points_values = rhs.spectrogram_points_values;
+                    spectrogram_points_indicies = rhs.spectrogram_points_indicies;
+                    detected_times = rhs.detected_times;
+                    detected_frequencies = rhs.detected_frequencies;
+                    cluster_indicies = rhs.cluster_indicies;
+                    detected_slopes = rhs.detected_slopes;
+                    detected_intercepts = rhs.detected_intercepts;
+                    captured_frames = rhs.captured_frames;
+                    debug = rhs.debug;
+                    save_file_path = rhs.save_file_path;
+                }
+
+                return *this;
+            }
+
+            ~SpectrogramHandler() {};
+            
+            /**
+             * @brief Initialize the SpectrogramHandler object
+             * 
+             * @param config_data json object with configuratoin data
+             */
+            void init(json & config_data){
+                config = config_data;
                 if (check_config())
                 {
                     initialize_spectrogram_params();
@@ -150,11 +287,7 @@
                     initialize_debug();
                     initialize_save_file_path();
                 }
-                
-                
             }
-
-            ~SpectrogramHandler() {};
 
             /**
              * @brief Check the json config file to make sure all necessary parameters are included

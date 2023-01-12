@@ -51,16 +51,63 @@
             public:
 
             /**
+             * @brief Construct a new Energy Detector object - DOES NOT INITIALIZE ENERGY DETECTOR
+             * 
+             */
+            EnergyDetector(){}
+            
+            /**
              * @brief Construct a new Energy Detector object
              * 
              * @param json_config JSON configuration object with required information
              */
-            EnergyDetector(json json_config):config(json_config){
-                if (check_config())
+            EnergyDetector(json & json_config){
+                //nitialize the energy detector
+                init(json_config); 
+            }
+
+            /**
+             * @brief Construct a new Energy Detector object - COPY CONSTRUCTOR
+             * 
+             * @param rhs existing EnergyDetector Object
+             */
+            EnergyDetector(const EnergyDetector & rhs) :    config(rhs.config),
+                                                            relative_noise_power(rhs.relative_noise_power),
+                                                            threshold_level(rhs.threshold_level),
+                                                            sampling_frequency(rhs.sampling_frequency),
+                                                            num_samples_noise_power_measurement_signal(rhs.num_samples_noise_power_measurement_signal),
+                                                            num_rows_noise_power_measurement_signal(rhs.num_rows_noise_power_measurement_signal),
+                                                            samples_per_buffer(rhs.samples_per_buffer),
+                                                            current_chirp_detector_index(rhs.current_chirp_detector_index),
+                                                            chirp_detection_times(rhs.chirp_detection_times),
+                                                            num_rows_chirp_detector(rhs.num_rows_chirp_detector),
+                                                            noise_power_measureent_signal(rhs.noise_power_measureent_signal),
+                                                            chirp_detector_signal(rhs.chirp_detector_signal)
+                                                            {}
+
+            /**
+             * @brief Assignment operator
+             * 
+             * @param rhs existing EnergyDetector
+             * @return EnergyDetector& 
+             */
+            EnergyDetector & operator=(const EnergyDetector & rhs){
+                if(this != &rhs)
                 {
-                    initialize_energy_detector();
+                    config = rhs.config;
+                    relative_noise_power = rhs.relative_noise_power;
+                    threshold_level = rhs.threshold_level;
+                    sampling_frequency = rhs.sampling_frequency;
+                    num_samples_noise_power_measurement_signal = rhs.num_samples_noise_power_measurement_signal;
+                    num_rows_noise_power_measurement_signal = rhs.num_rows_noise_power_measurement_signal;
+                    samples_per_buffer = rhs.samples_per_buffer;
+                    current_chirp_detector_index = rhs.current_chirp_detector_index;
+                    chirp_detection_times = rhs.chirp_detection_times;
+                    num_rows_chirp_detector = rhs.num_rows_chirp_detector;
+                    chirp_detector_signal = rhs.chirp_detector_signal;
                 }
-                
+
+                return *this;
             }
 
             /**
@@ -68,6 +115,21 @@
              * 
              */
             ~EnergyDetector () {};
+
+            /**
+             * @brief initialize the EnergyDetector object
+             * 
+             * @param config_data json object with configuration information
+             */
+            void init(json & config_data){
+                config = config_data;
+                if (check_config())
+                {
+                    initialize_energy_detector_params();
+                    initialize_noise_power_detection();
+                    initialize_chirp_detection_params();
+                }
+            }
 
             /**
              * @brief Check the json config file to make sure all necessary parameters are included
@@ -108,16 +170,6 @@
 
 
                 return config_good;
-            }
-
-            /**
-             * @brief initializes the energy detector
-             * 
-             */
-            void initialize_energy_detector(){
-                initialize_energy_detector_params();
-                initialize_noise_power_detection();
-                initialize_chirp_detection_params();
             }
 
             /**

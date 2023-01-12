@@ -55,7 +55,8 @@ namespace FMCWHandler_namespace {
                 victim_config(victim_config_obj),
                 attack_config(attack_config_obj),
                 Victim(), //use the default constructor
-                Attacker(attack_config_obj,false){
+                Attacker() //use the default constructor and only initialize FMCW devices that need to be initialized
+                {
                     
                     if(check_config())
                     {
@@ -131,20 +132,20 @@ namespace FMCWHandler_namespace {
                 if (attack_enabled && victim_enabled)
                     {
                         //initialize victim device
-                        Victim = RADAR<data_type>(victim_config);
+                        Victim.init(victim_config);
 
                         //run the attacker
-                        std::cout << "FMCWHandler::init_FMCW_devices: attack initialization not yet setup" << std::endl;
+                        Attacker.init(attack_config,false);
                     }
                 else if (attack_enabled)
                 {
                     //initialize the attacker
-                    std::cout << "FMCWHandler::init_FMCW_devices: attack initialization not yet setup" << std::endl;
+                    Attacker.init(attack_config,false);
                 }
                 else if (victim_enabled)
                 {
                     //initialize the victim device
-                    Victim = RADAR<data_type>(victim_config);
+                    Victim.init(victim_config);
                 }
             }
             

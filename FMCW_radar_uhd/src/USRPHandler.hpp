@@ -105,12 +105,10 @@
                 /**
                  * @brief Construct a new USRPHandler object
                  * 
-                 * @param config_file a json configuration object
+                 * @param config_data a json configuration object
                  */
-                USRPHandler(json & config_file){
-                    config = config_file;
-                    configure_debug();
-                    init_multi_usrp();
+                USRPHandler(json & config_data){
+                    init(config_data);
                 }
 
                 /**
@@ -174,6 +172,18 @@
                  * 
                  */
                 ~USRPHandler() {};
+
+
+                /**
+                 * @brief Initialize the USRPHandler
+                 * 
+                 * @param config_data json object with configuration information
+                 */
+                void init(json & config_data){
+                    config = config_data;
+                    configure_debug();
+                    init_multi_usrp();
+                }
 
                 /**
                  * @brief configure debug settings for the USRP handler

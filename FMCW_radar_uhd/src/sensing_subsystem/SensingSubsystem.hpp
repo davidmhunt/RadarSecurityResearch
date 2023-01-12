@@ -51,20 +51,76 @@
 
 
             public:
+                
+                /**
+                 * @brief Construct a new Sensing Subsystem object - DOES NOT INITIALIZE SENSING SUBSYSTEM
+                 * 
+                 */
+                SensingSubsystem(){}
+                
                 /**
                  * @brief Construct a new Sensing Subsystem object
                  * 
                  * @param config_data JSON configuration object for the attacker
                  * @param usrp_handler pointer to a USRP handler for the sensing subsystem to use
                  */
-                SensingSubsystem(json config_data,
+                SensingSubsystem(json & config_data,
                     USRPHandler<data_type> * usrp_handler,
-                    AttackingSubsystem<data_type> * subsystem_attacking):
-                    config(config_data),
-                    attacker_usrp_handler(usrp_handler),
-                    attacking_subsystem(subsystem_attacking),
-                    energy_detector(config_data),
-                    spectrogram_handler(config_data){
+                    AttackingSubsystem<data_type> * subsystem_attacking){
+                    
+                        //initialize the sensing subsystem
+                        init(config_data,usrp_handler,subsystem_attacking);
+                }
+
+                /**
+                 * @brief copy Constructor
+                 * 
+                 * @param rhs existing sensing subsystem object
+                 */
+                SensingSubsystem(const SensingSubsystem & rhs) :    energy_detector(rhs.energy_detector),
+                                                                    spectrogram_handler(rhs.spectrogram_handler),
+                                                                    attacker_usrp_handler(rhs.attacker_usrp_handler),
+                                                                    attacking_subsystem(rhs.attacking_subsystem),
+                                                                    config(rhs.config),
+                                                                    debug(rhs.debug)
+                                                                    {}
+                
+                /**
+                 * @brief Assignment Operator
+                 * 
+                 * @param rhs existing SensingSubsystem
+                 * @return SensingSubsystem& 
+                 */
+                SensingSubsystem & operator=(const SensingSubsystem & rhs){
+                    if(this != &rhs){
+                        energy_detector = rhs.energy_detector;
+                        spectrogram_handler = rhs.spectrogram_handler;
+                        attacker_usrp_handler = rhs.attacker_usrp_handler;
+                        attacking_subsystem = rhs.attacking_subsystem;
+                        config = rhs.config;
+                        debug = rhs.debug;
+                    }
+
+                    return *this;
+                }
+
+                ~SensingSubsystem(){};
+
+                /**
+                 * @brief initialize the SensingSubsystem
+                 * 
+                 * @param config_data json object with configuration data
+                 * @param usrp_handler pointer to USRPHandler object
+                 * @param subsystem_attacking pointer to AttackingSubsystem object
+                 */
+                void init(json & config_data,
+                    USRPHandler<data_type> * usrp_handler,
+                    AttackingSubsystem<data_type> * subsystem_attacking){
+                        config = config_data;
+                        attacker_usrp_handler = usrp_handler;
+                        attacking_subsystem = subsystem_attacking;
+                        energy_detector.init(config_data);
+                        spectrogram_handler.init(config_data);
 
                         if(check_config()){
                             //measure the relative noise power for the energy detector
@@ -76,33 +132,31 @@
                         }
                 }
 
-                ~SensingSubsystem(){};
-
                 /**
-             * @brief Check the json config file to make sure all necessary parameters are included
-             * 
-             * @return true - JSON is all good and has required elements
-             * @return false - JSON is missing certain fields
-             */
-            bool check_config(){
-                bool config_good = true;
+                 * @brief Check the json config file to make sure all necessary parameters are included
+                 * 
+                 * @return true - JSON is all good and has required elements
+                 * @return false - JSON is missing certain fields
+                 */
+                bool check_config(){
+                    bool config_good = true;
 
-                //check debug status
-                if(config["SensingSubsystemSettings"]["debug"].is_null()){
-                    std::cerr << "SensingSubsystem::check_config: debug not specified" <<std::endl;
-                    config_good = false;
+                    //check debug status
+                    if(config["SensingSubsystemSettings"]["debug"].is_null()){
+                        std::cerr << "SensingSubsystem::check_config: debug not specified" <<std::endl;
+                        config_good = false;
+                    }
+
+                    return config_good;
                 }
 
-                return config_good;
-            }
-
-            /**
-             * @brief Initialize the debug flag for the sensing subsystem
-             * 
-             */
-            void init_debug_status(){
-                debug = config["SensingSubsystemSettings"]["debug"].get<bool>();
-            }
+                /**
+                 * @brief Initialize the debug flag for the sensing subsystem
+                 * 
+                 */
+                void init_debug_status(){
+                    debug = config["SensingSubsystemSettings"]["debug"].get<bool>();
+                }
 
                 /**
                  * @brief measure the relative noise power and configure the energy detector

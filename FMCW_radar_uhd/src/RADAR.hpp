@@ -59,7 +59,7 @@
                  * @brief Construct a new RADAR object - DEFAULT CONSTRUTOR, DOES NOT INITIALIZE USRP
                  * 
                  */
-                RADAR():usrp_handler(){}
+                RADAR(){}
                 
                 /**
                  * @brief Construct a new RADAR object,
@@ -133,61 +133,82 @@
                 ~RADAR() {}
 
                 /**
-             * @brief Check the json config file to make sure all necessary parameters are included
-             * 
-             * @return true - JSON is all good and has required elements
-             * @return false - JSON is missing certain fields
-             */
-            bool check_config(){
-                bool config_good = true;
-                //check for tx file name
-                if (config["RadarSettings"]["tx_file_folder_path"].is_null()){
-                    std::cerr << "Radar::check_config: tx_file_folder_path not specified in JSON";
-                    config_good = false;
-                }
-                
-                //check for rx file name
-                if (config["RadarSettings"]["rx_file_folder_path"].is_null()){
-                    std::cerr << "Radar::check_config: rx_file_folder_path not specified in JSON";
-                    config_good = false;
+                 * @brief Initialize the RADAR object
+                 * 
+                 * @param config_data json object with configuraiton information
+                 */
+                void init(json & config_data){
+                    config = config_data;
+                    usrp_handler.init(config_data);
+                    radar_initialized = false;
+
+                    //check the configuration and initialize the RADAR object
+                    if (! check_config())
+                    {
+                        std::cerr << "RADAR: JSON config did not check out" << std::endl;
+                    }
+                    else
+                    {
+                        init_debug_status();
+                    }
                 }
 
-                //check for number of chirps
-                if (config["RadarSettings"]["num_chirps"].is_null()){
-                    std::cerr << "RADAR::check_config num chirps not specified in JSON";
-                    config_good = false;
+                /**
+                 * @brief Check the json config file to make sure all necessary parameters are included
+                 * 
+                 * @return true - JSON is all good and has required elements
+                 * @return false - JSON is missing certain fields
+                 */
+                bool check_config(){
+                    bool config_good = true;
+                    //check for tx file name
+                    if (config["RadarSettings"]["tx_file_folder_path"].is_null()){
+                        std::cerr << "Radar::check_config: tx_file_folder_path not specified in JSON";
+                        config_good = false;
+                    }
+                    
+                    //check for rx file name
+                    if (config["RadarSettings"]["rx_file_folder_path"].is_null()){
+                        std::cerr << "Radar::check_config: rx_file_folder_path not specified in JSON";
+                        config_good = false;
+                    }
+
+                    //check for number of chirps
+                    if (config["RadarSettings"]["num_chirps"].is_null()){
+                        std::cerr << "RADAR::check_config num chirps not specified in JSON";
+                        config_good = false;
+                    }
+
+                    //verify that a stream start time has been specified
+                    if (config["USRPSettings"]["Multi-USRP"]["stream_start_time"].is_null()){
+                        std::cerr << "RADAR::check_config stream_start_time not specified in JSON";
+                        config_good = false;
+                    }
+
+                    //check for the number of frames
+                    if (config["RadarSettings"]["num_frames"].is_null()){
+                        std::cerr << "RADAR::check_config num_frames not specified in JSON";
+                        config_good = false;
+                    }
+
+                    //check for the frame periodicity
+                    if (config["RadarSettings"]["frame_periodicity_ms"].is_null()){
+                        std::cerr << "RADAR::check_config frame_periodicity_ms not specified in JSON";
+                        config_good = false;
+                    }
+
+                    //check for the frame periodicity
+                    if (config["RadarSettings"]["debug"].is_null()){
+                        std::cerr << "RADAR::check_config debug not specified in JSON";
+                        config_good = false;
+                    }
+                    
+                    return config_good;
                 }
 
-                //verify that a stream start time has been specified
-                if (config["USRPSettings"]["Multi-USRP"]["stream_start_time"].is_null()){
-                    std::cerr << "RADAR::check_config stream_start_time not specified in JSON";
-                    config_good = false;
+                void init_debug_status(){
+                    debug = config["RadarSettings"]["debug"].get<bool>();
                 }
-
-                //check for the number of frames
-                if (config["RadarSettings"]["num_frames"].is_null()){
-                    std::cerr << "RADAR::check_config num_frames not specified in JSON";
-                    config_good = false;
-                }
-
-                //check for the frame periodicity
-                if (config["RadarSettings"]["frame_periodicity_ms"].is_null()){
-                    std::cerr << "RADAR::check_config frame_periodicity_ms not specified in JSON";
-                    config_good = false;
-                }
-
-                //check for the frame periodicity
-                if (config["RadarSettings"]["debug"].is_null()){
-                    std::cerr << "RADAR::check_config debug not specified in JSON";
-                    config_good = false;
-                }
-                
-                return config_good;
-            }
-
-            void init_debug_status(){
-                debug = config["RadarSettings"]["debug"].get<bool>();
-            }
                 
                 /**
                  * @brief get the tx chirp from its file, set the samples_per_chirp_variable, and

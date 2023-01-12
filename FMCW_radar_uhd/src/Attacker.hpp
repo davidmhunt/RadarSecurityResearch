@@ -49,6 +49,12 @@
             public:
 
                 /**
+                 * @brief Construct a new ATTACKER object - DEFAULT CONSTRUCTOR, DOES NOT INITIALIZE ATTACKER
+                 * 
+                 */
+                ATTACKER(){}
+                
+                /**
                  * @brief Construct a new ATTACKER object,
                  * loads the configuration, and initializes the usrp_handler 
                  * 
@@ -56,13 +62,58 @@
                  * @param run on false (default) does not run attacker implementation,
                  * on true runs the attacker implementation
                  */
-                ATTACKER(json config_data, bool run = false):
-                    config(config_data),
-                    usrp_handler(config_data),
-                    attacking_subsystem(config_data, & usrp_handler),
-                    sensing_subsystem(config_data, & usrp_handler, & attacking_subsystem){
+                ATTACKER(json config_data, bool run = false){
+                    init(config_data,run);
+                }
 
-                    
+                /**
+                 * @brief Copy Constructor
+                 * 
+                 * @param rhs pointer to an existing ATTACKER object
+                 */
+                ATTACKER(const ATTACKER & rhs) : config(rhs.config),
+                                                usrp_handler(rhs.usrp_handler),
+                                                attacking_subsystem(rhs.attacking_subsystem),
+                                                sensing_subsystem(rhs.sensing_subsystem)
+                                                {}
+                
+                /**
+                 * @brief Assignment Operator
+                 * 
+                 * @param rhs pointer to existing ATTACKER object
+                 * @return ATTACKER& 
+                 */
+                ATTACKER & operator=(const ATTACKER & rhs){
+                    if (this != &rhs)
+                    {
+                        config = rhs.config;
+                        usrp_handler = rhs.usrp_handler;
+                        attacking_subsystem = rhs.attacking_subsystem;
+                        sensing_subsystem = rhs.sensing_subsystem;
+                    }
+
+                    return *this;
+                }
+                
+                /**
+                 * @brief Destroy the ATTACKER object
+                 * 
+                 */
+                ~ATTACKER(){}
+
+                /**
+                 * @brief Initialize the Attacker
+                 * 
+                 * @param config_data json object with configuration data
+                 * @param run on false (default) does not run attacker implementation,
+                 * on true runs the attacker implementation
+                 */
+                void init(json & config_data, bool run = false){
+                    config = config_data;
+                    usrp_handler.init(config_data);
+                    attacking_subsystem.init(config_data, & usrp_handler);
+                    sensing_subsystem.init(config_data, & usrp_handler, & attacking_subsystem);
+
                     //run if specified
                     if (run){
                         //run the sensing subsystem
