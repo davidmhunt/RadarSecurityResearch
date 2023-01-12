@@ -56,10 +56,17 @@
             public:
                 
                 /**
+                 * @brief Construct a new RADAR object - DEFAULT CONSTRUTOR, DOES NOT INITIALIZE USRP
+                 * 
+                 */
+                RADAR():usrp_handler(){}
+                
+                /**
                  * @brief Construct a new RADAR object,
                  * loads the configuration, and initializes the usrp_handler 
                  * 
                  * @param config_data a json config object
+                 * @param fmcw_config_data a json config object with the FMCW experiment configuration
                  * 
                  */
                 RADAR(json config_data):
@@ -75,7 +82,48 @@
                     {
                         init_debug_status();
                     }
+                }
 
+                /**
+                 * @brief Copy Constructor
+                 * 
+                 * @param rhs pointer to existing radar object
+                 */
+                RADAR(const RADAR & rhs) : config(rhs.config),
+                                            usrp_handler(rhs.usrp_handler),
+                                            tx_buffer(rhs.tx_buffer),
+                                            rx_buffer(rhs.rx_buffer),
+                                            samples_per_chirp(rhs.samples_per_chirp),
+                                            stream_start_time(rhs.stream_start_time),
+                                            frame_start_times(rhs.frame_start_times),
+                                            num_frames(rhs.num_frames),
+                                            frame_periodicity(rhs.frame_periodicity),
+                                            radar_initialized(rhs.radar_initialized),
+                                            debug(rhs.debug)
+                                            {}
+
+                /**
+                 * @brief Assignment Operator
+                 * 
+                 * @param rhs existing RADAR object
+                 * @return RADAR& 
+                 */
+                RADAR & operator=(const RADAR & rhs){
+                    if (this != &rhs)
+                    {
+                        config = rhs.config;
+                        usrp_handler = rhs.usrp_handler;
+                        tx_buffer = rhs.tx_buffer;
+                        rx_buffer = rhs.rx_buffer;
+                        samples_per_chirp = rhs.samples_per_chirp;
+                        stream_start_time = rhs.stream_start_time;
+                        frame_start_times = rhs.frame_start_times;
+                        num_frames = rhs.num_frames;
+                        frame_periodicity = rhs.frame_periodicity;
+                        radar_initialized = rhs.radar_initialized;
+                        debug = rhs.debug;
+                    }
+                    return *this;
                 }
 
                 /**

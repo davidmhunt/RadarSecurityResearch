@@ -54,13 +54,14 @@ namespace FMCWHandler_namespace {
                 :fmcw_config(fmcw_config_obj),
                 victim_config(victim_config_obj),
                 attack_config(attack_config_obj),
-                Victim(victim_config_obj),
+                Victim(), //use the default constructor
                 Attacker(attack_config_obj,false){
                     
                     if(check_config())
                     {
                         get_enabled_status();
                         get_multiple_runs_configuration();
+                        init_FMCW_devices();
                         if (run)
                         {
                             run_FMCW();
@@ -123,6 +124,31 @@ namespace FMCWHandler_namespace {
             }
 
             /**
+             * @brief Initialize the victim and attacker based on their enable status
+             * 
+             */
+            void init_FMCW_devices(void){
+                if (attack_enabled && victim_enabled)
+                    {
+                        //initialize victim device
+                        Victim = RADAR<data_type>(victim_config);
+
+                        //run the attacker
+                        std::cout << "FMCWHandler::init_FMCW_devices: attack initialization not yet setup" << std::endl;
+                    }
+                else if (attack_enabled)
+                {
+                    //initialize the attacker
+                    std::cout << "FMCWHandler::init_FMCW_devices: attack initialization not yet setup" << std::endl;
+                }
+                else if (victim_enabled)
+                {
+                    //initialize the victim device
+                    Victim = RADAR<data_type>(victim_config);
+                }
+            }
+            
+            /**
              * @brief Run the FMCW simulation with the vicitm and attacker in separate threads
              * 
              * @param run_number (defaults to 0) the run number if multiple runs are being performed
@@ -140,6 +166,10 @@ namespace FMCWHandler_namespace {
 
                 if (attack_enabled && victim_enabled)
                     {
+                        //initialize victim and attacker
+                        Victim.initialize_radar(multiple_runs,run_number);
+                        Attacker.reset();
+
                         //create victim thread
                         std::thread victim_thread([&]() {
                             Victim.run_RADAR();
@@ -151,18 +181,28 @@ namespace FMCWHandler_namespace {
                         //wait for victim thread to finish
                         victim_thread.join();
                     }
-                    else if (attack_enabled)
-                    {
-                        //run the attacker
-                        Attacker.run_attacker(multiple_runs,run_number);
-                    }
-                    else if (victim_enabled)
-                    {
-                        //run the victim
-                        Victim.run_RADAR();
-                    }
+                else if (attack_enabled)
+                {
+                    //initialize victim and attacker
+                    Attacker.reset();
 
-                    if(multiple_runs)
+                    //run the attacker
+                    Attacker.run_attacker(multiple_runs,run_number);
+                }
+                else if (victim_enabled)
+                {
+                    //initialize victim and attacker
+                    Victim.initialize_radar(multiple_runs,run_number);
+
+                    //run the victim
+                    Victim.run_RADAR();
+                }
+                else
+                {
+                    std::cout << "FMCWHandler::run_FMCW_trial: neither attacker nor victim enabled, no run performed" << std::endl;
+                }
+
+                if(multiple_runs)
                 {
                     std::cout << "FMCWHandler::run_FMCW_trial: trial " << run_number << " complete" << std::endl;
                 }
@@ -182,16 +222,12 @@ namespace FMCWHandler_namespace {
                 {
                     for (size_t i = 1; i <= num_runs; i++)
                     {
-                        Victim.initialize_radar(true,i);
-                        Attacker.reset();
                         run_FMCW_trial(i);
                     }
                     
                 }
                 else //only a single run requested
                 {
-                    Victim.initialize_radar(false,0);
-                    Attacker.reset();
                     run_FMCW_trial();
                 }
                 

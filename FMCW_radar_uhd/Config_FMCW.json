@@ -1,5 +1,5 @@
 {
-    "Radar_enabled":false,
+    "Radar_enabled":true,
     "Attacker_enabled":false,
     "multiple_runs": {
         "perform_multiple_runs": false,

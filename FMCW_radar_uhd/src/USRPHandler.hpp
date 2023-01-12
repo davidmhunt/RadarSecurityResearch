@@ -99,6 +99,12 @@
                 /**
                  * @brief Construct a new USRPHandler object
                  * 
+                 */
+                USRPHandler(){}
+
+                /**
+                 * @brief Construct a new USRPHandler object
+                 * 
                  * @param config_file a json configuration object
                  */
                 USRPHandler(json & config_file){
@@ -107,6 +113,67 @@
                     init_multi_usrp();
                 }
 
+                /**
+                 * @brief Copy Constructor
+                 * 
+                 * @param rhs reference to an existing USRPHandler Object
+                 */
+                USRPHandler(const USRPHandler & rhs) : overflow_detected(rhs.overflow_detected),
+                                                        rx_first_buffer(rhs.rx_first_buffer),
+                                                        tx_stream_complete(false), //tx_stream_complete is atomic, not copyable
+                                                        rx_channel(rhs.rx_channel),
+                                                        tx_channel(rhs.tx_channel),
+                                                        cout_mutex(),//std::mutex is not copyable
+                                                        simplified_metadata(rhs.simplified_metadata),
+                                                        debug(rhs.debug),
+                                                        usrp(rhs.usrp),
+                                                        rx_stream_start_offset(rhs.rx_stream_start_offset),
+                                                        tx_stream_args(rhs.tx_stream_args),
+                                                        tx_stream(rhs.tx_stream),
+                                                        tx_md(rhs.tx_md),
+                                                        tx_async_md(rhs.tx_async_md),
+                                                        tx_samples_per_buffer(rhs.tx_samples_per_buffer),
+                                                        rx_stream_args(rhs.rx_stream_args),
+                                                        rx_stream(rhs.rx_stream),
+                                                        rx_md(rhs.rx_md),
+                                                        rx_samples_per_buffer(rhs.rx_samples_per_buffer),
+                                                        tx_enabled(rhs.tx_enabled),
+                                                        rx_enabled(rhs.rx_enabled),
+                                                        config(rhs.config)
+                                                        {}
+                
+                USRPHandler & operator=(const USRPHandler & rhs) {
+                    if (this != &rhs) {
+                        overflow_detected = rhs.overflow_detected;
+                        rx_first_buffer = rhs.rx_first_buffer;
+                        tx_stream_complete = false; //tx_stream_complete is atomic, not copyable, default to false
+                        rx_channel = rhs.rx_channel;
+                        tx_channel = rhs.tx_channel;
+                        simplified_metadata = rhs.simplified_metadata;
+                        debug = rhs.debug;
+                        usrp = rhs.usrp;
+                        rx_stream_start_offset = rhs.rx_stream_start_offset;
+                        tx_stream_args = rhs.tx_stream_args;
+                        tx_stream = rhs.tx_stream;
+                        tx_md = rhs.tx_md;
+                        tx_async_md = rhs.tx_async_md;
+                        tx_samples_per_buffer = rhs.tx_samples_per_buffer;
+                        rx_stream_args = rhs.rx_stream_args;
+                        rx_stream = rhs.rx_stream;
+                        rx_md = rhs.rx_md;
+                        rx_samples_per_buffer = rhs.rx_samples_per_buffer;
+                        tx_enabled = rhs.tx_enabled;
+                        rx_enabled = rhs.rx_enabled;
+                        config = rhs.config;
+                    }
+                    return *this;
+                }
+
+                /**
+                 * @brief Destroy the USRPHandler object
+                 * 
+                 */
+                ~USRPHandler() {};
 
                 /**
                  * @brief configure debug settings for the USRP handler
