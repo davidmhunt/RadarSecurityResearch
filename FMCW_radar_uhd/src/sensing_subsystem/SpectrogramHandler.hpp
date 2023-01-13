@@ -813,8 +813,9 @@
                 {
                     //to be part of the same chirp, the frequency must increase, and the detected point
                     //must be with 5 us of the previous point
-                    if (((detected_frequencies.buffer[i] - detected_frequencies.buffer[i-1]) > -1) &&
-                        ((detected_times.buffer[i] - detected_times.buffer[i-1] < 5)))
+                    if (((detected_frequencies.buffer[i] - detected_frequencies.buffer[i-1]) > 0) ||
+                        (((detected_times.buffer[i] - detected_times.buffer[i-1] < 5))) &&
+                        ((detected_frequencies.buffer[i] - detected_frequencies.buffer[i-1]) >= 0))
                     {
                         num_points_in_chirp += 1;
                     }

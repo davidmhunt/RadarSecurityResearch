@@ -811,7 +811,7 @@ classdef Subsystem_spectrum_sensing < handle
             for i = 2:num_points
                 %determine if the current point is part of a new chirp or
                 %not
-                if((obj.detected_frequencies(i) - obj.detected_frequencies(i-1) > 0) && ...
+                if((obj.detected_frequencies(i) - obj.detected_frequencies(i-1) > -1) && ...
                     (obj.detected_times(i) - obj.detected_times(i-1) < 5))
                     %part of the current chirp
                     num_points_in_chirp = num_points_in_chirp + 1;
