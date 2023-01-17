@@ -244,6 +244,25 @@ classdef Simulator_revB < handle
             obj.Attacker.configure_platform();
         end
 
+        function load_realistic_attacker_and_victim_position_and_velocity_random(obj)
+            %{
+                Purpose: configures a default scenario for the attacker and
+                vicitm positions and velocities, but position and
+                velocities are chosen randomly
+            %}
+            obj.Victim.position_m = [0;0;0];
+            obj.Victim.velocity_m_per_s = [0;0;0];
+            obj.Victim.platform = phased.Platform( ...
+                'InitialPosition',obj.Victim.position_m, ...
+                'Velocity',obj.Victim.velocity_m_per_s);
+
+            attack_pos = randi([20,100]);
+            attack_vel = randi([-10,10]);
+            obj.Attacker.position_m = [attack_pos;0;0];
+            obj.Attacker.velocity_m_per_s = [attack_vel;0;0];
+            obj.Attacker.configure_platform();
+        end
+        
         function load_usrp_attacker_and_victim_position_and_velocity(obj)
             %{
                 Purpose: configures a default scenario for the attacker and

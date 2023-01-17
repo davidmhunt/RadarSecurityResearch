@@ -74,7 +74,7 @@ classdef characterization_functions
             simulator.configure_FMCW_Radar_parameters();
             
             %load default attacker, and victim positions and velocities
-            simulator.load_realistic_attacker_and_victim_position_and_velocity();
+            simulator.load_realistic_attacker_and_victim_position_and_velocity_random();
             
             %load the target
             simulator.load_target_realistic(50,15);
