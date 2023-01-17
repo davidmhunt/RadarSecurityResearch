@@ -346,8 +346,8 @@ classdef characterization_functions
             
             %plot the cdf of the chirp slope errors
             table_data_results = readtable(read_file_path);
-            actual_values = table_data_results{:,actual_values_idx};
-            estimated_values = table_data_results{:,estimated_values_idx};
+            actual_values = table_data_results{:,actual_values_idx} * scale_factor;
+            estimated_values = table_data_results{:,estimated_values_idx} * scale_factor;
             abs_errors = table_data_results{:,abs_errors_idx} * scale_factor;
 
             %get the number of failed trials
