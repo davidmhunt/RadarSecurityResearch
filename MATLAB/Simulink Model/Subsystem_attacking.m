@@ -261,21 +261,24 @@ classdef Subsystem_attacking  < handle
             
             %compute the sweep and idle times
             obj.sweep_time_s = (obj.Attacker.Bandwidth_MHz / obj.estimated_frequency_slope_MHz_us) * 1e-6;
-            obj.num_samples_sweep_time = round(obj.sweep_time_s *...
-                obj.Attacker.FMCW_sample_rate_Msps * 1e6);
-            obj.sweep_time_s = obj.num_samples_sweep_time /...
-                (obj.Attacker.FMCW_sample_rate_Msps * 1e6);
+%             obj.num_samples_sweep_time = round(obj.sweep_time_s *...
+%                 obj.Attacker.FMCW_sample_rate_Msps * 1e6);
+%             obj.sweep_time_s = obj.num_samples_sweep_time /...
+%                 (obj.Attacker.FMCW_sample_rate_Msps * 1e6);
             
             %compute the idle time, and correct the sweep time if the sweep
             %time is longer than the chirp cycle time
             if obj.sweep_time_s * 1e6 > obj.estimated_chirp_cycle_time_us
                 obj.sweep_time_s = obj.estimated_chirp_cycle_time_us * 1e-6;
-                obj.idle_time_s = 0;
-                obj.num_samples_idle_time = 0;
-            else
-                obj.idle_time_s = obj.estimated_chirp_cycle_time_us * 1e-6 - obj.sweep_time_s;
-                obj.num_samples_idle_time = obj.num_samples_per_chirp - obj.num_samples_sweep_time;
             end
+            
+            obj.num_samples_sweep_time = floor(obj.sweep_time_s *...
+            obj.Attacker.FMCW_sample_rate_Msps * 1e6);
+            obj.sweep_time_s = obj.num_samples_sweep_time /...
+            (obj.Attacker.FMCW_sample_rate_Msps * 1e6);
+
+            obj.idle_time_s = obj.estimated_chirp_cycle_time_us * 1e-6 - obj.sweep_time_s;
+            obj.num_samples_idle_time = obj.num_samples_per_chirp - obj.num_samples_sweep_time;
         end
     
         function initialize_range_spoof(obj)
@@ -423,6 +426,9 @@ classdef Subsystem_attacking  < handle
                     obj.additional_phase_variation_noise(chirp));
             
                 %save it in the emulated_chirps array
+                if obj.num_samples_sweep_time ~= size(waveform)
+                    stop = true;
+                end
                 obj.emulated_chirps(1:obj.num_samples_sweep_time,chirp) = waveform.';
             
                 if int32(num_samples_delay) > 0

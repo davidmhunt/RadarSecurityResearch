@@ -118,23 +118,23 @@ classdef characterization_functions
             
             %get the return values
             final_attack_frame = simulator.Attacker.Subsystem_attacking.frame;
-            num_attack_frames = min(final_attack_frame - 1,frames_to_compute - attack_start_frame + 1);
+            num_attack_frames = frames_to_compute - attack_start_frame + 1;
 
             %get the estimated range and velocity values from the Victim
             end_idx = frames_to_compute;
-            start_idx = frames_to_compute - num_attack_frames;
+            start_idx = attack_start_frame;
 
             estimated_ranges = simulator.Victim.Radar_Signal_Processor.range_estimates(start_idx:end_idx,1);
             estimated_velocities = simulator.Victim.Radar_Signal_Processor.velocity_estimates(start_idx:end_idx,1);
             
             %compute the desired spoofing ranges and velocities based on
             %the final attacker frame
-            end_idx = final_attack_frame - 1;
-            start_idx = end_idx - num_attack_frames;
+            end_idx = num_attack_frames - 1;
+            start_idx = 0;
             desired_ranges = (spoof_range - spoof_velocity * (start_idx:end_idx) ...
                 * simulator.Victim.FramePeriodicity_ms * 1e-3).';
             
-            desired_velocities = spoof_velocity * ones(num_attack_frames + 1,1);
+            desired_velocities = spoof_velocity * ones(num_attack_frames,1);
         end
 
         %{
@@ -197,6 +197,7 @@ classdef characterization_functions
                 %save values - resulting averages from simulation runs
                 start_idx = frames_per_case * (i - 1) + 1;
                 end_idx = frames_per_case * i;
+               
                 test_data_spoofing_performance(start_idx:end_idx,1) = desired_ranges;
                 test_data_spoofing_performance(start_idx:end_idx,2) = desired_velocities;
                 test_data_spoofing_performance(start_idx:end_idx,3) = estimated_ranges;
@@ -701,7 +702,7 @@ classdef characterization_functions
             simulator.configure_FMCW_Radar_parameters();
             
             %load default attacker, and victim positions and velocities
-            simulator.load_realistic_attacker_and_victim_position_and_velocity();
+            simulator.load_realistic_attacker_and_victim_position_and_velocity_random();
             
             %load the target
             simulator.load_target_realistic(50,15);
@@ -751,6 +752,9 @@ classdef characterization_functions
             %chirp duration
             estimated_chirp_duration = simulator.Attacker.Subsystem_spectrum_sensing.frame_tracking.average_chirp_duration;
             actual_chirp_duration = simulator.Victim.ChirpCycleTime_us;
+            if abs(estimated_chirp_duration - actual_chirp_duration) > .5
+                stop = true;
+            end
             %slope
             estimated_slope = simulator.Attacker.Subsystem_spectrum_sensing.frame_tracking.average_slope;
             actual_slope = simulator.Victim.FrequencySlope_MHz_us;
@@ -762,9 +766,14 @@ classdef characterization_functions
             %compare the predicted frame start times with the actual frame start times
             actual_frame_start_times = (3:frames_to_compute).' * simulator.Victim.FramePeriodicity_ms * 1e3 ... 
                                             + simulator.Victim.IdleTime_us;
-            predicted_start_time_errors = simulator.Attacker.Subsystem_spectrum_sensing.frame_tracking.captured_frames(2:...
-                simulator.Attacker.Subsystem_spectrum_sensing.frame_tracking.num_captured_frames,7) ...
-                                            - actual_frame_start_times;
+            %initialize array of NaNs to hold the predicted start times
+            predicted_frame_start_times = NaN(size(actual_frame_start_times,1),1);
+            num_captured_frames = ...
+                simulator.Attacker.Subsystem_spectrum_sensing.frame_tracking.num_captured_frames;
+            predicted_frame_start_times(1:num_captured_frames - 1) = ...
+                simulator.Attacker.Subsystem_spectrum_sensing.frame_tracking.captured_frames(2:...
+                num_captured_frames,7);
+            predicted_start_time_errors = predicted_frame_start_times - actual_frame_start_times;
         end
 
         %{
