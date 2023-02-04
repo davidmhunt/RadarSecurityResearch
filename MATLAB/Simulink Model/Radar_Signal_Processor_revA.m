@@ -407,6 +407,17 @@ classdef Radar_Signal_Processor_revA < handle
                             * obj.tgt_velocity)...
                             + obj.num_bins_zoom * obj.Radar.Range_Res_m,...
                             obj.Radar.Range_Max_m)])
+                    font_size = 14;
+                    h = colorbar;
+                    h.FontSize = font_size;
+                    h.Label.String = "Power (dB)";
+                    h_label = h.Label;
+                    set(gcf,'Position',[100 100 400 400])
+                    title("Range-Doppler Response","FontSize",font_size)
+                    xlabel("Velocity (m/s)","FontSize",font_size)
+                    ylabel("Range (m)","FontSize",font_size)
+                    ax = gca;
+                    ax.FontSize = font_size;
                     drawnow
                     obj.F_rngdop(obj.Radar.current_frame) = getframe(gcf);
     
@@ -424,9 +435,14 @@ classdef Radar_Signal_Processor_revA < handle
                             * obj.tgt_velocity)...
                             + obj.num_bins_zoom * obj.Radar.Range_Res_m,...
                             obj.Radar.Range_Max_m)])
-                    xlabel("Velocity (m/s)")
-                    ylabel("Range(m)")
-                    title("CA-CFAR Detections")
+                    font_size = 14;
+                    legend('off')
+                    set(gcf,'Position',[100 100 400 400])
+                    title("CA-CFAR Detections","FontSize",font_size)
+                    xlabel("Velocity (m/s)","FontSize",font_size)
+                    ylabel("Range (m)","FontSize",font_size)
+                    ax = gca;
+                    ax.FontSize = font_size;
                     drawnow
                     obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
                 end
@@ -451,6 +467,17 @@ classdef Radar_Signal_Processor_revA < handle
                             * obj.tgt_velocity)...
                             + obj.num_bins_zoom * obj.Radar.Range_Res_m,...
                             obj.Radar.Range_Max_m)])
+                    font_size = 14;
+                    h = colorbar;
+                    h.FontSize = font_size;
+                    h.Label.String = "Power (dB)";
+                    h_label = h.Label;
+                    set(gcf,'Position',[100 100 400 400])
+                    title("Range-Doppler Response","FontSize",font_size)
+                    xlabel("velocity (m/s)","FontSize",font_size)
+                    ylabel("Range (m)","FontSize",font_size)
+                    ax = gca;
+                    ax.FontSize = font_size;
                     drawnow
                     obj.F_rngdop(obj.Radar.current_frame) = getframe(gcf);
     
@@ -473,9 +500,14 @@ classdef Radar_Signal_Processor_revA < handle
                             + obj.num_bins_zoom * obj.Radar.Range_Res_m,...
                             obj.Radar.Range_Max_m)])
                     cla;
-                    xlabel("Velocity (m/s)")
-                    ylabel("Range(m)")
-                    title("CA-CFAR Detections")
+                    font_size = 14;
+                    legend('off')
+                    set(gcf,'Position',[100 100 400 400])
+                    title("CA-CFAR Detections","FontSize",font_size)
+                    xlabel("Velocity (m/s)","FontSize",font_size)
+                    ylabel("Range (m)","FontSize",font_size)
+                    ax = gca;
+                    ax.FontSize = font_size;
                     drawnow;
                     obj.F_clusters(obj.Radar.current_frame) = getframe(gcf);
                 end
