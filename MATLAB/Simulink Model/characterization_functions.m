@@ -650,7 +650,7 @@ classdef characterization_functions
             errorbar(mean_absolute_errors,error_bars,"LineWidth",2.0);
             ax = gca;
             ax.FontSize = font_size;
-            title("Timing Estimation error vs Number of Frames","FontSize",font_size)
+            title("Frame Prediction Error","FontSize",font_size)
             xlabel("Number of Frames Sensed","FontSize",font_size)
             ylabel("error (us)","FontSize",font_size)
             y_lim = 5 *max(mean_absolute_errors);
