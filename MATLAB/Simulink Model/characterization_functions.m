@@ -231,10 +231,14 @@ classdef characterization_functions
             ranges_m = table_data_results{:,1};
             velocities_m_s = table_data_results{:,2};
             figure;
+            font_size = 14;
+            set(gcf,'Position',[100 100 400 400])
+            ax = gca;
+            ax.FontSize = font_size;
             scatter(velocities_m_s, ranges_m);
-            ylabel("Spoofing Range (m)")
-            xlabel("Spoofing Velocity (m/s)")
-            title("Spoofing Cases to Test")
+            ylabel("Spoofing Range (m)","FontSize",font_size)
+            xlabel("Spoofing Velocity (m/s)","FontSize",font_size)
+            title("Spoofing Cases to Test","FontSize",font_size)
             saveas(gcf, "generated_plots/spoofing_test_configurations.png")
         end
 
@@ -251,17 +255,27 @@ classdef characterization_functions
             ranges_m = table_data_results{:,1};
             velocities_m_s = table_data_results{:,2};
             figure;
+            font_size = 14;
+            set(gcf,'Position',[100 100 800 400])
+            ax = gca;
+            ax.FontSize = font_size;
             %plot cdf for slopes
             subplot(1,2,1);
             [h,stats] = cdfplot(ranges_m);
-            xlabel("Spoofing Range (m)")
-            title("CDF of Test Spoofing Ranges")
+            ax = gca;
+            ax.FontSize = font_size;
+            h.LineWidth = 2.0;
+            xlabel("Spoofing Range (m)","FontSize",font_size)
+            title("CDF of Test Spoofing Ranges","FontSize",font_size)
 
             %plot cdf for chirp cycle times
             subplot(1,2,2);
             [h,stats] = cdfplot(velocities_m_s);
-            xlabel("Spoofing Velocity (m/s)")
-            title("CDF of Test Spoofing Velocities")
+            ax = gca;
+            ax.FontSize = font_size;
+            h.LineWidth = 2.0;
+            xlabel("Spoofing Velocity (m/s)","FontSize",font_size)
+            title("CDF of Test Spoofing Velocities","FontSize",font_size)
             saveas(gcf, "generated_plots/spoofing_test_configuration_cdfs.png")
         end
 
@@ -367,9 +381,14 @@ classdef characterization_functions
             tail = prctile(abs_errors,percentile);
 
             figure;
+            font_size = 14;
+            set(gcf,'Position',[100 100 400 400])
             [h,stats] = cdfplot(abs_errors);
-            xlabel(metric_title + " " + metric_units);
-            title("CDF of " + metric_title + " Error");
+            h.LineWidth = 2.0;
+            xlabel(metric_title + " " + metric_units,"FontSize",font_size);
+            title("CDF of " + metric_title + " Error","FontSize",font_size);
+            ax = gca;
+            ax.FontSize = font_size;
             if max(abs_errors) > 5 * tail
                 xlim([0,2 * tail])
             end
@@ -542,10 +561,18 @@ classdef characterization_functions
             slopes_MHz_us = table_data_results{:,1};
             chirp_cycle_times_MHz_us = table_data_results{:,2};
             figure;
+            font_size = 14;
+%             h = colorbar;
+%             h.FontSize = font_size;
+%             h.Label.String = "Power (dB)";
+%             h_label = h.Label;
+            set(gcf,'Position',[100 100 400 400])
+            ax = gca;
+            ax.FontSize = font_size;
             scatter(chirp_cycle_times_MHz_us, slopes_MHz_us);
-            ylabel("Chirp Slope (MHz/us)")
-            xlabel("Chirp Cycle Time (us)")
-            title("Victim Configurations to Test")
+            ylabel("Chirp Slope (MHz/us)","FontSize",font_size)
+            xlabel("Chirp Cycle Time (us)","FontSize",font_size)
+            title("Victim Configurations to Test","FontSize",font_size)
             saveas(gcf, "generated_plots/victim_test_configurations.png")
         end
 
@@ -561,17 +588,25 @@ classdef characterization_functions
             slopes_MHz_us = table_data_results{:,1};
             chirp_cycle_times_MHz_us = table_data_results{:,2};
             figure;
+            font_size = 14;
+            set(gcf,'Position',[100 100 800 400])
             %plot cdf for slopes
             subplot(1,2,1);
             [h,stats] = cdfplot(slopes_MHz_us);
-            xlabel("Chirp Slope (MHz/us)")
-            title("CDF of Test Slopes")
+            ax = gca;
+            ax.FontSize = font_size;
+            h.LineWidth = 2.0;
+            xlabel("Chirp Slope (MHz/us)","FontSize",font_size)
+            title("CDF of Test Slopes", "FontSize",font_size)
 
             %plot cdf for chirp cycle times
             subplot(1,2,2);
             [h,stats] = cdfplot(chirp_cycle_times_MHz_us);
-            xlabel("Chirp Cycle Time (us)")
-            title("CDF of Test Chirp Cycle Times")
+            ax = gca;
+            ax.FontSize = font_size;
+            h.LineWidth = 2.0;
+            xlabel("Chirp Cycle Time (us)","FontSize",font_size)
+            title("CDF of Test Chirp Cycle Times","FontSize",font_size)
             saveas(gcf, "generated_plots/victim_test_configuration_cdfs.png")
         end
 
@@ -609,12 +644,16 @@ classdef characterization_functions
             %plot a figure with error bars
             error_bars = tail_95th_percentiles;
             figure;
+            font_size = 14;
             clf;
-            errorbar(mean_absolute_errors,error_bars);
-            title("Timing Estimation error vs Number of Frames")
-            xlabel("Number of Frames Sensed")
-            ylabel("error (us)")
-            y_lim = 1.5 *max(mean_absolute_errors);
+            set(gcf,'Position',[100 100 400 400])
+            errorbar(mean_absolute_errors,error_bars,"LineWidth",2.0);
+            ax = gca;
+            ax.FontSize = font_size;
+            title("Timing Estimation error vs Number of Frames","FontSize",font_size)
+            xlabel("Number of Frames Sensed","FontSize",font_size)
+            ylabel("error (us)","FontSize",font_size)
+            y_lim = 5 *max(mean_absolute_errors);
             ylim([0, y_lim])
             xlim([0,size(prediction_errors,2)+ 1])
             if  use_log_scale
@@ -623,10 +662,10 @@ classdef characterization_functions
             
             %add in the axis for range error
             yyaxis right
-            plot(errors_in_range)
+            plot(errors_in_range,"LineWidth",2.0)
             ylabel("corresponding range error (m)")
             set(gca,"YColor", 'black')
-            y_lim = 1.5 * max(errors_in_range);
+            y_lim = 5 * max(errors_in_range);
             ylim([0, y_lim])
             if use_log_scale
                 set(gca, 'YScale','log');
