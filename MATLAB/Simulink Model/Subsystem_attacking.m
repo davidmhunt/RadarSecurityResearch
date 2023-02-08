@@ -334,10 +334,10 @@ classdef Subsystem_attacking  < handle
                 elseif obj.Attacker.FMCW_sample_rate_Msps >= 50 %mid BW attacks
                     frac_chirps_to_attack = 0.025;
                 else %low BW attacks
-                    frac_chirps_to_attack = 0.1;
+                    frac_chirps_to_attack = 0.2;
                 end
             elseif contains(obj.attack_mode,"similar velocity")
-                frac_chirps_to_attack = 0.10;
+                frac_chirps_to_attack = 0.10; %0.20 for usrp
                 obj.additional_phase_variation_noise = zeros(obj.chirps_to_compute,1);
             end
             %adjust the velocity by the desired amount
