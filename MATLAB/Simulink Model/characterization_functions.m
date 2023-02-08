@@ -127,6 +127,10 @@ classdef characterization_functions
             estimated_ranges = simulator.Victim.Radar_Signal_Processor.range_estimates(start_idx:end_idx,1);
             estimated_velocities = simulator.Victim.Radar_Signal_Processor.velocity_estimates(start_idx:end_idx,1);
             
+            if anynan(estimated_ranges)
+                stop = true;
+            end
+
             %compute the desired spoofing ranges and velocities based on
             %the final attacker frame
             end_idx = num_attack_frames - 1;
@@ -644,9 +648,9 @@ classdef characterization_functions
             %plot a figure with error bars
             error_bars = tail_95th_percentiles;
             figure;
-            font_size = 14;
+            font_size = 17;
             clf;
-            set(gcf,'Position',[100 100 400 400])
+            set(gcf,'Position',[100 100 350 350])
             errorbar(mean_absolute_errors,error_bars,"LineWidth",2.0);
             ax = gca;
             ax.FontSize = font_size;
@@ -663,7 +667,7 @@ classdef characterization_functions
             %add in the axis for range error
             yyaxis right
             plot(errors_in_range,"LineWidth",2.0)
-            ylabel("corresponding range error (m)")
+            ylabel("Range Error (m)","FontSize",font_size)
             set(gca,"YColor", 'black')
             y_lim = 5 * max(errors_in_range);
             ylim([0, y_lim])

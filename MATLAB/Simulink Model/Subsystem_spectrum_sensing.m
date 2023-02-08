@@ -1321,11 +1321,24 @@ classdef Subsystem_spectrum_sensing < handle
             surf(obj.plot_params.times(idx_to_plot),...
                 obj.plot_params.frequencies,...
                 obj.generated_spectogram(:,idx_to_plot),"LineStyle","none");
+            resp_max = 10*log10(abs(max(obj.generated_spectogram(:,idx_to_plot),[],"all")));
+            clim([resp_max-30, resp_max]);
+            ylim([0,max(obj.plot_params.frequencies)])
+            xlim([0,max(obj.plot_params.times(idx_to_plot))])
+            font_size = 14;
+            colorbar(gca,"FontSize",font_size)
+            colorbar(gca,"Visible","off")
+            legend('off')
+            set(gcf,'Position',[100 100 400 400])
+            ax = gca;
+            ax.FontSize = font_size;
             title_str = sprintf('Spectogram');
-            title(title_str);
-            xlabel('Time(us)')
-            ylabel('Frequency (MHz)')
+            title(title_str,"FontSize",font_size);
+            xlabel('Time(us)',"FontSize",font_size)
+            ylabel('Frequency (MHz)',"FontSize",font_size)
             view([0,90.0])
+            print('-r300',"generated_plots/spectrogram",'-dsvg')
+            print('-r300',"generated_plots/spectrogram",'-dpng')
         end
     
         function plot_clusters(obj,max_time_to_plot_us)
@@ -1336,10 +1349,19 @@ classdef Subsystem_spectrum_sensing < handle
             gscatter(obj.detected_times(idx_to_plot), ...
                 obj.detected_frequencies(idx_to_plot), ...
                 obj.idx(idx_to_plot));
+            font_size = 14;
+%             colorbar(gca,"FontSize",font_size)
+            legend('off')
+            set(gcf,'Position',[100 100 400 400])
+            ax = gca;
+            ax.FontSize = font_size;
             title_str = sprintf('Identified Chirps');
-            title(title_str);
-            xlabel('Time(us)')
-            ylabel('Frequency (MHz)')
+            title(title_str,"FontSize",font_size);
+            xlabel('Time(us)',"FontSize",font_size)
+            ylabel('Frequency (MHz)',"FontSize",font_size)
+            view([0,90.0])
+            print('-r300',"generated_plots/identified_chirps",'-dsvg')
+            print('-r300',"generated_plots/identified_chirps",'-dpng')
         end
     end
 end
