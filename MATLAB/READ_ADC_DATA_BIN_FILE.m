@@ -9,6 +9,7 @@ function ret_adc_data = READ_ADC_DATA_BIN_FILE(adc_data_bin_file,mmWave_device)
     %
     %Returns:
     %   ret_adc_data - the complex adc samples for each channel
+    
     %% global variables
         numADCBits = mmWave_device.adc_bits; % number of ADC bits per sample
         numLanes = 4; % do not change. number of lanes is always 4 even if only 1 lane is used. unused lanes

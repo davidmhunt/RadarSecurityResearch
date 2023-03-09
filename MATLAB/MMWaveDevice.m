@@ -8,6 +8,7 @@ classdef MMWaveDevice
         aoa_angle %not using yet
         num_angle %not using yet
         num_byte_per_sample
+        rx_chanl_enable
         num_rx_chnl
         win_hann
         adc_samp_rate
@@ -52,17 +53,20 @@ classdef MMWaveDevice
                 Outputs:
             %}
             
-            %set frequency, wavelength, and angle of arrival information
-            obj.freq = 77.5999e9; %get this information from the actual radar
-            obj.lambda = physconst('LightSpeed') / obj.freq;
-
-            obj.aoa_angle = [0:1:180];%not using yet
-            obj.num_angle = length(obj.aoa_angle); %not using yet
-            
             % read json config format
             sys_param_json = jsondecode(fileread(mmwave_setup_json_file));
-            obj.num_byte_per_sample = 4;
-            obj.num_rx_chnl = 4;
+
+            %set frequency, wavelength, and angle of arrival information
+            obj.freq = sys_param_json.mmWaveDevices.rfConfig.rlProfiles.rlProfileCfg_t.startFreqConst_GHz * 1e9;
+            obj.lambda = physconst('LightSpeed') / obj.freq;
+
+            obj.aoa_angle = 0:1:180;%now using this
+            obj.num_angle = length(obj.aoa_angle); %now using this
+            
+            
+            obj.num_byte_per_sample = 4; %try and figure out how to get from the JSON file
+            obj.rx_chanl_enable = hex2poly(sys_param_json.mmWaveDevices.rfConfig.rlChanCfg_t.rxChannelEn);
+            obj.num_rx_chnl = sum(obj.rx_chanl_enable);
 
             obj.num_sample_per_chirp = sys_param_json.mmWaveDevices.rfConfig.rlProfiles.rlProfileCfg_t.numAdcSamples;
             obj.num_chirp_per_frame = sys_param_json.mmWaveDevices.rfConfig.rlFrameCfg_t.numLoops;
@@ -125,6 +129,9 @@ classdef MMWaveDevice
             fprintf('# of sample/frame: %d\n', obj.num_sample_per_frame);
             fprintf('Size of one frame: %d Bytes\n', obj.size_per_frame);
             fprintf('# of frames in the raw ADC data file: %d\n\n', obj.num_frame);
+
+            fprintf('Rx channels enabled: [%s]\n',join(string(obj.rx_chanl_enable),','))
+            fprintf('#of Rx channels: %d\n\n',obj.num_rx_chnl)
 
             fprintf('Radar bandwidth: %.2f (GHz)\n\n', obj.bw/1000);
 
