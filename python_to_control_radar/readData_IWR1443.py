@@ -102,7 +102,7 @@ def readAndParseData14xx(Dataport, configParameters):
     # Constants
     OBJ_STRUCT_SIZE_BYTES = 12;
     BYTE_VEC_ACC_MAX_SIZE = 2**15;
-    MMWDEMO_UART_MSG_DETECTED_POINTS = 1;
+    MMWDEMO_UART_MSG_DETECTED_POINTS = 1; #used in IWR1443_Processor/processData
     MMWDEMO_UART_MSG_RANGE_PROFILE   = 2;
     MMWDEMO_UART_MSG_RANGE_DOPPLAR_HEATMAP   = 5;
     maxBufferSize = 2**16;
