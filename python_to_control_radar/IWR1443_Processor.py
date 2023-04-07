@@ -21,6 +21,9 @@ class IWR1443_Processor:
                 generated from the Config class
             enable_plotting (bool,optional): Generates plots of
                 detected points on True. Defaults to False.
+            jupyter (bool, optional): On true, uses several specialized
+                functions to update plots in real time when using a 
+                jupyter notebook. Defaults to True
             verbose (bool, optional): Prints out extra information on 
                 True. Defaults to False.
             
@@ -33,6 +36,7 @@ class IWR1443_Processor:
 
         #initialize the array to store the detected objects
         self.detected_objects = {}
+        self.xyz_vel_coordinates = np.zeros(shape=(50,4))
 
         #initialize plotting
         self.plotting_enabled = enable_plotting
@@ -79,9 +83,6 @@ class IWR1443_Processor:
             idX += 4
             tlv_length = np.matmul(Packet[idX:idX+4],word)
             idX += 4
-
-            if tlv_type != 1:
-                print("Processor.decodePacket: error")
 
             if self.verbose:
                 print("Processor.decodePacket: TLV Type: {}".format(tlv_type))
@@ -138,7 +139,18 @@ class IWR1443_Processor:
                 # Store the data in the detObj dictionary
                 self.detected_objects = {"numObj": tlv_numObj, "rangeIdx": rangeIdx, "range": rangeVal, "dopplerIdx": dopplerIdx, \
                         "doppler": dopplerVal, "peakVal": peakVal, "x": x, "y": y, "z": z}
+                
+                #generate an array of x,y,z,velocity coordinates for each object
+                self.xyz_vel_coordinates = np.array(
+                    [self.detected_objects['x'],
+                     self.detected_objects['y'],
+                     self.detected_objects['z'],
+                     self.detected_objects['doppler']]
+                ).transpose()
 
+            if self.verbose:
+                print("Processor.decodePacket: detected_object {}".format(self.detected_objects))
+                print("Processor.decodePacket: xyz_vel_coordinates {}".format(self.xyz_vel_coordinates))
             #TODO: was in previous python script
             """
             if tlv_type == MMWDEMO_UART_MSG_RANGE_PROFILE: 

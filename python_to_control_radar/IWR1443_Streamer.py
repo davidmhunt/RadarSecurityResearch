@@ -9,19 +9,28 @@ from IWR1443_Processor import IWR1443_Processor
 class IWR1443_Streamer:
 
     def __init__(self,
-                 processor:IWR1443_Processor,
                  enable_serial=False,
                  data_file = "data_stream.dat",
-                 CLIPort=None,
-                 DataPort=None,
-                 refresh_rate = 33.0,
+                 CLIPort:serial.Serial =None,
+                 DataPort:serial.Serial =None,
                  verbose = False):
+        """Initialize the streamer class
+
+        Args:
+            enable_serial (bool, optional): On True, streams data from the radar. 
+                On False, reads data from data_file and processes the 
+                read data. Defaults to False.
+            data_file (str, optional): file path to the raw serial data file.
+                 Defaults to "data_stream.dat".
+            CLIPort (serial.Serial, optional): serial.Serial object used to send
+                commands to the radar. Defaults to None.
+            DataPort (serial.Serial, optional): serial.Serial object used to read
+                raw data from the radar. Defaults to None.
+            verbose (bool, optional): On True, prints debugging information. Defaults to False.
+        """
 
         #save verbose setting
         self.verbose = verbose
-        
-        #initialize the processor used to process the data
-        self.processor = processor
 
         #initialize the byte buffer
         maxBufferSize = 2**16
@@ -39,8 +48,7 @@ class IWR1443_Streamer:
         self.serial_enabled = enable_serial
         if not self.serial_enabled:
             self.loadFile(data_file)
-
-        self.refresh_delay = 1/refresh_rate
+        
         return
 
         
@@ -195,55 +203,4 @@ class IWR1443_Streamer:
             #get the response from the sensor to confirm message was received
             resp = self.CLIport.read(self.CLIport.in_waiting).decode('utf-8')
             print("Streamer.stop_serial_stream: received '{}'".format(resp))
-
-    def stream_serial(self):
-
-        #start the serial stream
-        self.start_serial_stream()
-        packet_available = True
-        while True:
-            try:
-                #read new serial data
-                self.readFromSerial()
-
-                #check for new packet
-                packet_available = self.checkForNewPacket()
-
-                if packet_available:
-                    self.processor.performProcessing(self.currentPacket)
-                
-                time.sleep(self.refresh_delay)
-
-            except KeyboardInterrupt:
-                self.stop_serial_stream()
-                if self.verbose:
-                    print("Streamer.stream_serial: stopping serial stream")
-                break
-        return
-
-    def stream_file(self):
-        #variable to keep track of if there are more frames left in the file
-        packet_available = True
-        while packet_available:
-            
-            #check for the next packet
-            packet_available = self.checkForNewPacket()
-
-            if packet_available:
-                self.processor.performProcessing(self.currentPacket)
-            
-            time.sleep(self.refresh_delay)
-        if self.verbose:
-            print("Streamer.stream_file: streaming complete")
-
-        return
-    
-    def stream(self):
-        #start serial stream
-        if self.serial_enabled:
-            self.stream_serial()
-        else:
-            self.stream_file()
-
-        return
         
