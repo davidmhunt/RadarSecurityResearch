@@ -353,7 +353,7 @@ classdef characterization_functions
                 scale_factor - scale the error by a specified factor
                 (used to change unit scales)
         %}
-        function summary_table = generate_testing_summary(...
+        function summary_table = generate_testing_summary_absolute_error(...
                 read_file_path,...
                 actual_values_idx, ...
                 estimated_values_idx, ...
@@ -390,7 +390,7 @@ classdef characterization_functions
             [h,stats] = cdfplot(abs_errors);
             h.LineWidth = 2.0;
             xlabel(metric_title + " " + metric_units,"FontSize",font_size);
-            title("CDF of " + metric_title + " Error","FontSize",font_size);
+            title("CDF of Absolute " + metric_title + " Error","FontSize",font_size);
             ax = gca;
             ax.FontSize = font_size;
             if max(abs_errors) > 5 * tail
@@ -415,10 +415,100 @@ classdef characterization_functions
             save_file_name= strrep(metric_title," ","_");
 
             %save the cdf plot
-            saveas(gcf, "generated_plots/" + save_file_name + "_error_cdf.png");
+            saveas(gcf, "generated_plots/" + save_file_name + "_absolute_error_cdf.png");
 
             %save a csv of the summary table
-            writetable(summary_table,save_file_name + "_error_summary.csv",'WriteRowNames',true); 
+            writetable(summary_table,save_file_name + "_absolute_error_summary.csv",'WriteRowNames',true); 
+        end
+
+        %{
+            Purpose: generate a table of the key statistics for the
+                relative error of given metric and plot the cdf of the
+                relative error
+            Inputs:
+                read_file_path - path to the read file containing the
+                    necessary information to generate the testing summary
+                actual_values_idx - column index in the read file
+                    corresponding to the actual values
+                estimated_values_idx - column index in the read file
+                    corresponding to the estimated values
+                abs_errors_idx - column index in the read file
+                    corresponding to the absolute errors for the metric
+                metric_title - a string of the name of the metric that the summary is
+                    being generated for
+                metric_units - a string of the units of the metric that the
+                    summary is being generated for
+                percentile - the percentile to compute for the tail
+                scale_factor - scale the error by a specified factor
+                (used to change unit scales)
+        %}
+        function summary_table = generate_testing_summary_relative_error(...
+                read_file_path,...
+                actual_values_idx, ...
+                estimated_values_idx, ...
+                abs_errors_idx, ...
+                metric_title, ...
+                metric_units, ...
+                percentile,...
+                scale_factor)
+            
+            %plot the cdf of the chirp slope errors
+            table_data_results = readtable(read_file_path);
+            actual_values = table_data_results{:,actual_values_idx} * scale_factor;
+            estimated_values = table_data_results{:,estimated_values_idx} * scale_factor;
+            absolute_errors = table_data_results{:,abs_errors_idx} * scale_factor;
+            relative_errors = 100 * absolute_errors ./ actual_values;
+
+            %get the number of failed trials
+            num_failed_trials = size(relative_errors(isnan(relative_errors)),1);
+            percent_failed_trials = num_failed_trials / size(relative_errors,1);
+
+            %remove all NaN values from the dataset
+            relative_errors = relative_errors(~isnan(relative_errors));
+
+            %plot the results
+            
+            %statistics based on absolute errors
+            mean_error = mean(relative_errors);
+            variance_error = var(relative_errors);
+            MSE_error = mse(actual_values,estimated_values);
+            tail = prctile(relative_errors,percentile);
+
+            figure;
+            font_size = 14;
+            set(gcf,'Position',[100 100 400 400])
+            [h,stats] = cdfplot(relative_errors);
+            h.LineWidth = 2.0;
+            xlabel("Relative Error (Percent " + metric_units + ")" ,"FontSize",font_size);
+            title("CDF of Relative " + metric_title + " Error","FontSize",font_size);
+            ax = gca;
+            ax.FontSize = font_size;
+            if max(relative_errors) > 5 * tail
+                xlim([0,2 * tail])
+            end
+            
+            variable_names = [...
+                "Mean (" + metric_units + ")",...
+                "Variance ("+ metric_units + ")^2",...
+                "MSE (" + metric_units + ")^2",...
+                int2str(percentile) + "th Percentile (" + metric_units + ")",...
+                "Percent Failed Trials"];
+            summary_table = array2table( ...
+                [mean_error,...
+                variance_error,...
+                MSE_error,...
+                tail,...
+                percent_failed_trials], ...
+                "VariableNames",variable_names);
+
+            %set the save file path
+            save_file_name= strrep(metric_title," ","_");
+
+            %save the cdf plot
+            saveas(gcf, "generated_plots/" + save_file_name + "_relative_error_cdf.png");
+
+            %save a csv of the summary table
+            writetable(summary_table,save_file_name + "_relative_error_summary.csv",'WriteRowNames',true); 
         end
 
 %% Sensing Subsystem Evaluation Functions

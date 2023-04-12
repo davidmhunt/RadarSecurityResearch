@@ -90,6 +90,11 @@
                     init(config_data,usrp_handler);                 
                 }
 
+                /**
+                 * @brief Construct a new Attacking Subsystem object -Copy Constructor
+                 * 
+                 * @param rhs 
+                 */
                 AttackingSubsystem(const AttackingSubsystem & rhs) : enabled(rhs.enabled),
                                                                     attacking(rhs.attacking),
                                                                     sensing_complete(rhs.sensing_complete),

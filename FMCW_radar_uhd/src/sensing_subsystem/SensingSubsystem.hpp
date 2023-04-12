@@ -215,6 +215,7 @@
                         {   spectrogram_handler.set_attack_in_progress(true);
                             double next_frame_start_time = spectrogram_handler.get_next_frame_start_time_prediction_ms();
                             attacking_subsystem -> load_new_frame_start_time(next_frame_start_time);
+                            
                         }
                     }
 
